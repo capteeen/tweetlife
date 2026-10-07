@@ -468,7 +468,7 @@ function HomeShop() {
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const owned = new Map((life?.furniture ?? []).map((a) => [a.itemId, a]));
-  const slots = Array.from(new Set(FURNITURE.filter((f) => f.price > 0).map((f) => f.slot))) as Slot[];
+  const slots = (Object.keys(SLOT_LABEL) as Slot[]).filter((slot) => FURNITURE.some((f) => f.slot === slot && f.price > 0));
   return (
     <div>
       <p className="mt-2 text-xs text-white/60">Everyone starts with the basics. Better furniture gives bigger boosts, and some of it needs light.</p>

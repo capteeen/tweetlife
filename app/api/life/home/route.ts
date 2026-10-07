@@ -6,7 +6,7 @@ import { bad, requirePlayer } from '@/lib/life/auth';
 import { getUser } from '@/lib/session';
 import { ensureStarterKit, setStats } from '@/lib/life/player';
 import { applyDelta, moodOf } from '@/lib/life/stats';
-import { GENERATOR_RUN, furnitureById, hasPower, publicPower, resaleValue, type HomeItem, type HomeView, type PowerState, type Slot } from '@/lib/life/home';
+import { furnitureById, hasPower, publicPower, resaleValue, type HomeItem, type HomeView, type PowerState, type Slot } from '@/lib/life/home';
 
 export const dynamic = 'force-dynamic';
 
@@ -108,7 +108,7 @@ export async function POST(req: NextRequest) {
   const action = item.actions.find((x) => x.id === b.actionId);
   if (!action) return bad('No such action');
   const power = await powerFor(pid);
-  if (item.needsPower && !hasPower(power) && item.id !== 'generator') return bad('No light. NEPA has taken it — a generator would fix that.', 409);
+  if (item.needsPower && !hasPower(power) && !item.powerSeconds) return bad('No light. NEPA has taken it — a generator would fix that.', 409);
   const key = `home:${pid}:${item.id}:${action.id}`;
   const ttl = await redis().ttl(key).catch(() => -2);
   if (ttl > 0) return bad(`Not yet — ${ttl}s to go.`, 429);
@@ -121,7 +121,7 @@ export async function POST(req: NextRequest) {
   ]);
   await setStats(pid, next);
   await redis().set(key, '1', 'EX', action.seconds).catch(() => {});
-  if (item.id === 'generator') await redis().set(`gen:${pid}`, '1', 'EX', GENERATOR_RUN).catch(() => {});
+  if (item.powerSeconds) await redis().set(`gen:${pid}`, '1', 'EX', item.powerSeconds).catch(() => {});
   return NextResponse.json({
     ok: true,
     me: { ...next, mood: moodOf(next).mood, bags: r.player.bags - action.bags },

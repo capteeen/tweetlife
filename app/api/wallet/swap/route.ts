@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { redis } from '@/lib/redis';
 import { bad, requirePlayer } from '@/lib/life/auth';
 import { quote, swap } from '@/lib/solana/jupiter';
+import { balloonKey } from '@/lib/life/balloons';
 import { SOL_MINT, balances, ensureWallet, explorerUrl } from '@/lib/solana/wallet';
 
 export const dynamic = 'force-dynamic';
@@ -48,6 +49,7 @@ export async function POST(req: NextRequest) {
     await db.walletTx.create({
       data: { playerId: r.player.id, kind: side === 'buy' ? 'swap_buy' : 'swap_sell', lamports, mint, signature: sig, note: side === 'buy' ? `Aped $${symbol ?? mint.slice(0, 6)} with ${amount} SOL` : `Sold ${Math.round(Math.min(1, amount) * 100)}% of $${symbol ?? mint.slice(0, 6)}` },
     });
+    await redis().del(balloonKey(r.player.id)).catch(() => {});
     return NextResponse.json({ ok: true, signature: sig, url: explorerUrl(sig), outAmount: q.outAmount, priceImpactPct: q.priceImpactPct });
   } catch (e) {
     return bad((e as Error).message.slice(0, 220), 502);

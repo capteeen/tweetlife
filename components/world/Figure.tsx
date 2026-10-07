@@ -27,6 +27,8 @@ type Props = {
   dim?: boolean;
   /** residents always walk */
   alwaysWalk?: boolean;
+  /** 0 = upright, 1 = slumped (after a rug). Read each frame. */
+  slumpRef?: React.MutableRefObject<number>;
   /** an everyday move to play (dance, stretch...), or null. Read each frame. */
   actRef?: React.MutableRefObject<FigureAct | null>;
   /** 0 = fresh, 1 = exhausted: slower steps and a slouch. Read each frame. */
@@ -93,7 +95,7 @@ const headShell = (yMin: number, inflate: number, back = false) =>
     );
   });
 
-export function Figure({ seed, look: chosen, speedRef, label, labelColor = '#FFFFFF', dim = false, alwaysWalk = false, actRef, tiredRef }: Props) {
+export function Figure({ seed, look: chosen, speedRef, label, labelColor = '#FFFFFF', dim = false, alwaysWalk = false, actRef, tiredRef, slumpRef }: Props) {
   const look = useMemo(() => chosen ?? lookFor(seed), [chosen, seed]);
   const lArm = useRef<THREE.Group>(null);
   const rArm = useRef<THREE.Group>(null);
@@ -112,6 +114,17 @@ export function Figure({ seed, look: chosen, speedRef, label, labelColor = '#FFF
   const phone = useRef<THREE.Mesh>(null);
   // the move being played (kept while it fades out), its start time, and its blend weight
   const move = useRef<{ act: FigureAct | null; t: number; w: number }>({ act: null, t: 0, w: 0 });
+
+  // Rekt (a rug just popped): shoulders roll forward and the head drops, on top of whatever pose is playing.
+  // `layered`: a pose was set this frame, so lean at least this far; otherwise the slump owns the lean.
+  const slumpOver = (layered: boolean) => {
+    const k = slumpRef?.current ?? 0;
+    if (!slumpRef) return;
+    if (chest.current) chest.current.rotation.x = layered ? Math.max(chest.current.rotation.x, 0.32 * k) : 0.32 * k;
+    if (head.current) head.current.rotation.x = layered ? Math.max(head.current.rotation.x, 0.45 * k) : 0.45 * k;
+    if (lArm.current) lArm.current.rotation.x -= 0.3 * k; // hang straight down despite the lean
+    if (rArm.current) rArm.current.rotation.x -= 0.3 * k;
+  };
 
   useFrame((_, dt) => {
     const target = alwaysWalk ? 1 : speedRef?.current ?? 0;
@@ -145,7 +158,7 @@ export function Figure({ seed, look: chosen, speedRef, label, labelColor = '#FFF
     if (head.current) head.current.rotation.y = Math.sin(p) * 0.1 * s + Math.sin(idle.current * 0.4) * 0.25 * (1 - s);
 
     // everyday moves and tiredness, layered over the walk (components/world/figureMoves.ts)
-    if (!actRef && !tiredRef) return;
+    if (!actRef && !tiredRef) return slumpOver(false);
     const rig: Rig = {
       body: body.current, chest: chest.current, head: head.current, lArm: lArm.current, rArm: rArm.current, lElbow: lElbow.current, rElbow: rElbow.current,
       lLeg: lLeg.current, rLeg: rLeg.current, lKnee: lKnee.current, rKnee: rKnee.current, phone: phone.current, hipY,
@@ -159,6 +172,7 @@ export function Figure({ seed, look: chosen, speedRef, label, labelColor = '#FFF
     if (m.w === 0 && !want) m.act = null;
     if (m.w < 1) applyTired(rig, tired * (1 - m.w), idle.current);
     if (m.act) poseActivity(rig, m.act, m.t, smoothW(m.w));
+    slumpOver(true);
   });
 
   const fem = look.body === 'female';

@@ -60,6 +60,7 @@ export type TokenBalance = {
   priceUsd: number | null;
   valueUsd: number | null;
   change24h: number | null;
+  change1h: number | null;
   icon: string | null;
   url: string | null;
 };
@@ -82,7 +83,7 @@ export async function balances(publicKey: string): Promise<{ sol: number; lampor
   const tokens: TokenBalance[] = raw.map((r) => {
     const t = q.get(`solana:${r.mint.toLowerCase()}`);
     const priceUsd = t?.priceUsd ?? null;
-    return { ...r, symbol: t?.symbol ?? null, name: t?.name ?? null, priceUsd, valueUsd: priceUsd == null ? null : priceUsd * r.amount, change24h: t?.change24h ?? null, icon: t?.icon ?? null, url: t?.url ?? null };
+    return { ...r, symbol: t?.symbol ?? null, name: t?.name ?? null, priceUsd, valueUsd: priceUsd == null ? null : priceUsd * r.amount, change24h: t?.change24h ?? null, change1h: t?.change1h ?? null, icon: t?.icon ?? null, url: t?.url ?? null };
   });
   const sol = lamports / LAMPORTS_PER_SOL;
   const tokensUsd = tokens.reduce((acc, t) => acc + (t.valueUsd ?? 0), 0);

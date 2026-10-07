@@ -6,6 +6,7 @@ import { seededFor } from '@/lib/world/seed';
 import { useWorld } from './store';
 import { Figure } from './Figure';
 import { Vehicle, riderOffset } from './Vehicle';
+import { Balloons, HAND, useSlumpRef } from './Balloons';
 import { ITEMS } from '@/lib/life/market';
 import type { Peer as PeerT } from './store';
 import { residentLook } from '@/lib/life/look';
@@ -81,6 +82,8 @@ function Peer({ peer }: { peer: PeerT }) {
   const speed = useRef(0);
   const act = useRef<FigureAct | null>(null);
   const look = useLookOf(peer.handle);
+  const hand = useRef<THREE.Object3D>(null);
+  const slumpRef = useSlumpRef(peer.handle);
   const last = useRef({ x: peer.x, z: peer.z, t: performance.now() });
   useFrame(() => {
     const g = ref.current;
@@ -108,8 +111,10 @@ function Peer({ peer }: { peer: PeerT }) {
     >
       {item && <Vehicle item={item} />}
       <group position={[0, ro.y, 0]} scale={ro.scale}>
-        <Figure seed={peer.handle} look={look} speedRef={speed} actRef={act} label={`@${peer.handle}`} dim={!ro.show} />
+        <Figure seed={peer.handle} look={look} speedRef={speed} actRef={act} slumpRef={slumpRef} label={`@${peer.handle}`} dim={!ro.show} />
+        <object3D ref={hand} position={HAND} />
       </group>
+      <Balloons handle={peer.handle} hand={hand} scale={ro.scale} visible={ro.show} />
     </group>
   );
 }

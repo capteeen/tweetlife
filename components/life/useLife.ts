@@ -4,6 +4,7 @@ import { useWorld, type LifeData, type LifeMe, type WalletData } from '@/compone
 import type { Activity, ActivityId } from '@/lib/life/activities';
 import { ITEMS, type Item } from '@/lib/life/market';
 import type { Furniture, FurnitureAction, PowerState } from '@/lib/life/home';
+import { refreshBalloons } from '@/components/world/Balloons';
 
 // Client side of the life layer: load the player's data, perform actions, keep the store in sync.
 
@@ -139,6 +140,7 @@ export const lifeActions = {
     const r = await j<{ ok: true; signature: string; url: string; outAmount: string; priceImpactPct: string }>('/api/wallet/swap', { method: 'POST', body: JSON.stringify({ side, mint, amount, symbol }) });
     await refreshWallet();
     await refreshLife();
+    refreshBalloons();
     useWorld.getState().pushToast(side === 'buy' ? `Aped $${symbol ?? ''} on-chain 🦍` : `Sold $${symbol ?? ''} ✓`, 'wallet');
     return r;
   },

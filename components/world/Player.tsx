@@ -8,6 +8,7 @@ import { BLOCK_D, ROAD, SIDEWALK } from '@/lib/world/geometry';
 import { sticks } from './TouchSticks';
 import { Figure } from './Figure';
 import { Vehicle, riderOffset } from './Vehicle';
+import { Balloons, HAND, useSlumpRef } from './Balloons';
 import { placeVenues } from '@/lib/life/venues';
 import { SPRINT_MIN_GAS, SPRINT_MULT, paceFor, tiredness, walkCost } from '@/lib/life/activities';
 import { lifeActions } from '@/components/life/useLife';
@@ -51,6 +52,8 @@ export function Player({ structures, boundaryRadius, contentRadius, spawn }: { s
   const speedRef = useRef(0);
   const me = useWorld((s) => s.me);
   const look = useWorld((s) => s.life?.me?.look ?? null);
+  const hand = useRef<THREE.Object3D>(null);
+  const slumpRef = useSlumpRef(me?.handle ?? '');
   const actRef = useRef<FigureAct | null>(null);
   const tiredRef = useRef(0);
   // distance on foot not yet reported to the server
@@ -211,9 +214,11 @@ export function Player({ structures, boundaryRadius, contentRadius, spawn }: { s
       {riding && <Vehicle item={riding} />}
       {ro.show && (
         <group position={[0, ro.y, 0]} scale={ro.scale}>
-          <Figure seed={me?.handle ?? 'visitor'} look={me ? look : null} speedRef={speedRef} actRef={actRef} tiredRef={tiredRef} label={me ? `@${me.handle}` : undefined} labelColor="#BFE3FF" />
+          <Figure seed={me?.handle ?? 'visitor'} look={me ? look : null} speedRef={speedRef} actRef={actRef} tiredRef={tiredRef} slumpRef={slumpRef} label={me ? `@${me.handle}` : undefined} labelColor="#BFE3FF" />
+          <object3D ref={hand} position={HAND} />
         </group>
       )}
+      {me && <Balloons handle={me.handle} hand={hand} scale={ro.scale} visible={ro.show} />}
       {!ro.show && me && (
         <Figure seed={me.handle} look={look} speedRef={speedRef} label={`@${me.handle}`} labelColor="#BFE3FF" dim />
       )}

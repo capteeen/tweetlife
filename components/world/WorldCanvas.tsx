@@ -16,6 +16,7 @@ import { Structures } from './Structures';
 import { Player } from './Player';
 import { Marks } from './Marks';
 import { Peers, Residents } from './Residents';
+import { BalloonFeed } from './Balloons';
 import { useWorld } from './store';
 
 // The scene. `mode`:
@@ -113,6 +114,7 @@ function Scene(props: SceneProps) {
         <>
           <Player structures={geometry.structures} boundaryRadius={R} contentRadius={geometry.contentRadius} spawn={spawn ?? null} />
           <Peers />
+          <BalloonFeed />
         </>
       )}
       {mode === 'boundary' && <BoundaryOrbit radius={R} landmark={geometry.structures.find((s) => s.isLandmark) ?? null} />}

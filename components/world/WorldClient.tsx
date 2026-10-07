@@ -1,5 +1,5 @@
 'use client';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import type { WorldModel } from '@/lib/world/load';
 import { compact, relativeTime } from '@/lib/format';
@@ -59,12 +59,21 @@ export function WorldClient({ handle, spawnPostId, embed, backdrop }: { handle: 
 
   // While building: poll real counts and reload the model as pages land.
   const building = model?.ingestState === 'building' || model?.ingestState === 'queued';
+  // The counter polls every 4s; the scene itself reloads at most every 15s (a reload rebuilds every
+  // building), or immediately when the build finishes.
+  const lastReload = useRef(0);
   useEffect(() => {
     if (!building) return;
     const t = setInterval(async () => {
       const p = await fetch(`/api/world/${encodeURIComponent(handle)}/progress`).then((r) => r.json()).catch(() => null);
-      if (p) setProgress(p);
-      if (p && (p.placed !== (model?.structureCount ?? 0) || p.ingestState !== model?.ingestState)) load().catch(() => {});
+      if (!p) return;
+      setProgress(p);
+      const changed = p.placed !== (model?.structureCount ?? 0);
+      const finished = p.ingestState !== model?.ingestState;
+      if (finished || (changed && Date.now() - lastReload.current > 15000)) {
+        lastReload.current = Date.now();
+        load().catch(() => {});
+      }
     }, 4000);
     return () => clearInterval(t);
   }, [building, handle, load, model?.structureCount, model?.ingestState]);

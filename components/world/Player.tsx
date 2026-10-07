@@ -41,9 +41,10 @@ export function Player({ structures, boundaryRadius, spawn }: { structures: Plac
     if (!spawn) return;
     // stand on the sidewalk in front of the building, camera behind so the building fills the view
     const face = spawn.rot === 0 ? 1 : -1;
-    pos.current.set(spawn.x, 0, spawn.z + face * (spawn.depth / 2 + 4.5));
+    const free = freeSpotNear(structures, spawn.x, spawn.z + face * (spawn.depth / 2 + 4.5), boundaryRadius);
+    pos.current.set(free.x, 0, free.z);
     yaw.current = Math.atan2(pos.current.x - spawn.x, pos.current.z - spawn.z);
-  }, [spawn]);
+  }, [spawn, structures, boundaryRadius]);
 
   useEffect(() => {
     const el = gl.domElement;
@@ -100,30 +101,16 @@ export function Player({ structures, boundaryRadius, spawn }: { structures: Plac
       mz /= Math.max(1, len);
       // move relative to camera yaw
       const s = Math.sin(yaw.current), c = Math.cos(yaw.current);
-      const wx = mx * c - mz * s;
-      const wz = mx * s + mz * c;
-      // (camera looks along -yaw direction from behind the player)
-      const vx = wx, vz = wz;
-      pos.current.x += vx * SPEED * d * Math.min(1, len);
-      pos.current.z += vz * SPEED * d * Math.min(1, len);
+      const vx = mx * c - mz * s;
+      const vz = mx * s + mz * c;
+      const step = SPEED * d * Math.min(1, len);
+      const nx = pos.current.x + vx * step, nz = pos.current.z + vz * step;
+      // Slide-and-block: a step that would end inside a building is refused; try each axis alone so
+      // walls can be followed. Nothing ever pushes the player, so nothing can trap them.
+      if (!blockedAt(structures, nx, nz, boundaryRadius)) pos.current.set(nx, 0, nz);
+      else if (!blockedAt(structures, nx, pos.current.z, boundaryRadius)) pos.current.x = nx;
+      else if (!blockedAt(structures, pos.current.x, nz, boundaryRadius)) pos.current.z = nz;
       facing.current = Math.atan2(vx, vz);
-    }
-    // keep inside the boundary
-    const r = Math.hypot(pos.current.x, pos.current.z);
-    const maxR = boundaryRadius - 1.5;
-    if (r > maxR) {
-      pos.current.x *= maxR / r;
-      pos.current.z *= maxR / r;
-    }
-    // collision with buildings: axis-aligned footprints, push out along the shallowest axis
-    for (const s of structures) {
-      if (s.kind === 'lantern' || s.segment > 0) continue;
-      const hx = s.width / 2 + 0.4, hz = s.depth / 2 + 0.4;
-      const dx = pos.current.x - s.x, dz = pos.current.z - s.z;
-      if (Math.abs(dx) >= hx || Math.abs(dz) >= hz) continue;
-      const px = hx - Math.abs(dx), pz = hz - Math.abs(dz);
-      if (px < pz) pos.current.x = s.x + Math.sign(dx || 1) * hx;
-      else pos.current.z = s.z + Math.sign(dz || 1) * hz;
     }
     if (group.current) {
       group.current.position.copy(pos.current);
@@ -154,6 +141,31 @@ export function Player({ structures, boundaryRadius, spawn }: { structures: Plac
   );
 }
 
+const PLAYER_R = 0.35;
+
+/** True when a player standing at (x, z) would overlap a building footprint or leave the boundary. */
+function blockedAt(structures: Placed[], x: number, z: number, boundaryRadius: number) {
+  if (Math.hypot(x, z) > boundaryRadius - 1.5) return true;
+  for (const s of structures) {
+    if (s.kind === 'lantern' || s.segment > 0) continue;
+    if (Math.abs(x - s.x) < s.width / 2 + PLAYER_R && Math.abs(z - s.z) < s.depth / 2 + PLAYER_R) return true;
+  }
+  return false;
+}
+
+/** The nearest open spot to (x, z), searched in rings of half a unit. */
+function freeSpotNear(structures: Placed[], x: number, z: number, boundaryRadius: number) {
+  if (!blockedAt(structures, x, z, boundaryRadius)) return { x, z };
+  for (let r = 0.5; r <= 14; r += 0.5) {
+    for (let a = 0; a < Math.PI * 2; a += Math.PI / 8) {
+      const px = x + Math.cos(a) * r, pz = z + Math.sin(a) * r;
+      if (!blockedAt(structures, px, pz, boundaryRadius)) return { x: px, z: pz };
+    }
+  }
+  return { x, z };
+}
+
+/** Camera placement check: inside a building's volume. */
 function insideBuilding(structures: Placed[], x: number, y: number, z: number) {
   for (const s of structures) {
     if (s.kind === 'lantern') continue;

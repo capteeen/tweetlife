@@ -55,7 +55,7 @@ export function VenueCard({ sendSocial }: { sendSocial: SocialSend }) {
         <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
           {venue.app && (
             <button className="btn !justify-start !rounded-2xl !py-3" onClick={() => openPhone(venue.app === 'market' ? 'market' : venue.app!, venue.marketKind ?? null)}>
-              {venue.app === 'wallet' ? '🏦 Open wallet' : venue.app === 'trenches' ? '📈 Open the Trenches' : `${venue.emoji} Browse ${venue.marketKind === 'car' ? 'cars' : venue.marketKind === 'boat' ? 'boats' : 'aircraft'}`}
+              {venue.app === 'wallet' ? '🏦 Open the bank' : venue.app === 'trenches' ? '📈 Open the Trenches' : `${venue.emoji} Browse ${venue.marketKind === 'car' ? 'cars' : venue.marketKind === 'boat' ? 'boats' : 'aircraft'}`}
             </button>
           )}
           {venue.actions.map((a) => (

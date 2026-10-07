@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useWorld, type PhoneApp } from '@/components/world/store';
+import { refreshWallet } from './useLife';
 import { compact, fullNumber, relativeTime } from '@/lib/format';
 import { ITEMS } from '@/lib/life/market';
 import type { Token } from '@/lib/life/trenches';
@@ -13,7 +14,8 @@ import { MapApp } from './MapApp';
 
 const APPS: { id: PhoneApp; label: string; emoji: string; bg: string }[] = [
   { id: 'trenches', label: 'Trenches', emoji: '📈', bg: 'linear-gradient(135deg,#06D6A0,#118AB2)' },
-  { id: 'wallet', label: 'Wallet', emoji: '💰', bg: 'linear-gradient(135deg,#FFD166,#F28C28)' },
+  { id: 'wallet', label: 'Bank', emoji: '🏦', bg: 'linear-gradient(135deg,#FFD166,#F28C28)' },
+  { id: 'solana', label: 'Solana', emoji: '◎', bg: 'linear-gradient(135deg,#9945FF,#14F195)' },
   { id: 'hustle', label: 'Hustle', emoji: '💼', bg: 'linear-gradient(135deg,#8338EC,#3A86FF)' },
   { id: 'market', label: 'Market', emoji: '🛍️', bg: 'linear-gradient(135deg,#FF5D8F,#E63946)' },
   { id: 'garage', label: 'Garage', emoji: '🚗', bg: 'linear-gradient(135deg,#6B7280,#1B2436)' },
@@ -76,7 +78,9 @@ export function Phone({ sendSocial, handle }: { sendSocial: SocialSend; handle: 
           ) : phone.app === 'trenches' ? (
             <Trenches />
           ) : phone.app === 'wallet' ? (
-            <Wallet sendSocial={sendSocial} />
+            <Bank sendSocial={sendSocial} />
+          ) : phone.app === 'solana' ? (
+            <Solana sendSocial={sendSocial} prefillTo={phone.to} />
           ) : phone.app === 'hustle' ? (
             <Hustle />
           ) : phone.app === 'market' ? (
@@ -115,20 +119,25 @@ const usd = (n: number | null) => (n == null ? '—' : n >= 1 ? `$${n.toFixed(2)
 function Trenches() {
   const [board, setBoard] = useState<{ tokens: Token[]; at: string; error?: string } | null>(null);
   const [sel, setSel] = useState<Token | null>(null);
-  const [amt, setAmt] = useState(500);
+  const [sol, setSol] = useState(0.05);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const life = useWorld((s) => s.life);
+  const [receipt, setReceipt] = useState<string | null>(null);
+  const wallet = useWorld((s) => s.wallet);
   useEffect(() => {
     fetch('/api/life/trenches').then((r) => r.json()).then(setBoard).catch(() => setBoard({ tokens: [], at: '', error: 'Could not load the board.' }));
+    refreshWallet().catch(() => {});
   }, []);
-  const held = (t: Token) => life?.portfolio?.holdings.find((h) => h.chain === t.chain && h.address.toLowerCase() === t.address.toLowerCase());
+  const solana = board?.tokens.filter((t) => t.chain === 'solana') ?? [];
+  const held = (t: Token) => wallet?.balances?.tokens.find((h) => h.mint === t.address);
   const ape = async () => {
     if (!sel) return;
     setBusy(true);
     setErr(null);
+    setReceipt(null);
     try {
-      await lifeActions.trade('buy', sel.chain, sel.address, amt);
+      const r = await lifeActions.swap('buy', sel.address, sol, sel.symbol);
+      setReceipt(r.url);
     } catch (e) {
       setErr((e as Error).message);
     } finally {
@@ -137,15 +146,18 @@ function Trenches() {
   };
   return (
     <div>
-      <p className="mt-2 text-xs text-white/60">Live memecoins (DexScreener top boosts), real prices. You ape with bags — in-world points, not money. 1 bag sizes like $1.</p>
+      <p className="mt-2 text-xs text-white/60">
+        Live Solana memecoins (DexScreener top boosts), real prices. You ape with <b>real SOL</b> from your Solana wallet, swapped on-chain through Jupiter.
+      </p>
+      {wallet?.cluster === 'devnet' && <p className="mt-2 rounded-xl bg-amber-500/15 px-3 py-2 text-xs text-amber-200">This deployment is on devnet: swaps are not possible (no liquidity). Browse the board; the operator switches to mainnet when ready.</p>}
       {!board && <p className="mt-4 text-sm text-white/60">Loading the board…</p>}
       {board?.error && <p className="mt-4 rounded-xl bg-rose-500/15 px-3 py-2 text-sm text-rose-200">{board.error}</p>}
-      {board && board.tokens.length === 0 && !board.error && <p className="mt-4 text-sm text-white/60">The feed returned nothing right now.</p>}
+      {board && solana.length === 0 && !board.error && <p className="mt-4 text-sm text-white/60">No Solana tokens on the board right now.</p>}
       <ul className="mt-3 space-y-1.5">
-        {board?.tokens.map((t) => {
+        {solana.map((t) => {
           const h = held(t);
           return (
-            <li key={t.chain + t.address}>
+            <li key={t.address}>
               <button className={`flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left ${sel?.address === t.address ? 'bg-white/15' : 'bg-white/5 hover:bg-white/10'}`} onClick={() => setSel(t)}>
                 {t.icon ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -154,12 +166,10 @@ function Trenches() {
                   <span className="h-8 w-8 rounded-full bg-white/10" />
                 )}
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-semibold">
-                    ${t.symbol} <span className="font-normal text-white/50">{t.chain}</span>
-                  </span>
+                  <span className="block truncate text-sm font-semibold">${t.symbol}</span>
                   <span className="num block text-[11px] text-white/55">
                     {usd(t.priceUsd)} · mcap {t.marketCap ? compact(t.marketCap) : '—'}
-                    {h ? ` · you hold ${compact(h.value ?? 0)} bags` : ''}
+                    {h ? ` · you hold ${usd(h.valueUsd)}` : ''}
                   </span>
                 </span>
                 <span className={`num text-sm ${(t.change24h ?? 0) >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>{pct(t.change24h)}</span>
@@ -177,16 +187,23 @@ function Trenches() {
             </a>
           </div>
           <div className="mt-2 flex gap-2">
-            {[100, 500, 2000].map((n) => (
-              <button key={n} className={`flex-1 rounded-full py-1.5 text-sm ${amt === n ? 'bg-[#1D9BF0] text-white' : 'bg-white/10'}`} onClick={() => setAmt(n)}>
+            {[0.01, 0.05, 0.1, 0.5].map((n) => (
+              <button key={n} className={`flex-1 rounded-full py-1.5 text-sm ${sol === n ? 'bg-[#9945FF] text-white' : 'bg-white/10'}`} onClick={() => setSol(n)}>
                 {n}
               </button>
             ))}
-            <input type="text" inputMode="numeric" value={amt} onChange={(e) => setAmt(Math.max(0, Number(e.target.value.replace(/\D/g, '')) || 0))} className="!w-24 !py-1.5 text-center" />
           </div>
-          <button className="btn mt-2 w-full" onClick={ape} disabled={busy || amt < 10 || !life?.me || amt > life.me.bags}>
-            🦍 Ape {amt} bags
+          <p className="num mt-1 text-[11px] text-white/50">
+            wallet: {wallet?.balances ? `${wallet.balances.sol.toFixed(4)} SOL` : '—'} · slippage 3% · fees ≈ 0.001 SOL
+          </p>
+          <button className="btn mt-2 w-full !bg-[#9945FF]" onClick={ape} disabled={busy || wallet?.cluster !== 'mainnet-beta' || !wallet?.balances || wallet.balances.sol < sol + 0.005}>
+            🦍 Ape {sol} SOL
           </button>
+          {receipt && (
+            <a className="mt-1 block text-xs text-emerald-300 underline" href={receipt} target="_blank" rel="noopener noreferrer">
+              View transaction ↗
+            </a>
+          )}
           {err && <p className="mt-1 text-xs text-rose-300">{err}</p>}
         </div>
       )}
@@ -194,28 +211,16 @@ function Trenches() {
   );
 }
 
-function Wallet({ sendSocial }: { sendSocial: SocialSend }) {
+function Bank({ sendSocial }: { sendSocial: SocialSend }) {
   const life = useWorld((s) => s.life);
   const [to, setTo] = useState('');
   const [amt, setAmt] = useState(100);
   const [note, setNote] = useState('');
-  const [busy, setBusy] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   if (!life?.me) return null;
-  const pf = life.portfolio;
-  const sell = async (chain: string, address: string, frac: number) => {
-    setBusy(address);
-    setErr(null);
-    try {
-      await lifeActions.trade('sell', chain, address, frac);
-    } catch (e) {
-      setErr((e as Error).message);
-    } finally {
-      setBusy(null);
-    }
-  };
   const send = async () => {
-    setBusy('send');
+    setBusy(true);
     setErr(null);
     try {
       await lifeActions.send(to, amt, note || undefined, sendSocial);
@@ -224,19 +229,18 @@ function Wallet({ sendSocial }: { sendSocial: SocialSend }) {
     } catch (e) {
       setErr((e as Error).message);
     } finally {
-      setBusy(null);
+      setBusy(false);
     }
   };
   return (
     <div>
       <div className="mt-3 rounded-2xl bg-white/5 p-4">
-        <p className="label">Net worth</p>
-        <p className="num text-3xl font-bold">{fullNumber(life.netWorth ?? life.me.bags)} bags</p>
+        <p className="label">Bank balance</p>
+        <p className="num text-3xl font-bold">{fullNumber(life.me.bags)} bags</p>
         <p className="num mt-1 text-xs text-white/55">
-          {fullNumber(life.me.bags)} liquid · {pf ? compact(pf.value) : 0} in coins · {compact((life.assets ?? []).reduce((a, x) => a + x.paid, 0))} in assets
-          {pf && !pf.priced ? ' · some coins unpriced right now' : ''}
+          net worth {fullNumber(life.netWorth ?? life.me.bags)} · {compact((life.assets ?? []).reduce((a, x) => a + x.paid, 0))} in assets
         </p>
-        <p className="mt-1 text-[11px] text-white/40">Bags are in-world points. They are not money and cannot be cashed out.</p>
+        <p className="mt-1 text-[11px] text-white/40">In-game money for the Market, venues, gifts and parties. Not real money; it cannot be bought or cashed out. Real money lives in the Solana app.</p>
       </div>
       <Section title="Send bags">
         <div className="flex gap-2">
@@ -245,42 +249,11 @@ function Wallet({ sendSocial }: { sendSocial: SocialSend }) {
         </div>
         <div className="mt-2 flex gap-2">
           <input type="text" placeholder="note (optional)" value={note} onChange={(e) => setNote(e.target.value.slice(0, 80))} />
-          <button className="btn whitespace-nowrap" onClick={send} disabled={busy !== null || !to.trim() || amt < 1 || amt > life.me.bags}>
+          <button className="btn whitespace-nowrap" onClick={send} disabled={busy || !to.trim() || amt < 1 || amt > life.me.bags}>
             Send
           </button>
         </div>
         <p className="mt-1 text-[11px] text-white/45">Anyone who has signed in to TweetLife. They get a toast if they are inside a world.</p>
-      </Section>
-      <Section title="Your coins">
-        {!pf || pf.holdings.length === 0 ? (
-          <p className="text-sm text-white/55">No positions. Ape something in the Trenches.</p>
-        ) : (
-          <ul className="space-y-1.5">
-            {pf.holdings.map((h) => (
-              <li key={h.chain + h.address} className="rounded-xl bg-white/5 px-3 py-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="font-semibold">${h.symbol}</span>
-                  <span className={`num ${(h.pnl ?? 0) >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>
-                    {h.value == null ? 'unpriced' : `${compact(h.value)} (${(h.pnl ?? 0) >= 0 ? '+' : ''}${compact(h.pnl ?? 0)})`}
-                  </span>
-                </div>
-                <div className="num mt-1 flex items-center justify-between text-[11px] text-white/55">
-                  <span>
-                    cost {compact(h.costBasis)} · {usd(h.price)} · 24h {pct(h.change24h)}
-                  </span>
-                  <span className="flex gap-1">
-                    <button className="rounded-full bg-white/10 px-2 py-0.5" disabled={busy !== null} onClick={() => sell(h.chain, h.address, 0.5)}>
-                      sell ½
-                    </button>
-                    <button className="rounded-full bg-white/10 px-2 py-0.5" disabled={busy !== null} onClick={() => sell(h.chain, h.address, 1)}>
-                      sell all
-                    </button>
-                  </span>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
       </Section>
       {err && <p className="mt-2 text-xs text-rose-300">{err}</p>}
       <Section title="Ledger">
@@ -295,6 +268,137 @@ function Wallet({ sendSocial }: { sendSocial: SocialSend }) {
             </li>
           ))}
         </ul>
+      </Section>
+    </div>
+  );
+}
+
+function Solana({ sendSocial, prefillTo }: { sendSocial: SocialSend; prefillTo: string | null }) {
+  const wallet = useWorld((s) => s.wallet);
+  const [loadErr, setLoadErr] = useState<string | null>(null);
+  const [to, setTo] = useState(prefillTo ? `@${prefillTo}` : '');
+  const [sol, setSol] = useState('0.01');
+  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [receipt, setReceipt] = useState<string | null>(null);
+  const [secret, setSecret] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    refreshWallet().catch((e) => setLoadErr((e as Error).message));
+  }, []);
+  const run = async (key: string, fn: () => Promise<unknown>) => {
+    setBusy(key);
+    setErr(null);
+    setReceipt(null);
+    try {
+      const r = (await fn()) as { url?: string } | undefined;
+      if (r?.url) setReceipt(r.url);
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setBusy(null);
+    }
+  };
+  if (!wallet) return <p className="mt-4 text-sm text-white/60">{loadErr ?? 'Opening your wallet…'}</p>;
+  const b = wallet.balances;
+  const amount = Number(sol);
+  return (
+    <div>
+      <div className="mt-3 rounded-2xl p-4" style={{ background: 'linear-gradient(135deg,#9945FF33,#14F19533)' }}>
+        <div className="flex items-center justify-between">
+          <p className="label">Solana wallet</p>
+          <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${wallet.cluster === 'devnet' ? 'bg-amber-400/20 text-amber-200' : 'bg-emerald-400/20 text-emerald-200'}`}>{wallet.cluster}</span>
+        </div>
+        <p className="num mt-1 text-3xl font-bold">{b ? `${b.sol.toFixed(4)} SOL` : '—'}</p>
+        <p className="num text-xs text-white/60">{b?.totalUsd != null ? `≈ $${b.totalUsd.toFixed(2)} incl. tokens` : wallet.error ?? 'balance unavailable'}</p>
+        <button
+          className="num mt-3 w-full truncate rounded-xl bg-black/30 px-3 py-2 text-left text-xs"
+          onClick={async () => { await navigator.clipboard.writeText(wallet.address).catch(() => {}); setCopied(true); setTimeout(() => setCopied(false), 1500); }}
+          title="Copy address"
+        >
+          {copied ? 'Copied ✓' : wallet.address}
+        </button>
+        <div className="mt-2 flex gap-2 text-xs">
+          <a className="underline text-white/70" href={wallet.explorer} target="_blank" rel="noopener noreferrer">explorer ↗</a>
+          {wallet.cluster === 'devnet' && (
+            <button className="underline text-amber-200" disabled={busy !== null} onClick={() => run('air', () => lifeActions.airdrop())}>get 1 devnet SOL</button>
+          )}
+        </div>
+        <p className="mt-2 text-[11px] text-white/50">
+          {wallet.cluster === 'devnet' ? 'Devnet SOL has no value — this is for testing.' : 'Real money. Fund it by sending SOL to the address above from any wallet or exchange.'}
+        </p>
+      </div>
+
+      <Section title="Send SOL">
+        <div className="flex gap-2">
+          <input type="text" placeholder="@handle or address" value={to} onChange={(e) => setTo(e.target.value)} />
+          <input type="text" inputMode="decimal" value={sol} onChange={(e) => setSol(e.target.value.replace(/[^0-9.]/g, ''))} className="!w-24 text-center" />
+        </div>
+        <div className="mt-2 flex gap-2">
+          <input type="text" placeholder="note (optional)" value={note} onChange={(e) => setNote(e.target.value.slice(0, 80))} />
+          <button className="btn whitespace-nowrap !bg-[#9945FF]" disabled={busy !== null || !to.trim() || !(amount > 0) || !b || amount + 0.001 > b.sol} onClick={() => run('send', () => lifeActions.sendSol(to, amount, note || undefined, sendSocial))}>
+            Send
+          </button>
+        </div>
+        <p className="mt-1 text-[11px] text-white/45">A handle sends to that player&apos;s TweetLife wallet. An address sends anywhere. On-chain and irreversible.</p>
+      </Section>
+
+      <Section title="Tokens">
+        {!b || b.tokens.length === 0 ? (
+          <p className="text-sm text-white/55">No tokens. Ape something in the Trenches.</p>
+        ) : (
+          <ul className="space-y-1.5">
+            {b.tokens.map((t) => (
+              <li key={t.mint} className="rounded-xl bg-white/5 px-3 py-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="font-semibold">{t.symbol ? `$${t.symbol}` : `${t.mint.slice(0, 6)}…`}</span>
+                  <span className="num">{t.valueUsd != null ? `$${t.valueUsd.toFixed(2)}` : 'unpriced'}</span>
+                </div>
+                <div className="num mt-1 flex items-center justify-between text-[11px] text-white/55">
+                  <span>{compact(t.amount)} · {usd(t.priceUsd)} · 24h {pct(t.change24h)}</span>
+                  <span className="flex gap-1">
+                    <button className="rounded-full bg-white/10 px-2 py-0.5" disabled={busy !== null || wallet.cluster !== 'mainnet-beta'} onClick={() => run(t.mint, () => lifeActions.swap('sell', t.mint, 0.5, t.symbol ?? undefined))}>sell ½</button>
+                    <button className="rounded-full bg-white/10 px-2 py-0.5" disabled={busy !== null || wallet.cluster !== 'mainnet-beta'} onClick={() => run(t.mint, () => lifeActions.swap('sell', t.mint, 1, t.symbol ?? undefined))}>sell all</button>
+                  </span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Section>
+      {receipt && (
+        <a className="mt-2 block text-xs text-emerald-300 underline" href={receipt} target="_blank" rel="noopener noreferrer">View transaction ↗</a>
+      )}
+      {err && <p className="mt-2 text-xs text-rose-300">{err}</p>}
+
+      <Section title="Activity">
+        <ul className="space-y-1 text-xs">
+          {wallet.txs.length === 0 && <li className="text-white/50">Nothing yet.</li>}
+          {wallet.txs.map((t) => (
+            <li key={t.id} className="flex justify-between gap-2 border-t border-white/5 py-1">
+              <span className="truncate text-white/70">{t.url ? <a className="underline" href={t.url} target="_blank" rel="noopener noreferrer">{t.note}</a> : t.note}</span>
+              <span className={`num whitespace-nowrap ${t.sol >= 0 ? 'text-emerald-300' : 'text-white/60'}`}>{t.sol ? `${t.sol > 0 ? '+' : ''}${t.sol.toFixed(4)} SOL` : ''} · {relativeTime(t.at)}</span>
+            </li>
+          ))}
+        </ul>
+      </Section>
+
+      <Section title="Your keys">
+        <p className="text-[11px] text-white/55">
+          This wallet was generated for you and its key is stored encrypted on TweetLife&apos;s server. You can take it anywhere: reveal the secret key and import it into Phantom or Solflare. Anyone who sees the key controls the funds.
+        </p>
+        {secret ? (
+          <div className="mt-2 rounded-xl bg-black/40 p-3">
+            <p className="num break-all text-xs">{secret}</p>
+            <button className="btn-ghost mt-2 !px-3 !py-1 text-xs" onClick={() => setSecret(null)}>Hide</button>
+          </div>
+        ) : (
+          <button className="btn-danger mt-2 !px-3 !py-1.5 text-xs" disabled={busy !== null} onClick={() => run('export', async () => { const r = await lifeActions.exportKey(); setSecret(r.secretKey); })}>
+            Reveal secret key
+          </button>
+        )}
+        {wallet.exportedAt && <p className="mt-1 text-[11px] text-white/40">Last revealed {relativeTime(wallet.exportedAt)}.</p>}
       </Section>
     </div>
   );

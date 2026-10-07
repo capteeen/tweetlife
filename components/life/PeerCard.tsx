@@ -10,6 +10,7 @@ export function PeerCard({ worldId, sendSocial }: { worldId: string; sendSocial:
   const selectPeer = useWorld((s) => s.selectPeer);
   const me = useWorld((s) => s.life?.me ?? null);
   const setChatOpen = useWorld((s) => s.setChatOpen);
+  const openPhone = useWorld((s) => s.openPhone);
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   if (!peer) return null;
@@ -73,6 +74,13 @@ export function PeerCard({ worldId, sendSocial }: { worldId: string; sendSocial:
               </button>
             );
           })}
+          <button onClick={() => openPhone('solana', null, peer.handle)} className="flex items-start gap-3 rounded-2xl bg-[#9945FF]/20 px-3 py-2.5 text-left transition hover:bg-[#9945FF]/30">
+            <span className="text-xl leading-none">◎</span>
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold">Send SOL</span>
+              <span className="block text-[11px] text-white/55">real money, from your Solana wallet</span>
+            </span>
+          </button>
         </div>
       )}
       {err && <p className="mt-2 text-xs text-rose-300">{err}</p>}

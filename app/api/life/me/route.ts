@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requirePlayer } from '@/lib/life/auth';
-import { portfolio, profileView } from '@/lib/life/player';
+import { profileView } from '@/lib/life/player';
 import { questBoard } from '@/lib/life/quests';
 import { ITEMS } from '@/lib/life/market';
 
@@ -13,8 +13,7 @@ export async function GET() {
   const r = await requirePlayer();
   if ('error' in r) return NextResponse.json({ me: null });
   const { user, player } = r;
-  const [pf, quests, assets, txs] = await Promise.all([
-    portfolio(player.id),
+  const [quests, assets, txs] = await Promise.all([
     questBoard(player.id),
     db.asset.findMany({ where: { playerId: player.id } }),
     db.bagTx.findMany({ where: { playerId: player.id }, orderBy: { at: 'desc' }, take: 30 }),
@@ -23,9 +22,8 @@ export async function GET() {
   return NextResponse.json(
     {
       me: profileView(player, user.handle, user.name, user.avatarUrl),
-      portfolio: pf,
       assets: assets.map((a) => ({ ...ITEMS.find((i) => i.id === a.itemId)!, equipped: a.equipped, paid: a.paid, acquiredAt: a.acquiredAt.toISOString() })),
-      netWorth: Math.round(player.bags + pf.value + assetValue),
+      netWorth: player.bags + assetValue,
       quests,
       txs: txs.map((t) => ({ id: t.id, kind: t.kind, amount: t.amount, note: t.note, at: t.at.toISOString() })),
     },

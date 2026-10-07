@@ -59,8 +59,9 @@ export default async function How() {
         </Section>
 
         <Section title="Life in the city">
-          <Rule k="Bags" v="in-world points, never money. Everyone starts with 10,000. They cannot be bought or cashed out." />
-          <Rule k="The Trenches" v="a live memecoin board (DexScreener top boosts, real prices). You ape bags at the real price and your position is marked to market; the Rich List ranks liquid bags + coins at live prices + assets." />
+          <Rule k="Bags" v="the Bank's in-game money, never real. Everyone starts with 10,000. They cannot be bought or cashed out." />
+          <Rule k="Two wallets" v="the Bank holds bags (in-game money: Market, venues, gifts). The Solana app is a real wallet generated for you at sign-in — fund it, ape memecoins in the Trenches through on-chain swaps, send SOL to any player. Devnet until the operator switches to mainnet." />
+          <Rule k="The Trenches" v="a live Solana memecoin board (DexScreener top boosts, real prices). Trades are real SOL from your Solana wallet; holdings are read from the chain." />
           <Rule k="Venues" v="a ring just outside the post blocks, never mixed with posts: Degen Lounge, Suya Spot, gym, barber, clinic, Hustle Hub (work a shift for bags), bank, club, dealership, marina, airstrip, the Trenches. Actions cost bags or gas, move your stats, and have cooldowns." />
           <Rule k="Vibes · Clout · Gas" v="your three stats, 0–100. They drift down over time and move with what you do; their average is your mood: Rekt, Coping, Comfy, Mooning." />
           <Rule k="People" v="tap any visitor: say GM, gist, shill your bag, ape together, send 100 bags, compliment their fit, dance. Both of you feel it; they get a toast if they are inside a world." />

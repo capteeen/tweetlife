@@ -8,25 +8,32 @@ import type { Item } from '@/lib/life/market';
 export type Peer = { id: string; handle: string; x: number; z: number; yaw: number; at: number; ride?: string | null };
 export type ChatLine = { id: string; from: string; text: string; at: number; x: number; z: number };
 export type Toast = { id: string; text: string; kind: string; at: number };
-export type PhoneApp = 'home' | 'trenches' | 'wallet' | 'hustle' | 'market' | 'garage' | 'rich' | 'gist' | 'map' | 'guestbook' | 'settings';
+export type PhoneApp = 'home' | 'trenches' | 'wallet' | 'solana' | 'hustle' | 'market' | 'garage' | 'rich' | 'gist' | 'map' | 'guestbook' | 'settings';
 
 export type LifeMe = {
   id: string; handle: string; name: string; avatarUrl: string | null; bags: number; status: string;
   vibes: number; clout: number; gas: number; mood: string; moodEmoji: string;
 };
+export type WalletData = {
+  address: string;
+  cluster: 'devnet' | 'mainnet-beta';
+  explorer: string;
+  exportedAt: string | null;
+  balances: { sol: number; lamports: number; solUsd: number | null; totalUsd: number | null; tokens: TokenBalance[] } | null;
+  error: string | null;
+  txs: { id: string; kind: string; sol: number; mint: string | null; signature: string | null; url: string | null; note: string; at: string }[];
+};
+export type TokenBalance = {
+  mint: string; amount: number; decimals: number; symbol: string | null; name: string | null; priceUsd: number | null; valueUsd: number | null;
+  change24h: number | null; icon: string | null; url: string | null;
+};
 export type LifeData = {
   me: LifeMe | null;
-  portfolio?: { holdings: HoldingView[]; value: number; priced: boolean };
   assets?: (Item & { equipped: boolean; paid: number; acquiredAt: string })[];
   netWorth?: number;
   quests?: { day: string; quests: { id: string; title: string; emoji: string; target: number; reward: number; progress: number; done: boolean; claimed: boolean }[]; resetsAt: string };
   txs?: { id: string; kind: string; amount: number; note: string; at: string }[];
 };
-export type HoldingView = {
-  chain: string; address: string; symbol: string; name: string; qty: number; costBasis: number; price: number | null; value: number | null;
-  pnl: number | null; change24h: number | null; icon: string | null; url: string | null;
-};
-
 type Me = { id: string; handle: string; isOwner: boolean } | null;
 
 export type WorldState = {
@@ -43,7 +50,8 @@ export type WorldState = {
   chatOpen: boolean;
   // life layer
   life: LifeData | null;
-  phone: { open: boolean; app: PhoneApp; marketKind: 'car' | 'boat' | 'plane' | null };
+  wallet: WalletData | null;
+  phone: { open: boolean; app: PhoneApp; marketKind: 'car' | 'boat' | 'plane' | null; to: string | null };
   selectedPeer: Peer | null;
   selectedVenue: PlacedVenue | null;
   nearVenue: string | null;
@@ -65,8 +73,9 @@ export type WorldState = {
   setGuestbookOpen: (v: boolean) => void;
   setChatOpen: (v: boolean) => void;
   setLife: (l: LifeData | null) => void;
+  setWallet: (w: WalletData | null) => void;
   patchMe: (p: Partial<LifeMe>) => void;
-  openPhone: (app?: PhoneApp, marketKind?: 'car' | 'boat' | 'plane' | null) => void;
+  openPhone: (app?: PhoneApp, marketKind?: 'car' | 'boat' | 'plane' | null, to?: string | null) => void;
   closePhone: () => void;
   selectPeer: (p: Peer | null) => void;
   selectVenue: (v: PlacedVenue | null) => void;
@@ -90,7 +99,8 @@ export const useWorld = create<WorldState>((set) => ({
   guestbookOpen: false,
   chatOpen: false,
   life: null,
-  phone: { open: false, app: 'home', marketKind: null },
+  wallet: null,
+  phone: { open: false, app: 'home', marketKind: null, to: null },
   selectedPeer: null,
   selectedVenue: null,
   nearVenue: null,
@@ -126,8 +136,9 @@ export const useWorld = create<WorldState>((set) => ({
   setGuestbookOpen: (guestbookOpen) => set({ guestbookOpen }),
   setChatOpen: (chatOpen) => set({ chatOpen }),
   setLife: (life) => set({ life }),
+  setWallet: (wallet) => set({ wallet }),
   patchMe: (p) => set((s) => (s.life?.me ? { life: { ...s.life, me: { ...s.life.me, ...p } } } : {})),
-  openPhone: (app = 'home', marketKind = null) => set({ phone: { open: true, app, marketKind }, selected: null, selectedPeer: null, selectedVenue: null, guestbookOpen: false }),
+  openPhone: (app = 'home', marketKind = null, to = null) => set({ phone: { open: true, app, marketKind, to }, selected: null, selectedPeer: null, selectedVenue: null, guestbookOpen: false }),
   closePhone: () => set((s) => ({ phone: { ...s.phone, open: false } })),
   selectPeer: (selectedPeer) => set({ selectedPeer, ...(selectedPeer ? { selected: null, selectedVenue: null } : {}) }),
   selectVenue: (selectedVenue) => set({ selectedVenue, ...(selectedVenue ? { selected: null, selectedPeer: null } : {}) }),

@@ -208,12 +208,29 @@ On top of the world: a phone (Trenches, Wallet, Hustle, Market, Garage, Rich lis
 venues on a ring outside the post blocks, social actions on other visitors, vehicles, and three stats
 (Vibes / Clout / Gas) whose average is your mood. Money in the game is **bags**: in-world points, never real money,
 never purchasable, never cashable. The Trenches shows **real** tokens and **real** prices (DexScreener's public API,
-cached 60 s) and lets you ape bags at those prices — paper positions marked to market. `/api/life/*` holds all of it;
-`lib/life/` has the rules (`stats.ts`, `venues.ts`, `market.ts`, `quests.ts`, `trenches.ts`).
+cached 60 s); trades there are real SOL from the Solana wallet (below). `/api/life/*` holds all of it;
+`lib/life/` has the rules (`stats.ts`, `venues.ts`, `market.ts`, `quests.ts`, `trenches.ts`); `lib/solana/` holds the wallet and swap code.
 
-A real-money variant (per-account Solana wallets, Jupiter swaps, SOL payments) is designed but **not built**: see
-"Real wallets" in this README's history / discuss before enabling — holding users' keys is regulated in many
-jurisdictions and needs its own security review.
+## Real wallets (Solana)
+
+Every account also gets a **real Solana wallet** at sign-in, separate from the bank:
+
+- Generated server-side; the secret key is AES-256-GCM encrypted with `TOKEN_ENCRYPTION_KEY` and decrypted only
+  to sign a transaction the owner asked for, or to show the owner their key (Solana app → "Reveal secret key",
+  importable into Phantom/Solflare; the reveal is recorded).
+- **Fund** it by sending SOL to the address. **Trenches** apes Solana memecoins with real SOL through Jupiter
+  swaps (`JUPITER_API_URL`, lite tier needs no key) and sells back. **Send SOL** to any player by handle or to
+  any address. Holdings are read on-chain (`/api/wallet`), never from the database; every action records the
+  transaction signature with an explorer link.
+- **`SOLANA_CLUSTER=devnet` by default**, with an in-app faucet. Nothing of value moves until the operator sets
+  `mainnet-beta`. Swaps are mainnet-only (devnet has no liquidity) and the UI says so.
+- One transaction in flight per player (Redis lock); sends and swaps need ~0.005 SOL headroom for fees.
+
+**Read before switching to mainnet.** Holding users' private keys makes you a custodian: in many jurisdictions
+that is regulated activity (money transmission / VASP rules), and a compromised `TOKEN_ENCRYPTION_KEY` or
+database exposes every wallet. Use a dedicated RPC (`SOLANA_RPC_URL`), keep the encryption key out of the
+database host, rotate it with a re-encryption migration if it ever leaks, and get your own legal advice. The
+in-game bank (bags) is deliberately kept separate so the social game works with no real money involved.
 
 ## Must-haves checklist
 

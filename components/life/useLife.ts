@@ -1,6 +1,6 @@
 'use client';
 import { useEffect } from 'react';
-import { useWorld, type LifeData } from '@/components/world/store';
+import { useWorld, type LifeData, type WalletData } from '@/components/world/store';
 import { ITEMS, type Item } from '@/lib/life/market';
 
 // Client side of the life layer: load the player's data, perform actions, keep the store in sync.
@@ -37,13 +37,17 @@ export function useLife(enabled: boolean) {
 
 export type SocialSend = (m: { to?: string; kind: string; text: string; delta?: unknown }) => void;
 
+export async function refreshWallet() {
+  const s = useWorld.getState();
+  try {
+    s.setWallet(await j<WalletData>('/api/wallet'));
+  } catch (e) {
+    s.setWallet(null);
+    throw e;
+  }
+}
+
 export const lifeActions = {
-  async trade(side: 'buy' | 'sell', chain: string, address: string, amount: number) {
-    const r = await j<{ ok: true; symbol: string; qty?: number; bags?: number; pnl?: number }>('/api/life/trade', { method: 'POST', body: JSON.stringify({ side, chain, address, amount }) });
-    await refreshLife();
-    useWorld.getState().pushToast(side === 'buy' ? `Aped $${r.symbol} 🦍` : `Sold $${r.symbol} for ${r.bags} bags (${(r.pnl ?? 0) >= 0 ? '+' : ''}${r.pnl})`, 'trade');
-    return r;
-  },
   async interact(kind: string, toHandle: string, worldId: string | undefined, sendSocial: SocialSend) {
     const r = await j<{ ok: true; toast: { to: string; from: string; kind: string; text: string; delta: unknown } }>('/api/life/interact', { method: 'POST', body: JSON.stringify({ kind, toHandle, worldId }) });
     sendSocial({ to: r.toast.to, kind, text: r.toast.text, delta: r.toast.delta });
@@ -78,5 +82,29 @@ export const lifeActions = {
     await refreshLife();
     useWorld.getState().pushToast(`+${r.reward} bags 💰`, 'quest');
     return r;
+  },
+  // ---- real Solana wallet
+  async airdrop() {
+    const r = await j<{ ok: true; url: string }>('/api/wallet/airdrop', { method: 'POST' });
+    await refreshWallet();
+    useWorld.getState().pushToast('1 devnet SOL landed 🪂', 'wallet');
+    return r;
+  },
+  async sendSol(to: string, sol: number, note: string | undefined, sendSocial: SocialSend) {
+    const r = await j<{ ok: true; signature: string; url: string; toast: { to: string; kind: string; text: string } | null }>('/api/wallet/send', { method: 'POST', body: JSON.stringify({ to, sol, note }) });
+    if (r.toast) sendSocial(r.toast);
+    await refreshWallet();
+    useWorld.getState().pushToast(`Sent ${sol} SOL ✓`, 'wallet');
+    return r;
+  },
+  async swap(side: 'buy' | 'sell', mint: string, amount: number, symbol?: string) {
+    const r = await j<{ ok: true; signature: string; url: string; outAmount: string; priceImpactPct: string }>('/api/wallet/swap', { method: 'POST', body: JSON.stringify({ side, mint, amount, symbol }) });
+    await refreshWallet();
+    await refreshLife();
+    useWorld.getState().pushToast(side === 'buy' ? `Aped $${symbol ?? ''} on-chain 🦍` : `Sold $${symbol ?? ''} ✓`, 'wallet');
+    return r;
+  },
+  async exportKey() {
+    return j<{ publicKey: string; secretKey: string }>('/api/wallet/export', { method: 'POST' });
   },
 };

@@ -262,29 +262,13 @@ model Player {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  holdings   Holding[]
+  wallet     Wallet?
+  walletTxs  WalletTx[]
   txs        BagTx[]
   questDays  QuestDay[]
   sent       Interaction[] @relation("sent")
   received   Interaction[] @relation("received")
   assets     Asset[]
-}
-
-/// A paper position: qty of a real token bought with bags at real prices.
-model Holding {
-  id        String   @id @default(cuid())
-  playerId  String
-  player    Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
-  chain     String
-  address   String
-  symbol    String
-  name      String
-  qty       Float
-  /// bags spent, net of sells, for PnL
-  costBasis Float
-  updatedAt DateTime @updatedAt
-
-  @@unique([playerId, chain, address])
 }
 
 model BagTx {
@@ -335,4 +319,31 @@ model Asset {
   acquiredAt DateTime @default(now())
 
   @@unique([playerId, itemId])
+}
+
+/// The account's real Solana wallet. secretKeyEnc is AES-256-GCM under TOKEN_ENCRYPTION_KEY and is only ever
+/// decrypted to sign a transaction the owner asked for, or to export to the owner.
+model Wallet {
+  id           String    @id // = Player.id
+  player       Player    @relation(fields: [id], references: [id], onDelete: Cascade)
+  publicKey    String    @unique
+  secretKeyEnc String
+  cluster      String
+  exportedAt   DateTime?
+  createdAt    DateTime  @default(now())
+}
+
+/// Our record of on-chain activity initiated here (the chain is the source of truth).
+model WalletTx {
+  id        String   @id @default(cuid())
+  playerId  String
+  player    Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  kind      String   // swap_buy | swap_sell | send | airdrop
+  lamports  BigInt   // SOL moved, signed (negative = out); 0 when unknown
+  mint      String?
+  signature String?  @unique
+  note      String
+  at        DateTime @default(now())
+
+  @@index([playerId, at])
 }

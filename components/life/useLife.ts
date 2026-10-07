@@ -1,6 +1,7 @@
 'use client';
 import { useEffect } from 'react';
-import { useWorld, type LifeData, type WalletData } from '@/components/world/store';
+import { useWorld, type LifeData, type LifeMe, type WalletData } from '@/components/world/store';
+import type { Activity, ActivityId } from '@/lib/life/activities';
 import { ITEMS, type Item } from '@/lib/life/market';
 import type { Furniture, FurnitureAction, PowerState } from '@/lib/life/home';
 import { refreshBalloons } from '@/components/world/Balloons';
@@ -99,6 +100,20 @@ export const lifeActions = {
   async furnitureAct(itemId: string, actionId: string) {
     const r = await j<{ ok: true; power: PowerState; action: FurnitureAction }>('/api/life/home', { method: 'POST', body: JSON.stringify({ op: 'act', itemId, actionId }) });
     await refreshLife();
+    return r;
+  },
+  /** Start an everyday activity; the avatar plays it while the server applies the stats. */
+  async activity(activityId: ActivityId) {
+    const r = await j<{ ok: true; me: Pick<LifeMe, 'vibes' | 'clout' | 'gas' | 'mood'>; activity: Activity }>('/api/life/activity', { method: 'POST', body: JSON.stringify({ op: 'do', activityId }) });
+    const s = useWorld.getState();
+    s.patchMe({ ...r.me, status: r.activity.line });
+    s.setDoing({ id: r.activity.id, until: Date.now() + r.activity.seconds * 1000 });
+    return r;
+  },
+  /** Report distance walked on foot; the server takes the gas. */
+  async walk(walked: number, sprinted: number) {
+    const r = await j<{ ok: true; me: Pick<LifeMe, 'gas'> }>('/api/life/activity', { method: 'POST', body: JSON.stringify({ op: 'walk', walked, sprinted }) });
+    useWorld.getState().patchMe({ gas: r.me.gas });
     return r;
   },
   async claim(questId: string) {

@@ -6,6 +6,7 @@ import { Billboard, Text } from '@react-three/drei';
 
 import { hashString } from '@/lib/world/seed';
 import { lookFor, type Look } from '@/lib/life/look';
+import { applyTired, poseActivity, settle, type FigureAct, type Rig } from './figureMoves';
 // Self-hosted label font (Inter, SIL OFL) so no label ever fetches from a CDN.
 const FONT = '/fonts/inter-600.woff';
 
@@ -28,6 +29,10 @@ type Props = {
   alwaysWalk?: boolean;
   /** 0 = upright, 1 = slumped (after a rug). Read each frame. */
   slumpRef?: React.MutableRefObject<number>;
+  /** an everyday move to play (dance, stretch...), or null. Read each frame. */
+  actRef?: React.MutableRefObject<FigureAct | null>;
+  /** 0 = fresh, 1 = exhausted: slower steps and a slouch. Read each frame. */
+  tiredRef?: React.MutableRefObject<number>;
 };
 
 // Geometry is built once per distinct size and shared by every figure in the world.
@@ -90,7 +95,7 @@ const headShell = (yMin: number, inflate: number, back = false) =>
     );
   });
 
-export function Figure({ seed, look: chosen, speedRef, label, labelColor = '#FFFFFF', dim = false, alwaysWalk = false, slumpRef }: Props) {
+export function Figure({ seed, look: chosen, speedRef, label, labelColor = '#FFFFFF', dim = false, alwaysWalk = false, actRef, tiredRef, slumpRef }: Props) {
   const look = useMemo(() => chosen ?? lookFor(seed), [chosen, seed]);
   const lArm = useRef<THREE.Group>(null);
   const rArm = useRef<THREE.Group>(null);
@@ -106,12 +111,27 @@ export function Figure({ seed, look: chosen, speedRef, label, labelColor = '#FFF
   const phase = useRef(hashString(seed) % 100);
   const idle = useRef((hashString(seed) % 1000) / 100);
   const cur = useRef(0);
+  const phone = useRef<THREE.Mesh>(null);
+  // the move being played (kept while it fades out), its start time, and its blend weight
+  const move = useRef<{ act: FigureAct | null; t: number; w: number }>({ act: null, t: 0, w: 0 });
+
+  // Rekt (a rug just popped): shoulders roll forward and the head drops, on top of whatever pose is playing.
+  // `layered`: a pose was set this frame, so lean at least this far; otherwise the slump owns the lean.
+  const slumpOver = (layered: boolean) => {
+    const k = slumpRef?.current ?? 0;
+    if (!slumpRef) return;
+    if (chest.current) chest.current.rotation.x = layered ? Math.max(chest.current.rotation.x, 0.32 * k) : 0.32 * k;
+    if (head.current) head.current.rotation.x = layered ? Math.max(head.current.rotation.x, 0.45 * k) : 0.45 * k;
+    if (lArm.current) lArm.current.rotation.x -= 0.3 * k; // hang straight down despite the lean
+    if (rArm.current) rArm.current.rotation.x -= 0.3 * k;
+  };
 
   useFrame((_, dt) => {
     const target = alwaysWalk ? 1 : speedRef?.current ?? 0;
     cur.current += (target - cur.current) * Math.min(1, dt * 8);
     const s = cur.current;
-    phase.current += dt * (6 + 4 * s) * (s > 0.02 ? 1 : 0);
+    const tired = tiredRef?.current ?? 0;
+    phase.current += dt * (6 + 4 * s) * (s > 0.02 ? 1 : 0) * (1 - 0.35 * tired);
     idle.current += dt;
     const p = phase.current;
     const swing = Math.sin(p) * 0.6 * s;
@@ -135,13 +155,24 @@ export function Figure({ seed, look: chosen, speedRef, label, labelColor = '#FFF
       chest.current.scale.setScalar(1 + Math.sin(idle.current * 2.2) * 0.012 * (1 - s));
       chest.current.rotation.y = -Math.sin(p) * 0.12 * s;
     }
-    // Rekt: shoulders roll forward and the head drops.
-    const slump = slumpRef?.current ?? 0;
-    if (chest.current) chest.current.rotation.x = 0.32 * slump;
-    if (head.current) head.current.rotation.x = 0.45 * slump;
-    if (lArm.current) lArm.current.rotation.x -= 0.3 * slump; // hang straight down despite the lean
-    if (rArm.current) rArm.current.rotation.x -= 0.3 * slump; // hang straight down despite the lean
     if (head.current) head.current.rotation.y = Math.sin(p) * 0.1 * s + Math.sin(idle.current * 0.4) * 0.25 * (1 - s);
+
+    // everyday moves and tiredness, layered over the walk (components/world/figureMoves.ts)
+    if (!actRef && !tiredRef) return slumpOver(false);
+    const rig: Rig = {
+      body: body.current, chest: chest.current, head: head.current, lArm: lArm.current, rArm: rArm.current, lElbow: lElbow.current, rElbow: rElbow.current,
+      lLeg: lLeg.current, rLeg: rLeg.current, lKnee: lKnee.current, rKnee: rKnee.current, phone: phone.current, hipY,
+    };
+    settle(rig);
+    const want = actRef?.current ?? null;
+    const m = move.current;
+    if (want && want !== m.act) (m.act = want), (m.t = 0), (m.w = 0);
+    m.t += dt;
+    m.w = Math.max(0, Math.min(1, m.w + (want ? dt : -dt) * 4));
+    if (m.w === 0 && !want) m.act = null;
+    if (m.w < 1) applyTired(rig, tired * (1 - m.w), idle.current);
+    if (m.act) poseActivity(rig, m.act, m.t, smoothW(m.w));
+    slumpOver(true);
   });
 
   const fem = look.body === 'female';
@@ -238,6 +269,11 @@ export function Figure({ seed, look: chosen, speedRef, label, labelColor = '#FFF
                 <mesh position={[0, -0.28, 0.005]} scale={[0.035, 0.06, 0.045]} geometry={smallBall()}>
                   {skin()}
                 </mesh>
+                {side > 0 && actRef && (
+                  <mesh ref={phone} visible={false} position={[0, -0.31, 0.045]} rotation={[0.4, 0, 0]} geometry={geo('phone', () => new THREE.BoxGeometry(0.075, 0.14, 0.014))}>
+                    <meshStandardMaterial color="#2B3245" roughness={0.25} metalness={0.3} />
+                  </mesh>
+                )}
               </group>
             </group>
           ))}
@@ -305,6 +341,8 @@ export function Figure({ seed, look: chosen, speedRef, label, labelColor = '#FFF
   );
 }
 
+
+const smoothW = (w: number) => w * w * (3 - 2 * w);
 
 // Locs hang around the sides and back: [angle around the head (0 = front), length].
 const LOCS: [number, number][] = [-2.9, -2.5, -2.1, -1.7, -1.35, 1.35, 1.7, 2.1, 2.5, 2.9, Math.PI].map((a, i) => [a, 0.16 + (i % 3) * 0.03]);

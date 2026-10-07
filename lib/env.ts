@@ -26,8 +26,8 @@ const schema = z.object({
   // Vercel sets Authorization: Bearer $CRON_SECRET on cron invocations; also used for self-triggered ticks.
   CRON_SECRET: z.string().optional().default(''),
 
-  // Solana wallets. devnet by default: nothing real moves until the operator sets mainnet-beta.
-  SOLANA_CLUSTER: z.enum(['devnet', 'mainnet-beta']).default('devnet'),
+  // Solana wallets. mainnet by default (real money). Set devnet to test with faucet SOL.
+  SOLANA_CLUSTER: z.enum(['devnet', 'mainnet-beta']).default('mainnet-beta'),
   SOLANA_RPC_URL: z.string().optional().default(''),
   JUPITER_API_URL: z.string().default('https://lite-api.jup.ag/swap/v1'),
 

@@ -222,11 +222,11 @@ Every account also gets a **real Solana wallet** at sign-in, separate from the b
   swaps (`JUPITER_API_URL`, lite tier needs no key) and sells back. **Send SOL** to any player by handle or to
   any address. Holdings are read on-chain (`/api/wallet`), never from the database; every action records the
   transaction signature with an explorer link.
-- **`SOLANA_CLUSTER=devnet` by default**, with an in-app faucet. Nothing of value moves until the operator sets
-  `mainnet-beta`. Swaps are mainnet-only (devnet has no liquidity) and the UI says so.
+- **`SOLANA_CLUSTER=mainnet-beta` by default** — real money from the first deploy. Set `devnet` to test with the
+  in-app faucet (swaps are mainnet-only; devnet has no liquidity, and the UI says so).
 - One transaction in flight per player (Redis lock); sends and swaps need ~0.005 SOL headroom for fees.
 
-**Read before switching to mainnet.** Holding users' private keys makes you a custodian: in many jurisdictions
+**Read before deploying.** Holding users' private keys makes you a custodian: in many jurisdictions
 that is regulated activity (money transmission / VASP rules), and a compromised `TOKEN_ENCRYPTION_KEY` or
 database exposes every wallet. Use a dedicated RPC (`SOLANA_RPC_URL`), keep the encryption key out of the
 database host, rotate it with a re-encryption migration if it ever leaks, and get your own legal advice. The

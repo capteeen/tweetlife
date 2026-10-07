@@ -6,8 +6,12 @@ import type { PlacedVenue } from '@/lib/life/venues';
 import type { Item } from '@/lib/life/market';
 import type { Look } from '@/lib/life/look';
 import type { HomeItem } from '@/lib/life/home';
+import type { ActivityId } from '@/lib/life/activities';
 
-export type Peer = { id: string; handle: string; x: number; z: number; yaw: number; at: number; ride?: string | null };
+/** An everyday activity in progress (dance, stretch...): the avatar plays it until `until` or until you move. */
+export type Doing = { id: ActivityId; until: number } | null;
+
+export type Peer = { id: string; handle: string; x: number; z: number; yaw: number; at: number; ride?: string | null; act?: ActivityId | null };
 export type ChatLine = { id: string; from: string; text: string; at: number; x: number; z: number };
 export type Toast = { id: string; text: string; kind: string; at: number };
 export type PhoneApp = 'home' | 'trenches' | 'wallet' | 'solana' | 'hustle' | 'market' | 'garage' | 'house' | 'rich' | 'gist' | 'map' | 'guestbook' | 'settings';
@@ -62,6 +66,7 @@ export type WorldState = {
   riding: Item | null;
   teleport: { x: number; z: number } | null;
   toasts: Toast[];
+  doing: Doing;
 
   setModel: (m: WorldModel, skyline: boolean, me: Me) => void;
   select: (p: Placed | null) => void;
@@ -88,6 +93,7 @@ export type WorldState = {
   setTeleport: (t: { x: number; z: number } | null) => void;
   pushToast: (text: string, kind?: string) => void;
   dropToast: (id: string) => void;
+  setDoing: (d: Doing) => void;
 };
 
 export const useWorld = create<WorldState>((set) => ({
@@ -111,6 +117,7 @@ export const useWorld = create<WorldState>((set) => ({
   riding: null,
   teleport: null,
   toasts: [],
+  doing: null,
   setModel: (model, skyline, me) => set({ model, skyline, me }),
   select: (selected) => set({ selected, ...(selected ? { selectedPeer: null, selectedVenue: null } : {}) }),
   setLit: (ids) => set({ lit: new Set(ids) }),
@@ -151,4 +158,5 @@ export const useWorld = create<WorldState>((set) => ({
   setTeleport: (teleport) => set({ teleport }),
   pushToast: (text, kind = 'info') => set((s) => ({ toasts: [...s.toasts.slice(-4), { id: Math.random().toString(36).slice(2), text, kind, at: Date.now() }] })),
   dropToast: (id) => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
+  setDoing: (doing) => set({ doing }),
 }));

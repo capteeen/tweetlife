@@ -162,16 +162,16 @@ function RingRoad({ r }: { r: number }) {
   );
 }
 
-/** Danfos, kekes and cars going round the ring road, both ways. */
+/** Buses, vans, yellow cabs and cars going round the ring road, both ways. */
 function RingTraffic({ r, handle }: { r: number; handle: string }) {
   const body = useRef<THREE.InstancedMesh>(null);
   const top = useRef<THREE.InstancedMesh>(null);
   const cars = useMemo(() => {
     const rnd = prng(hashString(handle + '|ring'));
     const kinds = [
-      { s: [2, 1.5, 4.6], c: '#FFC300', topH: 0.4 },
-      { s: [1.3, 0.9, 2.2], c: '#2E9E4F', topH: 0.12 },
-      { s: [1.7, 0.6, 3.6], c: '#F4D35E', topH: 0.55 },
+      { s: [2.4, 2.2, 8.5], c: '#1F4E79', topH: 0.15 },
+      { s: [2, 1.6, 4.6], c: '#F4F1DE', topH: 0.2 },
+      { s: [1.7, 0.6, 3.8], c: '#F7C600', topH: 0.55 },
       { s: [1.7, 0.6, 3.6], c: '#E63946', topH: 0.55 },
       { s: [1.7, 0.6, 3.6], c: '#F4F1DE', topH: 0.55 },
     ];

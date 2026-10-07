@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
 
 // Pay for a ride. The fare is fixed per mode, so the server never needs to trust a distance.
 // The client animates the trip; this only settles bags and stats.
-const Body = z.object({ mode: z.enum(['trek', 'danfo', 'keke', 'okada', 'cab', 'own']), to: z.string().min(1).max(60) });
+const Body = z.object({ mode: z.enum(['walk', 'bus', 'bike', 'scooter', 'rideshare', 'taxi', 'own']), to: z.string().min(1).max(60) });
 
 const CARS = ITEMS.filter((i) => i.kind === 'car').map((i) => i.id);
 
@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     const car = await db.asset.findFirst({ where: { playerId: r.user.id, itemId: { in: CARS } } });
     if (!car) return bad('You do not own a car yet. The Dealership sells them.');
   }
-  if (t.id === 'trek' && r.player.gas < 6) return bad('Too tired to trek. Take a ride.');
+  if (t.id === 'walk' && r.player.gas < 6) return bad('Too tired to walk. Take a ride.');
   if (t.bags > r.player.bags) return bad(`You need ${t.bags - r.player.bags} more bags for a ${t.name}.`);
 
   const mine = applyDelta(r.player, t.me);

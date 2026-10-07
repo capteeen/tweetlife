@@ -1,9 +1,9 @@
 import type { Stats } from './stats';
 
 // Getting around the city. Every ride has a fixed fare in bags, a speed, and a small effect on your stats.
-// Trek is free but costs gas. "Your ride" is any car you own: free, a little clout.
+// Walking is free but costs gas. "Your ride" is any car you own: free, a little clout.
 
-export type TransportMode = 'trek' | 'danfo' | 'keke' | 'okada' | 'cab' | 'own';
+export type TransportMode = 'walk' | 'bus' | 'bike' | 'scooter' | 'rideshare' | 'taxi' | 'own';
 
 export type Transport = {
   id: TransportMode;
@@ -18,11 +18,12 @@ export type Transport = {
 };
 
 export const TRANSPORT: Transport[] = [
-  { id: 'trek', name: 'Trek', emoji: '🚶', bags: 0, speed: 1.4, me: { gas: -6 }, blurb: 'Free. Your legs pay instead.', color: '#8FC57A' },
-  { id: 'danfo', name: 'Danfo', emoji: '🚐', bags: 30, speed: 2.4, me: { vibes: -2 }, blurb: 'Cheap. Packed like sardines.', color: '#FFC300' },
-  { id: 'keke', name: 'Keke', emoji: '🛺', bags: 60, speed: 2.8, me: {}, blurb: 'Three wheels, no wahala.', color: '#FFD166' },
-  { id: 'okada', name: 'Okada', emoji: '🏍️', bags: 90, speed: 3.6, me: { vibes: +3, gas: -1 }, blurb: 'Fastest through traffic. Hold on.', color: '#E63946' },
-  { id: 'cab', name: 'Cab', emoji: '🚕', bags: 200, speed: 4, me: { vibes: +2, clout: +1 }, blurb: 'AC, aux cord, arrive looking fresh.', color: '#F4D35E' },
+  { id: 'walk', name: 'Walk', emoji: '🚶', bags: 0, speed: 1.4, me: { gas: -6 }, blurb: 'Free. Your legs pay instead.', color: '#8FC57A' },
+  { id: 'bus', name: 'Bus', emoji: '🚌', bags: 25, speed: 2.2, me: { vibes: -2 }, blurb: 'Cheapest ride in town. Stops at every stop.', color: '#1F4E79' },
+  { id: 'bike', name: 'Bike', emoji: '🚲', bags: 40, speed: 2.6, me: { vibes: +2, gas: -2 }, blurb: 'Grab a share bike from the dock. Good for the soul.', color: '#06D6A0' },
+  { id: 'scooter', name: 'E-scooter', emoji: '🛴', bags: 60, speed: 3.2, me: { vibes: +3 }, blurb: 'Unlock, scan, zip down the bike lane.', color: '#2EC4B6' },
+  { id: 'rideshare', name: 'Rideshare', emoji: '🚙', bags: 120, speed: 3.8, me: { vibes: +1, clout: +1 }, blurb: 'Five stars, phone charger, quiet ride.', color: '#2D2D2D' },
+  { id: 'taxi', name: 'Taxi', emoji: '🚕', bags: 180, speed: 4, me: { vibes: +2, clout: +2 }, blurb: 'Hail a yellow cab. Straight there, no detours.', color: '#F7C600' },
 ];
 
 export const OWN_RIDE: Transport = { id: 'own', name: 'Your ride', emoji: '🚗', bags: 0, speed: 3, me: { clout: +1 }, blurb: 'Your own car. Free.', color: '#1D9BF0' };

@@ -1,4 +1,5 @@
 import { db } from '@/lib/db';
+import { storageVariableNames } from '@/lib/db-url';
 
 // Shown instead of a crash when the deployment is not configured yet. Names only — never values.
 
@@ -28,7 +29,17 @@ export function SetupNotice({ problems, dbProblem }: { problems: string[]; dbPro
           </ul>
         </>
       )}
-      {dbProblem && <p className="mt-2 text-amber-100/80">{dbProblem}</p>}
+      {dbProblem && (
+        <>
+          <p className="mt-2 text-amber-100/80">{dbProblem}</p>
+          <p className="mt-2 text-xs text-amber-100/60">
+            Storage-related variable names present in this environment:{' '}
+            <span className="font-mono">{storageVariableNames().join(', ') || 'none'}</span>. A Postgres URL must start with{' '}
+            <span className="font-mono">postgres://</span>; a Redis URL with <span className="font-mono">redis://</span> or{' '}
+            <span className="font-mono">rediss://</span>.
+          </p>
+        </>
+      )}
       <p className="mt-3 text-xs text-amber-100/60">
         Set them in your host&apos;s environment settings and redeploy. The README lists every variable. Nothing is shown here that
         isn&apos;t real: no world exists until the operator signs in with X.

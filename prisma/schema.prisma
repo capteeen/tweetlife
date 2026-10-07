@@ -258,6 +258,10 @@ model Player {
   clout      Int      @default(50) // social
   gas        Int      @default(80) // energy
   status     String   @default("Just arrived")
+  /// The look picked in the avatar creator (lib/life/look.ts). Null = seeded from the handle.
+  look       Json?
+  /// True for players created after the avatar creator shipped, until they pick a look.
+  lookPending Boolean @default(false)
   lastTickAt DateTime @default(now())
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt

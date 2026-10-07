@@ -46,6 +46,7 @@ export function Player({ structures, boundaryRadius, contentRadius, spawn }: { s
   const lastPublish = useRef(0);
   const speedRef = useRef(0);
   const me = useWorld((s) => s.me);
+  const look = useWorld((s) => s.life?.me?.look ?? null);
 
   // Spawn: stand a few units away from the deep-linked structure, facing it.
   useEffect(() => {
@@ -178,11 +179,11 @@ export function Player({ structures, boundaryRadius, contentRadius, spawn }: { s
       {riding && <Vehicle item={riding} />}
       {ro.show && (
         <group position={[0, ro.y, 0]} scale={ro.scale}>
-          <Figure seed={me?.handle ?? 'visitor'} speedRef={speedRef} label={me ? `@${me.handle}` : undefined} labelColor="#BFE3FF" />
+          <Figure seed={me?.handle ?? 'visitor'} look={me ? look : null} speedRef={speedRef} label={me ? `@${me.handle}` : undefined} labelColor="#BFE3FF" />
         </group>
       )}
       {!ro.show && me && (
-        <Figure seed={me.handle} speedRef={speedRef} label={`@${me.handle}`} labelColor="#BFE3FF" dim />
+        <Figure seed={me.handle} look={look} speedRef={speedRef} label={`@${me.handle}`} labelColor="#BFE3FF" dim />
       )}
     </group>
   );

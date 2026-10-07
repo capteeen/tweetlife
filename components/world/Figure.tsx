@@ -4,55 +4,21 @@ import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { Billboard, Text } from '@react-three/drei';
 
-import { prng, hashString } from '@/lib/world/seed';
+import { hashString } from '@/lib/world/seed';
+import { lookFor, type Look } from '@/lib/life/look';
 // Self-hosted label font (Inter, SIL OFL) so no label ever fetches from a CDN.
 const FONT = '/fonts/inter-600.woff';
 
-// A low-poly person. Appearance (skin, hair, outfit) is seeded from the handle so a visitor looks the same
-// everywhere; limbs swing in a walk cycle while moving. Shared by the player, other visitors and residents.
+// A low-poly person. Appearance is the player's chosen look when there is one, otherwise seeded from the handle so a
+// visitor looks the same everywhere; limbs swing in a walk cycle while moving. Shared by the player, other visitors and residents.
 
-const SKIN = ['#3B2219', '#4A2C1D', '#5C3A25', '#6F4530', '#8D5A3C', '#A66E4B', '#C08A63', '#D9A77F', '#E8BC94', '#F1CFB0'];
-const HAIR = ['#0E0B09', '#1A120D', '#2B1B12', '#3F2A1C', '#5A3B25', '#7A5230', '#A3703D', '#C99A5B', '#222222', '#444444'];
-const SHIRT = ['#1D9BF0', '#F28C28', '#2EC4B6', '#E63946', '#8338EC', '#FFBE0B', '#06D6A0', '#FF5D8F', '#3A86FF', '#E9EDC9', '#F4F1DE', '#2D6A4F'];
-const SHIRT_ALT = ['#FFFFFF', '#0B0E14', '#FFD089', '#E8DCC8', '#BFE3FF'];
-const PANTS = ['#2F4A74', '#1F2A44', '#0B0E14', '#4B5563', '#8B6F47', '#5C4033', '#2D2D2D', '#6B4EFF', '#1B4332'];
-const SHOES = ['#0B0E14', '#FFFFFF', '#5C4033', '#1D9BF0', '#E63946'];
-
-export type Look = {
-  skin: string;
-  hair: string;
-  hairStyle: 'crop' | 'afro' | 'braids' | 'bun' | 'bald' | 'cap' | 'long';
-  shirt: string;
-  shirtAlt: string;
-  pattern: 'solid' | 'stripes' | 'yoke';
-  sleeves: 'long' | 'short';
-  pants: string;
-  shoes: string;
-  height: number; // 0.92 .. 1.08
-  build: number; // 0.9 .. 1.1
-};
-
-export function lookFor(seed: string): Look {
-  const r = prng(hashString('look|' + seed.toLowerCase()));
-  const pick = <T,>(a: T[]) => a[Math.floor(r() * a.length)];
-  const styles: Look['hairStyle'][] = ['crop', 'crop', 'afro', 'braids', 'bun', 'bald', 'cap', 'long'];
-  return {
-    skin: pick(SKIN),
-    hair: pick(HAIR),
-    hairStyle: pick(styles),
-    shirt: pick(SHIRT),
-    shirtAlt: pick(SHIRT_ALT),
-    pattern: pick(['solid', 'solid', 'stripes', 'yoke'] as Look['pattern'][]),
-    sleeves: r() < 0.5 ? 'long' : 'short',
-    pants: pick(PANTS),
-    shoes: pick(SHOES),
-    height: 0.92 + r() * 0.16,
-    build: 0.9 + r() * 0.2,
-  };
-}
+export type { Look } from '@/lib/life/look';
+export { lookFor } from '@/lib/life/look';
 
 type Props = {
   seed: string;
+  /** a chosen look; without one the look is seeded from `seed` */
+  look?: Look | null;
   /** 0 = standing, 1 = walking at full speed. Read each frame. */
   speedRef?: React.MutableRefObject<number>;
   label?: string;
@@ -74,23 +40,28 @@ const capsule = (r: number, len: number) => geo(`cap|${q(r)}|${q(len)}`, () => n
 const ball = () => geo('ball', () => new THREE.SphereGeometry(1, 16, 12));
 const smallBall = () => geo('ball-s', () => new THREE.SphereGeometry(1, 10, 8));
 // Torso silhouette as radius over height (0 = waist, 1 = base of the neck): narrow waist, fuller chest, sloped shoulders.
-const TORSO: [number, number][] = [[0, 0.16], [0.12, 0.155], [0.35, 0.15], [0.6, 0.172], [0.8, 0.19], [0.9, 0.185], [0.97, 0.14], [1, 0.07]];
-function torsoR(t: number) {
-  for (let i = 1; i < TORSO.length; i++) {
-    const [t0, r0] = TORSO[i - 1], [t1, r1] = TORSO[i];
+// The female profile has fuller hips, a narrower waist and narrower shoulders.
+const TORSO: Record<Look['body'], [number, number][]> = {
+  male: [[0, 0.16], [0.12, 0.155], [0.35, 0.15], [0.6, 0.172], [0.8, 0.19], [0.9, 0.185], [0.97, 0.14], [1, 0.07]],
+  female: [[0, 0.178], [0.12, 0.168], [0.38, 0.136], [0.6, 0.155], [0.8, 0.165], [0.9, 0.158], [0.97, 0.122], [1, 0.064]],
+};
+function torsoR(body: Look['body'], t: number) {
+  const P = TORSO[body];
+  for (let i = 1; i < P.length; i++) {
+    const [t0, r0] = P[i - 1], [t1, r1] = P[i];
     if (t <= t1) return r0 + ((r1 - r0) * (t - t0)) / (t1 - t0);
   }
-  return TORSO[TORSO.length - 1][1];
+  return P[P.length - 1][1];
 }
 /** A lathe of the torso profile between t0 and t1, `inflate` pushes it out (for stripes and yokes over the shirt). */
-const torso = (t0: number, t1: number, inflate = 1) =>
-  geo(`torso|${q(t0)}|${q(t1)}|${q(inflate)}`, () => {
+const torso = (body: Look['body'], t0: number, t1: number, inflate = 1) =>
+  geo(`torso|${body}|${q(t0)}|${q(t1)}|${q(inflate)}`, () => {
     const pts: THREE.Vector2[] = [];
     const closeTop = t1 >= 1, closeBottom = t0 <= 0;
     if (closeBottom) pts.push(new THREE.Vector2(0.0001, t0));
     for (let i = 0; i <= 10; i++) {
       const t = t0 + ((t1 - t0) * i) / 10;
-      pts.push(new THREE.Vector2(torsoR(t) * inflate, t));
+      pts.push(new THREE.Vector2(torsoR(body, t) * inflate, t));
     }
     if (closeTop) pts.push(new THREE.Vector2(0.0001, t1));
     return new THREE.LatheGeometry(pts, 18);
@@ -117,8 +88,8 @@ const headShell = (yMin: number, inflate: number, back = false) =>
     );
   });
 
-export function Figure({ seed, speedRef, label, labelColor = '#FFFFFF', dim = false, alwaysWalk = false }: Props) {
-  const look = useMemo(() => lookFor(seed), [seed]);
+export function Figure({ seed, look: chosen, speedRef, label, labelColor = '#FFFFFF', dim = false, alwaysWalk = false }: Props) {
+  const look = useMemo(() => chosen ?? lookFor(seed), [chosen, seed]);
   const lArm = useRef<THREE.Group>(null);
   const rArm = useRef<THREE.Group>(null);
   const lElbow = useRef<THREE.Group>(null);
@@ -165,12 +136,13 @@ export function Figure({ seed, speedRef, label, labelColor = '#FFFFFF', dim = fa
     if (head.current) head.current.rotation.y = Math.sin(p) * 0.1 * s + Math.sin(idle.current * 0.4) * 0.25 * (1 - s);
   });
 
-  const H = look.height;
+  const fem = look.body === 'female';
+  const H = look.height * (fem ? 0.96 : 1);
   const W = look.build;
   const op = dim ? 0.75 : 1;
   const mat = (color: string, roughness = 0.8) => <meshStandardMaterial color={color} roughness={roughness} transparent={dim} opacity={op} />;
   const skin = (r = 0.6) => mat(look.skin, r);
-  const lip = useMemo(() => '#' + new THREE.Color(look.skin).lerp(new THREE.Color('#6E2A2A'), 0.45).getHexString(), [look.skin]);
+  const lip = useMemo(() => '#' + new THREE.Color(look.skin).lerp(new THREE.Color(look.body === 'female' ? '#9E3B4A' : '#6E2A2A'), 0.45).getHexString(), [look.skin, look.body]);
   const legLen = 0.82 * H;
   const torsoH = 0.56 * H;
   const hipY = legLen;
@@ -178,6 +150,11 @@ export function Figure({ seed, speedRef, label, labelColor = '#FFFFFF', dim = fa
   const thigh = legLen * 0.5;
   const shin = legLen * 0.5;
   const sleeve = look.sleeves === 'long' ? look.shirt : look.skin;
+  // Shorts (knee length) show the shins; a skirt shows the legs and hangs from the hips on its own.
+  const thighColor = look.bottom === 'skirt' ? look.skin : look.pants;
+  const shinColor = look.bottom === 'pants' ? look.pants : look.skin;
+  const shoulderX = (fem ? 0.165 : 0.19) * W + 0.03;
+  const armR = fem ? 0.9 : 1;
 
   return (
     <group scale={[1, 1, 1]}>
@@ -186,11 +163,12 @@ export function Figure({ seed, speedRef, label, labelColor = '#FFFFFF', dim = fa
         {[-1, 1].map((side) => (
           <group key={side} ref={side < 0 ? lLeg : rLeg} position={[side * 0.085 * W, hipY, 0]}>
             <mesh position={[0, -thigh * 0.5, 0]} geometry={capsule(0.075 * W, thigh - 0.1)} castShadow>
-              {mat(look.pants)}
+              {mat(thighColor)}
             </mesh>
+
             <group ref={side < 0 ? lKnee : rKnee} position={[0, -thigh, 0]}>
-              <mesh position={[0, -shin * 0.47, 0]} geometry={capsule(0.058 * W, shin - 0.1)} castShadow>
-                {mat(look.pants)}
+              <mesh position={[0, -shin * 0.47, 0]} geometry={capsule((look.bottom === 'pants' ? 0.058 : 0.052) * W, shin - 0.1)} castShadow>
+                {mat(shinColor)}
               </mesh>
               <mesh position={[0, -shin + 0.045, 0.045]} scale={[0.062 * W, 0.05, 0.13]} geometry={ball()} castShadow>
                 {mat(look.shoes, 0.55)}
@@ -199,30 +177,41 @@ export function Figure({ seed, speedRef, label, labelColor = '#FFFFFF', dim = fa
           </group>
         ))}
         {/* pelvis */}
-        <mesh position={[0, hipY + 0.03, 0]} scale={[0.165 * W, 0.11, 0.105]} geometry={ball()} castShadow>
+        <mesh position={[0, hipY + 0.03, 0]} scale={[(fem ? 0.168 : 0.155) * W, 0.11, 0.098]} geometry={ball()} castShadow>
           {mat(look.pants)}
         </mesh>
+        {look.bottom === 'skirt' && (
+          <mesh position={[0, hipY - thigh * 0.45, 0]} scale={[W, 1, 0.8]} geometry={geo(`skirt|${q(thigh)}`, () => new THREE.CylinderGeometry(0.19, 0.28, thigh * 1.05, 20, 1, true))} castShadow>
+            <meshStandardMaterial color={look.pants} roughness={0.8} side={THREE.DoubleSide} transparent={dim} opacity={op} />
+          </mesh>
+        )}
         <group ref={chest} position={[0, hipY, 0]}>
           {/* torso: a lathed body, flattened front to back */}
           <group scale={[W, torsoH, 0.62]}>
-            <mesh geometry={torso(0, 1)} castShadow>
+            <mesh geometry={torso(look.body, 0, 1)} castShadow>
               {mat(look.shirt)}
             </mesh>
             {look.pattern === 'stripes' &&
               [0.2, 0.45, 0.7].map((f) => (
-                <mesh key={f} geometry={torso(f, f + 0.08, 1.02)}>
+                <mesh key={f} geometry={torso(look.body, f, f + 0.08, 1.02)}>
                   {mat(look.shirtAlt)}
                 </mesh>
               ))}
             {look.pattern === 'yoke' && (
-              <mesh geometry={torso(0.74, 0.985, 1.02)}>
+              <mesh geometry={torso(look.body, 0.74, 0.985, 1.02)}>
                 {mat(look.shirtAlt)}
               </mesh>
             )}
           </group>
+          {fem &&
+            [-1, 1].map((side) => (
+              <mesh key={side} position={[side * 0.062 * W, torsoH * 0.64, 0.05]} scale={[0.062 * W, 0.055, 0.05]} geometry={ball()}>
+                {mat(look.shirt)}
+              </mesh>
+            ))}
           {/* arms: pivot at shoulder, bend at elbow */}
           {[-1, 1].map((side) => (
-            <group key={side} ref={side < 0 ? lArm : rArm} position={[side * (0.19 * W + 0.03), torsoH - 0.07, 0]}>
+            <group key={side} ref={side < 0 ? lArm : rArm} position={[side * shoulderX, torsoH - 0.07, 0]} scale={[armR, 1, armR]}>
               <mesh position={[side * -0.012, -0.01, 0]} scale={[0.06, 0.058, 0.062]} geometry={smallBall()}>
                 {mat(look.shirt)}
               </mesh>
@@ -261,12 +250,25 @@ export function Figure({ seed, speedRef, label, labelColor = '#FFFFFF', dim = fa
             {/* eyes: whites, irises, brows */}
             {[-1, 1].map((side) => (
               <group key={side} position={[side * 0.042, 0.012, 0.106]}>
-                <mesh scale={[0.02, 0.015, 0.01]} geometry={smallBall()}>
-                  <meshStandardMaterial color="#F4F0E8" roughness={0.3} transparent={dim} opacity={op} />
-                </mesh>
-                <mesh position={[0, 0, 0.006]} scale={[0.011, 0.011, 0.006]} geometry={smallBall()}>
-                  <meshStandardMaterial color="#1A120D" roughness={0.2} transparent={dim} opacity={op} />
-                </mesh>
+                <group rotation={[0, 0, look.eyes === 'almond' ? side * 0.14 : 0]}>
+                  <mesh scale={look.eyes === 'almond' ? [0.022, 0.0095, 0.01] : [0.02, 0.015, 0.01]} geometry={smallBall()}>
+                    <meshStandardMaterial color="#F4F0E8" roughness={0.3} transparent={dim} opacity={op} />
+                  </mesh>
+                  <mesh position={[0, look.eyes === 'almond' ? -0.001 : 0, 0.006]} scale={look.eyes === 'almond' ? [0.01, 0.0085, 0.006] : [0.011, 0.011, 0.006]} geometry={smallBall()}>
+                    <meshStandardMaterial color="#1A120D" roughness={0.2} transparent={dim} opacity={op} />
+                  </mesh>
+                  {/* almond eyes: a soft upper lid; female figures: lashes along the lid */}
+                  {look.eyes === 'almond' && (
+                    <mesh position={[0, 0.007, 0.003]} scale={[0.024, 0.006, 0.01]} geometry={smallBall()}>
+                      {skin()}
+                    </mesh>
+                  )}
+                  {fem && (
+                    <mesh position={[side * 0.006, look.eyes === 'almond' ? 0.011 : 0.014, 0.006]} rotation={[0, 0, side * -0.15]} scale={[0.022, 0.0035, 0.006]} geometry={smallBall()}>
+                      <meshStandardMaterial color="#0E0B09" roughness={0.5} transparent={dim} opacity={op} />
+                    </mesh>
+                  )}
+                </group>
                 <mesh position={[0, 0.033, 0.002]} rotation={[0, 0, side * -0.12]} scale={[0.026, 0.006, 0.008]} geometry={smallBall()}>
                   {mat(look.hairStyle === 'bald' ? lip : look.hair)}
                 </mesh>
@@ -277,7 +279,7 @@ export function Figure({ seed, speedRef, label, labelColor = '#FFFFFF', dim = fa
               {skin()}
             </mesh>
             {/* mouth */}
-            <mesh position={[0, -0.07, 0.094]} scale={[0.024, 0.007, 0.008]} geometry={smallBall()}>
+            <mesh position={[0, -0.07, 0.094]} scale={fem ? [0.023, 0.009, 0.01] : [0.024, 0.007, 0.008]} geometry={smallBall()}>
               {mat(lip, 0.5)}
             </mesh>
             <Hair look={look} dim={dim} />
@@ -295,6 +297,9 @@ export function Figure({ seed, speedRef, label, labelColor = '#FFFFFF', dim = fa
   );
 }
 
+
+// Locs hang around the sides and back: [angle around the head (0 = front), length].
+const LOCS: [number, number][] = [-2.9, -2.5, -2.1, -1.7, -1.35, 1.35, 1.7, 2.1, 2.5, 2.9, Math.PI].map((a, i) => [a, 0.16 + (i % 3) * 0.03]);
 
 function Hair({ look, dim }: { look: Look; dim: boolean }) {
   const m = (color: string) => <meshStandardMaterial color={color} roughness={0.9} side={THREE.DoubleSide} transparent={dim} opacity={dim ? 0.75 : 1} />;
@@ -314,6 +319,36 @@ function Hair({ look, dim }: { look: Look; dim: boolean }) {
       return null;
     case 'crop':
       return crop();
+    case 'buzz':
+      return (
+        <group rotation={[-0.2, 0, 0]} scale={[1, 1, 1.1]}>
+          <mesh geometry={headShell(0.07, 1.025)}>{m(look.hair)}</mesh>
+          <mesh geometry={headShell(-0.04, 1.02, true)}>{m(look.hair)}</mesh>
+        </group>
+      );
+    case 'ponytail':
+      return (
+        <>
+          {crop()}
+          <mesh position={[0, 0.085, -0.125]} scale={0.035} geometry={ball()}>
+            {m(look.hair)}
+          </mesh>
+          <mesh position={[0, -0.02, -0.15]} rotation={[0.35, 0, 0]} geometry={capsule(0.034, 0.17)}>
+            {m(look.hair)}
+          </mesh>
+        </>
+      );
+    case 'locs':
+      return (
+        <>
+          {crop()}
+          {LOCS.map(([a, len], i) => (
+            <mesh key={i} position={[Math.sin(a) * 0.112, -0.045 - len * 0.5, Math.cos(a) * 0.108 - 0.012]} rotation={[Math.cos(a) * 0.12, 0, -Math.sin(a) * 0.08]} geometry={capsule(0.019, len)}>
+              {m(look.hair)}
+            </mesh>
+          ))}
+        </>
+      );
     case 'afro':
       return (
         <>

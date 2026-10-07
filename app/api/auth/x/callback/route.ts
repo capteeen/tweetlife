@@ -7,11 +7,13 @@ import { consumeLoginState, exchangeCode } from '@/lib/x/oauth';
 import { getMe } from '@/lib/x/api';
 import { enqueueIngest } from '@/lib/queue/queues';
 import { XApiError } from '@/lib/x/types';
+import { ensurePlayer } from '@/lib/life/player';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
-// OAuth callback. On first sign-in this creates the user's world and queues its first build.
+// OAuth callback. On first sign-in this creates the user's world and queues its first build, then sends a new
+// player to the avatar creator.
 // We use the signer's own token to read the signer's own timeline.
 
 export async function GET(req: NextRequest) {
@@ -78,6 +80,9 @@ export async function GET(req: NextRequest) {
     }
 
     await createSession({ id: user.id, handle: user.handle, name: user.name, avatarUrl: user.avatarUrl });
+    // Sign-up step: a new player picks their look before going on to where they were headed.
+    const player = await ensurePlayer(user.id);
+    if (player.lookPending) return NextResponse.redirect(`${base}/create?next=${encodeURIComponent(login.returnTo)}`);
     return NextResponse.redirect(`${base}${login.returnTo}`);
   } catch (e) {
     const msg = e instanceof XApiError ? `X error: ${e.message}` : (e as Error).message;

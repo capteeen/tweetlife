@@ -2,14 +2,15 @@ import type { Player } from '@prisma/client';
 import { db } from '../db';
 import { applyDrift, moodOf, type Stats } from './stats';
 import { ensureWallet } from '../solana/wallet';
+import { parseLook } from './look';
 
 // Player profiles for the life layer. Everyone who signs in gets one with a welcome of 10,000 bags —
-// in-world points, never money.
+// in-world points, never money. A new player picks their look in the avatar creator before walking in.
 
 export async function ensurePlayer(userId: string): Promise<Player> {
   const existing = await db.player.findUnique({ where: { id: userId } });
   if (existing) return tick(existing);
-  const p = await db.player.create({ data: { id: userId, txs: { create: { kind: 'welcome', amount: 10000, note: 'Welcome to the trenches' } } } });
+  const p = await db.player.create({ data: { id: userId, lookPending: true, txs: { create: { kind: 'welcome', amount: 10000, note: 'Welcome to the trenches' } } } });
   // the real Solana wallet is created alongside (keys encrypted at rest)
   await ensureWallet(userId).catch((e) => console.error('[wallet] create failed', (e as Error).message));
   return p;
@@ -29,7 +30,7 @@ export async function setStats(id: string, s: Stats) {
 export function profileView(p: Player, handle: string, name: string, avatarUrl: string | null) {
   const stats: Stats = { vibes: p.vibes, clout: p.clout, gas: p.gas };
   const m = moodOf(stats);
-  return { id: p.id, handle, name, avatarUrl, bags: p.bags, status: p.status, ...stats, mood: m.mood, moodEmoji: m.emoji };
+  return { id: p.id, handle, name, avatarUrl, bags: p.bags, status: p.status, ...stats, mood: m.mood, moodEmoji: m.emoji, look: parseLook(p.look), lookPending: p.lookPending };
 }
 
 /** Rich list: bank balance + assets, in bags. (Real SOL is private and never ranked.) */

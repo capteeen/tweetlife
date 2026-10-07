@@ -99,6 +99,8 @@ export function WorldClient({ handle, spawnPostId, embed, backdrop }: { handle: 
     return () => clearTimeout(t);
   }, [toasts, dropToast]);
   const me = useWorld((s) => s.me);
+  // a new player who left the creator without saving gets a way back to it
+  const lookPending = useWorld((s) => !!s.life?.me?.lookPending);
   const spawnAt = useWorld((s) => s.spawnAt);
 
   const stale = useMemo(() => model?.lastSyncAt && Date.now() - Date.parse(model.lastSyncAt) > 24 * 3600 * 1000, [model?.lastSyncAt]);
@@ -174,6 +176,14 @@ export function WorldClient({ handle, spawnPostId, embed, backdrop }: { handle: 
       {admitted ? (
         <>
           <TopHUD online={online} handle={model.handle} />
+          {lookPending && (
+            <a
+              className="pointer-events-auto absolute left-1/2 top-16 z-20 -translate-x-1/2 rounded-full bg-x px-4 py-1.5 text-sm font-semibold text-white shadow-lg hover:brightness-110"
+              href={`/create?next=${encodeURIComponent(`/w/${model.handle}`)}`}
+            >
+              👕 Pick your look
+            </a>
+          )}
           <StatBars />
           <PostCard handle={model.handle} showMetrics={model.showMetrics} canAct={!!me} />
           <PeerCard worldId={model.id} sendSocial={sendSocial} />

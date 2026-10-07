@@ -21,22 +21,25 @@ export type Rig = {
   rKnee: THREE.Group | null;
   /** the phone in the right hand, shown for the selfie */
   phone: THREE.Object3D | null;
+  /** both eyes (whites + irises), squashed to close them */
+  eyes: (THREE.Object3D | null)[];
   hipY: number;
 };
 
 type Axis = 'x' | 'y' | 'z';
-const rot = (o: THREE.Object3D | null, a: Axis, target: number, w: number) => {
+export const rot = (o: THREE.Object3D | null, a: Axis, target: number, w: number) => {
   if (o) o.rotation[a] += (target - o.rotation[a]) * w;
 };
-const lift = (o: THREE.Object3D | null, target: number, w: number) => {
+export const lift = (o: THREE.Object3D | null, target: number, w: number) => {
   if (o) o.position.y += (target - o.position.y) * w;
 };
 
 /** Zero the joints the walk cycle never sets, so a finished move doesn't leave a limb stuck. */
 export function settle(r: Rig) {
   for (const o of [r.body, r.chest, r.head]) if (o) (o.rotation.x = 0), (o.rotation.z = 0);
-  for (const o of [r.lLeg, r.rLeg]) if (o) o.rotation.z = 0;
+  for (const o of [r.lLeg, r.rLeg, r.lElbow, r.rElbow]) if (o) o.rotation.z = 0;
   if (r.phone) r.phone.visible = false;
+  for (const e of r.eyes) if (e) e.scale.y = 1;
 }
 
 /** Slouch, droop the head, let the arms hang. `k` 0..1 from lib/life/activities `tiredness`. */

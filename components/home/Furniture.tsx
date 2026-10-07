@@ -11,11 +11,11 @@ const WOOD = '#A67B5B';
 const DARK = '#1B2436';
 const METAL = '#9AA6B8';
 
-function Box({ p, s, c, flat = true, e }: { p: [number, number, number]; s: [number, number, number]; c: string; flat?: boolean; e?: number }) {
+function Box({ p, s, c, flat = true, e, o }: { p: [number, number, number]; s: [number, number, number]; c: string; flat?: boolean; e?: number; /** opacity, for glass */ o?: number }) {
   return (
-    <mesh position={p} castShadow receiveShadow>
+    <mesh position={p} castShadow={o == null} receiveShadow>
       <boxGeometry args={s} />
-      <meshStandardMaterial color={c} flatShading={flat} roughness={0.85} emissive={e ? c : '#000000'} emissiveIntensity={e ?? 0} />
+      <meshStandardMaterial color={c} flatShading={flat} roughness={o == null ? 0.85 : 0.1} emissive={e ? c : '#000000'} emissiveIntensity={e ?? 0} transparent={o != null} opacity={o ?? 1} depthWrite={o == null} />
     </mesh>
   );
 }
@@ -94,8 +94,9 @@ export function FurnitureMesh({ item, lit }: { item: Furniture; lit: boolean }) 
       return (
         <group>
           <Box p={[0, 0.06, 0]} s={[1.6, 0.12, 1.6]} c="#FFFFFF" />
-          <Box p={[0, 1.2, -0.75]} s={[1.6, 2.4, 0.1]} c={c} />
-          <Box p={[-0.75, 1.2, 0]} s={[0.1, 2.4, 1.6]} c={c} />
+          {/* glass walls, so you can see who's in there */}
+          <Box p={[0, 1.2, -0.75]} s={[1.6, 2.4, 0.1]} c={c} o={0.35} />
+          <Box p={[-0.75, 1.2, 0]} s={[0.1, 2.4, 1.6]} c={c} o={0.35} />
           <Cyl p={[0, 2.2, -0.4]} r={0.03} h={0.6} c={METAL} />
           <Cyl p={[0, 2.15, -0.1]} r={0.18} h={0.06} c={METAL} />
           <Box p={[-0.6, 1.7, -0.6]} s={[0.25, 0.4, 0.25]} c="#F4F1DE" />

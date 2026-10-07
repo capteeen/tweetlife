@@ -7,6 +7,7 @@ import { Billboard, Text } from '@react-three/drei';
 import { hashString } from '@/lib/world/seed';
 import { lookFor, type Look } from '@/lib/life/look';
 import { applyTired, poseActivity, settle, type FigureAct, type Rig } from './figureMoves';
+import { applyPose, poseKey, type HomePose } from './figurePoses';
 // Self-hosted label font (Inter, SIL OFL) so no label ever fetches from a CDN.
 const FONT = '/fonts/inter-600.woff';
 
@@ -29,8 +30,8 @@ type Props = {
   alwaysWalk?: boolean;
   /** 0 = upright, 1 = slumped (after a rug). Read each frame. */
   slumpRef?: React.MutableRefObject<number>;
-  /** an everyday move to play (dance, stretch...), or null. Read each frame. */
-  actRef?: React.MutableRefObject<FigureAct | null>;
+  /** an everyday move to play (dance, stretch...) or a furniture pose (sit, sleep...), or null. Read each frame. */
+  actRef?: React.MutableRefObject<FigureAct | HomePose | null>;
   /** 0 = fresh, 1 = exhausted: slower steps and a slouch. Read each frame. */
   tiredRef?: React.MutableRefObject<number>;
 };
@@ -113,7 +114,9 @@ export function Figure({ seed, look: chosen, speedRef, label, labelColor = '#FFF
   const cur = useRef(0);
   const phone = useRef<THREE.Mesh>(null);
   // the move being played (kept while it fades out), its start time, and its blend weight
-  const move = useRef<{ act: FigureAct | null; t: number; w: number }>({ act: null, t: 0, w: 0 });
+  const move = useRef<{ act: FigureAct | HomePose | null; key: string; t: number; w: number }>({ act: null, key: '', t: 0, w: 0 });
+  const eyes = useRef<(THREE.Group | null)[]>([null, null]);
+  const blink = useRef(2 + (hashString(seed) % 30) / 10);
 
   // Rekt (a rug just popped): shoulders roll forward and the head drops, on top of whatever pose is playing.
   // `layered`: a pose was set this frame, so lean at least this far; otherwise the slump owns the lean.
@@ -156,22 +159,29 @@ export function Figure({ seed, look: chosen, speedRef, label, labelColor = '#FFF
       chest.current.rotation.y = -Math.sin(p) * 0.12 * s;
     }
     if (head.current) head.current.rotation.y = Math.sin(p) * 0.1 * s + Math.sin(idle.current * 0.4) * 0.25 * (1 - s);
+    // a blink every few seconds
+    blink.current -= dt;
+    if (blink.current < -0.12) blink.current = 2.5 + Math.random() * 3;
+    for (const e of eyes.current) if (e) e.scale.y = blink.current < 0 ? 0.12 : 1;
 
     // everyday moves and tiredness, layered over the walk (components/world/figureMoves.ts)
     if (!actRef && !tiredRef) return slumpOver(false);
     const rig: Rig = {
       body: body.current, chest: chest.current, head: head.current, lArm: lArm.current, rArm: rArm.current, lElbow: lElbow.current, rElbow: rElbow.current,
-      lLeg: lLeg.current, rLeg: rLeg.current, lKnee: lKnee.current, rKnee: rKnee.current, phone: phone.current, hipY,
+      lLeg: lLeg.current, rLeg: rLeg.current, lKnee: lKnee.current, rKnee: rKnee.current, phone: phone.current, eyes: eyes.current, hipY,
     };
     settle(rig);
+    if (blink.current < 0) for (const e of eyes.current) if (e) e.scale.y = 0.12;
     const want = actRef?.current ?? null;
     const m = move.current;
-    if (want && want !== m.act) (m.act = want), (m.t = 0), (m.w = 0);
+    const key = want == null ? '' : typeof want === 'string' ? want : poseKey(want);
+    if (want && key !== m.key) (m.act = want), (m.key = key), (m.t = 0), (m.w = m.w > 0 && typeof want !== 'string' ? m.w * 0.5 : 0);
     m.t += dt;
     m.w = Math.max(0, Math.min(1, m.w + (want ? dt : -dt) * 4));
-    if (m.w === 0 && !want) m.act = null;
+    if (m.w === 0 && !want) (m.act = null), (m.key = '');
     if (m.w < 1) applyTired(rig, tired * (1 - m.w), idle.current);
-    if (m.act) poseActivity(rig, m.act, m.t, smoothW(m.w));
+    if (typeof m.act === 'string') poseActivity(rig, m.act, m.t, smoothW(m.w));
+    else if (m.act) applyPose(rig, m.act, m.t, smoothW(m.w));
     slumpOver(true);
   });
 
@@ -294,7 +304,7 @@ export function Figure({ seed, look: chosen, speedRef, label, labelColor = '#FFF
             {/* eyes: whites, irises, brows */}
             {[-1, 1].map((side) => (
               <group key={side} position={[side * 0.042, 0.012, 0.106]}>
-                <group rotation={[0, 0, look.eyes === 'almond' ? side * 0.14 : 0]}>
+                <group ref={(g) => void (eyes.current[side < 0 ? 0 : 1] = g)} rotation={[0, 0, look.eyes === 'almond' ? side * 0.14 : 0]}>
                   <mesh scale={look.eyes === 'almond' ? [0.022, 0.0095, 0.01] : [0.02, 0.015, 0.01]} geometry={smallBall()}>
                     <meshStandardMaterial color="#F4F0E8" roughness={0.3} transparent={dim} opacity={op} />
                   </mesh>

@@ -23,7 +23,8 @@ type Payload =
 type Me = { id: string; handle: string; isOwner: boolean } | null;
 type Skyline = Pick<WorldModel, 'handle' | 'ownerName' | 'ownerAvatar' | 'followersCount' | 'structureCount' | 'biome' | 'accountCreatedAt' | 'geometry' | 'marks' | 'paths'>;
 
-export function WorldClient({ handle, spawnPostId, embed }: { handle: string; spawnPostId?: string; embed?: boolean }) {
+// `backdrop`: the title screen's background — the slow orbit view with no chrome at all.
+export function WorldClient({ handle, spawnPostId, embed, backdrop }: { handle: string; spawnPostId?: string; embed?: boolean; backdrop?: boolean }) {
   const [payload, setPayload] = useState<Payload | null>(null);
   const [progress, setProgress] = useState<{ placed: number; postCount: number; ingestState: string; ingestError: string | null } | null>(null);
   const setModel = useWorld((s) => s.setModel);
@@ -108,10 +109,12 @@ export function WorldClient({ handle, spawnPostId, embed }: { handle: string; sp
         biome={model.biome}
         handle={model.handle}
         showMetrics={model.showMetrics}
-        mode={admitted ? 'walk' : 'boundary'}
+        mode={admitted && !backdrop ? 'walk' : 'boundary'}
         spawn={spawnAt}
         onReady={() => setReady(true)}
       />
+      {backdrop ? null : (
+      <>
       {!ready && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-white/60">Loading the world…</div>
       )}
@@ -161,6 +164,8 @@ export function WorldClient({ handle, spawnPostId, embed }: { handle: string; sp
       >
         TweetLife
       </a>
+      </>
+      )}
     </div>
   );
 }

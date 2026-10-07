@@ -22,6 +22,12 @@ export function SetupNotice({ problems, dbProblem }: { problems: string[]; dbPro
       {problems.length > 0 && (
         <>
           <p className="mt-2 text-amber-100/80">Missing or invalid environment variables:</p>
+          {problems.includes('REDIS_URL') && (
+            <p className="mt-1 text-xs text-amber-100/70">
+              No Redis URL found. Redis holds the rate limiter, follow-check cache and ingestion locks. On Vercel: Storage → Create Database →
+              Redis, connect it to this project, then redeploy. Any variable name works as long as the value starts with redis:// or rediss://.
+            </p>
+          )}
           <ul className="mt-1 list-inside list-disc font-mono text-xs">
             {problems.map((p) => (
               <li key={p}>{p}</li>

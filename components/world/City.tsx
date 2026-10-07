@@ -101,7 +101,7 @@ export function City({ blocks, grid, outside, boundaryRadius, biome, handle, pat
     for (let k = 0; k < nOut; k++) {
       const a = rnd() * Math.PI * 2, r = Math.sqrt(rnd()) * (R - 4);
       const x = Math.cos(a) * r, z = Math.sin(a) * r;
-      if (Math.abs(x) < cityW / 2 + 3 && Math.abs(z) < cityD / 2 + 3) continue;
+      if (blocks.length > 0 && Math.abs(x) < cityW / 2 + 3 && Math.abs(z) < cityD / 2 + 3) continue;
       out.push({ x, z, s: 0.9 + rnd() * 0.8, dry: outside === 'dry' });
     }
     return out;
@@ -120,10 +120,12 @@ export function City({ blocks, grid, outside, boundaryRadius, biome, handle, pat
         <meshStandardMaterial color={pal.water} roughness={0.35} metalness={0.05} />
       </mesh>
       {/* asphalt under the whole city */}
-      <mesh position={[0, 0.0, 0]} receiveShadow>
-        <boxGeometry args={[cityW + road, 0.08, cityD + road]} />
-        <meshStandardMaterial color={ASPHALT} roughness={0.95} />
-      </mesh>
+      {blocks.length > 0 && (
+        <mesh position={[0, 0.0, 0]} receiveShadow>
+          <boxGeometry args={[cityW + road, 0.08, cityD + road]} />
+          <meshStandardMaterial color={ASPHALT} roughness={0.95} />
+        </mesh>
+      )}
       <Slabs
         items={blocks.map((b) => ({ x: b.x, z: b.z, w: blockW + 2 * sidewalk, d: blockD + 2 * sidewalk, color: CURB }))}
         y={0.08}
@@ -136,8 +138,8 @@ export function City({ blocks, grid, outside, boundaryRadius, biome, handle, pat
         y={0.2}
         h={0.08}
       />
-      <Dashes items={dashes} w={2.2} d={0.25} color={DASH} />
-      <Dashes items={stripes} w={0.8} d={road * 0.42} color={DASH} />
+      {blocks.length > 0 && <Dashes items={dashes} w={2.2} d={0.25} color={DASH} />}
+      {blocks.length > 0 && <Dashes items={stripes} w={0.8} d={road * 0.42} color={DASH} />}
       <Trees items={trees} />
       {paths.map((p, i) =>
         p.length > 1 ? (

@@ -2,7 +2,8 @@ import type { User } from '@prisma/client';
 import { db } from '../db';
 import { env } from '../env';
 import { decrypt, encrypt, randomToken, sha256base64url } from '../crypto';
-import { redis } from '../redis';
+import { SignJWT, jwtVerify } from 'jose';
+import { cookies } from 'next/headers';
 import { recordCall } from './budget';
 import { XApiError } from './types';
 
@@ -20,11 +21,23 @@ export function redirectUri() {
 }
 
 /** Begin a login. Stores verifier+return path in Redis keyed by state for 10 minutes. */
-export async function beginLogin(returnTo: string): Promise<string> {
+export type LoginAccess = 'followers' | 'public' | 'invite';
+
+// The PKCE verifier and return path travel in a signed, httpOnly cookie (10 minutes) rather than a
+// server-side store, so sign-in has no dependency beyond the X client id and the session secret.
+const LOGIN_COOKIE = 'tl_login';
+
+function loginSecret() {
+  return new TextEncoder().encode(env().SESSION_SECRET);
+}
+
+/** Begin a login: set the state cookie and return the X authorize URL. */
+export async function beginLogin(returnTo: string, access?: LoginAccess): Promise<string> {
   const state = randomToken(24);
   const verifier = randomToken(48);
   const challenge = sha256base64url(verifier);
-  await redis().set(`x:oauth:${state}`, JSON.stringify({ verifier, returnTo }), 'EX', 600);
+  const jwt = await new SignJWT({ state, verifier, returnTo, access }).setProtectedHeader({ alg: 'HS256' }).setIssuedAt().setExpirationTime('10m').sign(loginSecret());
+  cookies().set(LOGIN_COOKIE, jwt, { httpOnly: true, sameSite: 'lax', secure: true, path: '/api/auth/x', maxAge: 600 });
   const u = new URL(AUTHORIZE_URL);
   u.searchParams.set('response_type', 'code');
   u.searchParams.set('client_id', env().X_CLIENT_ID);
@@ -36,12 +49,18 @@ export async function beginLogin(returnTo: string): Promise<string> {
   return u.toString();
 }
 
-export async function consumeLoginState(state: string): Promise<{ verifier: string; returnTo: string } | null> {
-  const key = `x:oauth:${state}`;
-  const raw = await redis().get(key);
+/** Validate the callback's state against the cookie and consume it. */
+export async function consumeLoginState(state: string): Promise<{ verifier: string; returnTo: string; access?: LoginAccess } | null> {
+  const raw = cookies().get(LOGIN_COOKIE)?.value;
   if (!raw) return null;
-  await redis().del(key);
-  return JSON.parse(raw);
+  cookies().set(LOGIN_COOKIE, '', { httpOnly: true, sameSite: 'lax', secure: true, path: '/api/auth/x', maxAge: 0 });
+  try {
+    const { payload } = await jwtVerify(raw, loginSecret());
+    if (payload.state !== state) return null;
+    return { verifier: String(payload.verifier), returnTo: String(payload.returnTo ?? '/my-world'), access: payload.access as LoginAccess | undefined };
+  } catch {
+    return null;
+  }
 }
 
 type TokenResponse = {

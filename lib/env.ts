@@ -43,7 +43,8 @@ export function env(): Env {
     ...process.env,
     // Accept the names hosting integrations create (POSTGRES_URL, KV_URL, <PREFIX>_URL ...).
     DATABASE_URL: databaseUrl(),
-    REDIS_URL: redisUrl() ?? 'redis://localhost:6379',
+    // Locally a missing Redis means the default local server; in production it is a setup problem to report.
+    REDIS_URL: redisUrl() ?? (process.env.VERCEL || process.env.NODE_ENV === 'production' ? undefined : 'redis://localhost:6379'),
     // On Vercel, fall back to the deployment URL so self-calls and OAuth redirects work before a domain is set.
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000'),
     // Vercel has no worker process: default to inline there unless told otherwise.

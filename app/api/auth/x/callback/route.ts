@@ -67,6 +67,7 @@ export async function GET(req: NextRequest) {
           followingCount: me.public_metrics?.following_count ?? 0,
           postCount: me.public_metrics?.tweet_count ?? 0,
           ingestState: 'queued',
+          access: login.access ?? 'followers',
         },
       });
       await enqueueIngest(world.id, 'first_build');

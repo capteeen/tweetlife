@@ -4,11 +4,13 @@ import type { WorldModel, MarkModel } from '@/lib/world/load';
 import type { Placed } from '@/lib/world/geometry';
 import type { PlacedVenue } from '@/lib/life/venues';
 import type { Item } from '@/lib/life/market';
+import type { HomeItem } from '@/lib/life/home';
 
 export type Peer = { id: string; handle: string; x: number; z: number; yaw: number; at: number; ride?: string | null };
 export type ChatLine = { id: string; from: string; text: string; at: number; x: number; z: number };
 export type Toast = { id: string; text: string; kind: string; at: number };
-export type PhoneApp = 'home' | 'trenches' | 'wallet' | 'solana' | 'hustle' | 'market' | 'garage' | 'rich' | 'gist' | 'map' | 'guestbook' | 'settings';
+export type PhoneApp = 'home' | 'trenches' | 'wallet' | 'solana' | 'hustle' | 'market' | 'garage' | 'house' | 'rich' | 'gist' | 'map' | 'guestbook' | 'settings';
+export type MarketKind = 'car' | 'boat' | 'plane' | 'home' | null;
 
 export type LifeMe = {
   id: string; handle: string; name: string; avatarUrl: string | null; bags: number; status: string;
@@ -30,6 +32,7 @@ export type TokenBalance = {
 export type LifeData = {
   me: LifeMe | null;
   assets?: (Item & { equipped: boolean; paid: number; acquiredAt: string })[];
+  furniture?: HomeItem[];
   netWorth?: number;
   quests?: { day: string; quests: { id: string; title: string; emoji: string; target: number; reward: number; progress: number; done: boolean; claimed: boolean }[]; resetsAt: string };
   txs?: { id: string; kind: string; amount: number; note: string; at: string }[];
@@ -51,7 +54,7 @@ export type WorldState = {
   // life layer
   life: LifeData | null;
   wallet: WalletData | null;
-  phone: { open: boolean; app: PhoneApp; marketKind: 'car' | 'boat' | 'plane' | null; to: string | null };
+  phone: { open: boolean; app: PhoneApp; marketKind: MarketKind; to: string | null };
   selectedPeer: Peer | null;
   selectedVenue: PlacedVenue | null;
   nearVenue: string | null;
@@ -75,7 +78,7 @@ export type WorldState = {
   setLife: (l: LifeData | null) => void;
   setWallet: (w: WalletData | null) => void;
   patchMe: (p: Partial<LifeMe>) => void;
-  openPhone: (app?: PhoneApp, marketKind?: 'car' | 'boat' | 'plane' | null, to?: string | null) => void;
+  openPhone: (app?: PhoneApp, marketKind?: MarketKind, to?: string | null) => void;
   closePhone: () => void;
   selectPeer: (p: Peer | null) => void;
   selectVenue: (v: PlacedVenue | null) => void;

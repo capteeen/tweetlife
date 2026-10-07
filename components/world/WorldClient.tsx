@@ -13,6 +13,7 @@ import { TopHUD } from '@/components/life/TopHUD';
 import { StatBars } from '@/components/life/StatBars';
 import { Phone } from '@/components/life/Phone';
 import { PeerCard } from '@/components/life/PeerCard';
+import { ResidentCard } from '@/components/life/ResidentCard';
 import { VenueCard } from '@/components/life/VenueCard';
 import { CityMap, TripBanner } from '@/components/life/CityMap';
 import { VenueMusic } from '@/components/life/VenueMusic';
@@ -189,6 +190,7 @@ export function WorldClient({ handle, spawnPostId, embed, backdrop }: { handle: 
           <StatBars />
           <PostCard handle={model.handle} showMetrics={model.showMetrics} canAct={!!me} />
           <PeerCard worldId={model.id} sendSocial={sendSocial} />
+          <ResidentCard />
           <VenueCard sendSocial={sendSocial} />
           <Phone sendSocial={sendSocial} handle={model.handle} />
           <TripBanner />

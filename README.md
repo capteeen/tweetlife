@@ -211,6 +211,13 @@ never purchasable, never cashable. The Trenches shows **real** tokens and **real
 cached 60 s); trades there are real SOL from the Solana wallet (below). `/api/life/*` holds all of it;
 `lib/life/` has the rules (`stats.ts`, `venues.ts`, `market.ts`, `quests.ts`, `trenches.ts`); `lib/solana/` holds the wallet and swap code.
 
+**Residents.** Ten named regulars (`lib/life/residents.ts`) walk between the venues on the wall clock, so every
+visitor sees them in the same place: dancing at Club Moon, on the treadmill at the gym, on a stool at the Degen
+Lounge. Tap one to talk. Replies come from DeepSeek (`/api/life/residents/chat`, set `DEEPSEEK_API_KEY`); each
+resident has a short persona and the game's vocabulary as the system prompt, replies are capped at 120 tokens,
+players at 6 messages a minute and 150 a day, and the deployment at `RESIDENT_CHAT_DAILY_CAP` a day. Without a key,
+past a cap, or when DeepSeek fails, they answer from their canned lines.
+
 <<<<<<< HEAD
 ## Real wallets (Solana)
 

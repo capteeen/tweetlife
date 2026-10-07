@@ -341,7 +341,7 @@ export function Figure({ seed, look: chosen, speedRef, label, labelColor = '#FFF
         </group>
       </group>
       {label && (
-        <Billboard position={[0, shoulderY + 0.62, 0]} follow lockX lockZ>
+        <Billboard position={[0, shoulderY + 0.62, 0]} follow>
           <Text font={FONT} fontSize={0.22} color={labelColor} outlineWidth={0.02} outlineColor="#0B0E14" anchorX="center" anchorY="bottom">
             {label}
           </Text>

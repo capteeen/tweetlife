@@ -17,6 +17,7 @@ import { Structures } from './Structures';
 import { Player } from './Player';
 import { Marks } from './Marks';
 import { Peers, Residents } from './Residents';
+import { CityResidents } from './CityResidents';
 import { BalloonFeed } from './Balloons';
 import { useWorld } from './store';
 
@@ -120,6 +121,9 @@ function Scene(props: SceneProps) {
       <ContactShadows frames={1} position={[0, 0.3, 0]} scale={geometry.contentRadius * 2.1 + 20} blur={2} opacity={0.4} far={14} resolution={1024} />
       <Marks marks={marks} />
       <Residents count={geometry.residents} radius={geometry.contentRadius + 20} handle={handle} blocks={geometry.blocks} grid={geometry.grid} />
+      {geometry.structures.length > 0 && (
+        <CityResidents contentRadius={geometry.contentRadius} boundaryRadius={R} blocks={geometry.blocks} grid={geometry.grid} interactive={mode === 'walk'} />
+      )}
       {mode === 'walk' && (
         <>
           <Player structures={geometry.structures} blocks={geometry.blocks} grid={geometry.grid} boundaryRadius={R} contentRadius={geometry.contentRadius} spawn={spawn ?? null} />

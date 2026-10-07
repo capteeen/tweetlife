@@ -4,6 +4,7 @@ import { useWorld, type LifeData, type LifeMe, type WalletData } from '@/compone
 import type { Activity, ActivityId } from '@/lib/life/activities';
 import { ITEMS, type Item } from '@/lib/life/market';
 import type { Furniture, FurnitureAction, PowerState } from '@/lib/life/home';
+import type { Holding } from '@/lib/life/coins';
 import { refreshBalloons } from '@/components/world/Balloons';
 
 // Client side of the life layer: load the player's data, perform actions, keep the store in sync.
@@ -78,6 +79,21 @@ export const lifeActions = {
     const r = await j<{ ok: true; lifted: number; toast: { text: string; delta: unknown } | null }>('/api/life/venue', { method: 'POST', body: JSON.stringify({ venueId, actionId, nearby }) });
     if (r.toast) sendSocial({ kind: 'venue', text: r.toast.text, delta: r.toast.delta });
     await refreshLife();
+    return r;
+  },
+  async coins() {
+    return j<{ holdings: Holding[] }>('/api/life/coins');
+  },
+  async buyCoin(chain: string, mint: string, bags: number) {
+    const r = await j<{ ok: true; symbol: string; bags: number }>('/api/life/coins', { method: 'POST', body: JSON.stringify({ op: 'buy', chain, mint, bags }) });
+    await refreshLife();
+    useWorld.getState().pushToast(`🪙 Bought ${bags} bags of $${r.symbol}. It's on your hand.`, 'market');
+    return r;
+  },
+  async sellCoin(mint: string, fraction: number) {
+    const r = await j<{ ok: true; symbol: string; bags: number; pnl: number }>('/api/life/coins', { method: 'POST', body: JSON.stringify({ op: 'sell', mint, fraction }) });
+    await refreshLife();
+    useWorld.getState().pushToast(`🪙 Sold $${r.symbol} for ${r.bags} bags (${r.pnl >= 0 ? '+' : ''}${r.pnl})`, 'market');
     return r;
   },
   async travel(mode: string, to: string) {

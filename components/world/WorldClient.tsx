@@ -15,6 +15,7 @@ import { Phone } from '@/components/life/Phone';
 import { PeerCard } from '@/components/life/PeerCard';
 import { VenueCard } from '@/components/life/VenueCard';
 import { CityMap, TripBanner } from '@/components/life/CityMap';
+import { VenueMusic } from '@/components/life/VenueMusic';
 import { useLife } from '@/components/life/useLife';
 import { placeVenues } from '@/lib/life/venues';
 
@@ -191,6 +192,7 @@ export function WorldClient({ handle, spawnPostId, embed, backdrop }: { handle: 
           <VenueCard sendSocial={sendSocial} />
           <Phone sendSocial={sendSocial} handle={model.handle} />
           <TripBanner />
+          <VenueMusic />
           <CityMap />
           {nearVenue && !selectedVenue && (
             <button

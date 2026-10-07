@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useWorld } from '@/components/world/store';
 import { lifeActions, type SocialSend } from './useLife';
 import { TravelPicker } from './TravelPicker';
+import { CoinCounter } from './CoinCounter';
 import { airportLayout, inRect } from '@/lib/world/layout';
 import type { PlacedVenue } from '@/lib/life/venues';
 
@@ -48,6 +49,8 @@ export function VenueCard({ sendSocial }: { sendSocial: SocialSend }) {
     try {
       const r = await lifeActions.venue(venue.id, actionId, nearby, sendSocial);
       const a = venue.actions.find((x) => x.id === actionId)!;
+      // play the move that goes with it (dancing at the club, push-ups at the gym...)
+      if (a.act) useWorld.getState().setDoing({ id: a.act, until: Date.now() + (a.actSeconds ?? 8) * 1000 });
       setMsg(`${a.emoji} Done. ${a.nearby ? `${r.lifted} ${r.lifted === 1 ? 'person' : 'people'} nearby felt it.` : ''}`);
     } catch (e) {
       setMsg((e as Error).message);
@@ -91,7 +94,7 @@ export function VenueCard({ sendSocial }: { sendSocial: SocialSend }) {
         <div className={`mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 ${here ? '' : 'opacity-60'}`}>
           {venue.app && (
             <button className="btn !justify-start !rounded-2xl !py-3" onClick={() => openPhone(venue.app === 'market' ? 'market' : venue.app!, venue.marketKind ?? null)}>
-              {venue.app === 'wallet' ? '🏦 Open the bank' : venue.app === 'trenches' ? '📈 Open the Trenches' : `${venue.emoji} Browse ${venue.marketKind === 'car' ? 'cars' : venue.marketKind === 'boat' ? 'boats' : 'aircraft'}`}
+              {venue.app === 'wallet' ? '🏦 Open the bank' : venue.app === 'trenches' ? '📈 Ape with real SOL (phone)' : `${venue.emoji} Browse ${venue.marketKind === 'car' ? 'cars' : venue.marketKind === 'boat' ? 'boats' : 'aircraft'}`}
             </button>
           )}
           {venue.actions.map((a) => (
@@ -114,6 +117,8 @@ export function VenueCard({ sendSocial }: { sendSocial: SocialSend }) {
           ))}
         </div>
       )}
+      {me && here && venue.id === 'exchange' && <CoinCounter />}
+      {me && !here && venue.id === 'exchange' && <p className="mt-2 text-xs text-white/50">Get to the counter to buy coins with bags.</p>}
       {me && !here && venue.actions.length > 0 && <p className="mt-2 text-xs text-white/50">Get there to do any of these.</p>}
       {msg && <p className="mt-2 text-xs text-white/70">{msg}</p>}
       {!here && door && <TravelPicker to={door} label={venue.name} />}

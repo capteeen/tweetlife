@@ -3,6 +3,8 @@ import { redis } from '../redis';
 import { balances } from '../solana/wallet';
 import { applyDelta, type Stats } from './stats';
 import { setStats } from './player';
+import { quotes, type Token } from './trenches';
+import { BAGS_PER_USD as PAPER_BAGS_PER_USD } from './coinRules';
 
 // Bags on a string: the coins a player holds, drawn as balloons tied to their hand. Built from the real wallet
 // (on-chain balances, DexScreener prices) and the player's own swap history for profit and loss. Only the coin,
@@ -38,13 +40,14 @@ export const balloonKey = (playerId: string) => `balloons:${playerId}`;
 export async function balloonsFor(playerId: string): Promise<Balloon[]> {
   const cached = await redis().get(balloonKey(playerId)).catch(() => null);
   if (cached) return JSON.parse(cached);
+  const paper = await paperBalloons(playerId);
   const w = await db.wallet.findUnique({ where: { id: playerId } });
-  if (!w) return [];
+  if (!w) return finish(playerId, paper);
   let bal: Awaited<ReturnType<typeof balances>>;
   try {
     bal = await balances(w.publicKey);
   } catch {
-    return []; // chain unreachable: no balloons rather than wrong ones; not cached so the next poll retries
+    return paper; // chain unreachable: no wallet balloons rather than wrong ones; not cached so the next poll retries
   }
   const held = bal.tokens
     .filter((t) => t.symbol && (t.valueUsd ?? 0) >= MIN_VALUE_USD)
@@ -66,9 +69,29 @@ export async function balloonsFor(playerId: string): Promise<Balloon[]> {
     const state: Balloon['state'] = (t.change1h ?? 0) <= RUG_1H ? 'rug' : pnlPct != null && pnlPct >= GOLD_PNL ? 'gold' : 'normal';
     return { mint: t.mint, symbol: t.symbol!, icon: t.icon, pnlPct: pnlPct == null ? null : Math.round(pnlPct), up: pnlPct != null ? pnlPct >= 0 : (t.change24h ?? 0) >= 0, state };
   });
+  // on-chain coins first; paper coins from the Coin Shop fill the rest of the hand
+  const seen = new Set(out.map((b) => b.mint));
+  return finish(playerId, [...out, ...paper.filter((b) => !seen.has(b.mint))].slice(0, MAX_BALLOONS));
+}
+
+async function finish(playerId: string, out: Balloon[]) {
   await applyEffects(playerId, out);
   await redis().set(balloonKey(playerId), JSON.stringify(out), 'EX', TTL).catch(() => {});
   return out;
+}
+
+/** Coins bought with bags at the Coin Shop, as balloons: PnL against the bags paid in. */
+async function paperBalloons(playerId: string): Promise<Balloon[]> {
+  const rows = await db.paperCoin.findMany({ where: { playerId }, orderBy: { costBags: 'desc' }, take: MAX_BALLOONS });
+  if (!rows.length) return [];
+  const q = await quotes(rows.map((r) => ({ chain: r.chain, address: r.mint }))).catch(() => new Map<string, Token>());
+  return rows.map((r) => {
+    const t = q.get(`${r.chain}:${r.mint.toLowerCase()}`);
+    const value = t ? r.units * t.priceUsd * PAPER_BAGS_PER_USD : null;
+    const pnlPct = value != null && r.costBags > 0 ? Math.round(((value - r.costBags) / r.costBags) * 100) : null;
+    const state: Balloon['state'] = (t?.change1h ?? 0) <= RUG_1H ? 'rug' : pnlPct != null && pnlPct >= GOLD_PNL ? 'gold' : 'normal';
+    return { mint: r.mint, symbol: r.symbol, icon: r.icon, pnlPct, up: pnlPct != null ? pnlPct >= 0 : (t?.change24h ?? 0) >= 0, state };
+  });
 }
 
 /** A rug costs the holder vibes and a 2x earns clout, once per coin (the Redis key is the receipt). */

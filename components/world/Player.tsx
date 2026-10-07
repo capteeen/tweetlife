@@ -15,6 +15,7 @@ import { lifeActions } from '@/components/life/useLife';
 import type { FigureAct } from './figureMoves';
 import { airportLayout, airportSolids, along, onLand, type Airport } from '@/lib/world/layout';
 import { RideVehicle } from './RideVehicle';
+import { worldWalls } from '@/lib/world/interiors';
 import { carItem } from '@/components/life/travel';
 
 // Third-person orbit-and-walk. WASD/arrows + mouse-drag on desktop, twin virtual sticks on mobile.
@@ -30,12 +31,16 @@ type Spawn = { x: number; z: number; rot: number; depth: number } | null;
 // Without a deep link the visitor starts on the road north of the oldest block, facing the city centre.
 const DEFAULT_SPAWN = { x: 0, z: -(BLOCK_D / 2 + SIDEWALK + ROAD / 2) };
 
-type Obstacle = { x: number; z: number; w: number; d: number };
+/** w/d along the obstacle's own axes; `rot` turns it like a venue (walls of walk-in venues). */
+type Obstacle = { x: number; z: number; w: number; d: number; rot?: number };
 
 export function Player({ structures, blocks, grid, boundaryRadius, contentRadius, spawn }: { structures: Placed[]; blocks: Block[]; grid: CityGrid; boundaryRadius: number; contentRadius: number; spawn: Spawn }) {
   const venues = useMemo(() => placeVenues(contentRadius, boundaryRadius), [contentRadius, boundaryRadius]);
   const airport = useMemo(() => airportLayout(contentRadius, boundaryRadius), [contentRadius, boundaryRadius]);
-  const obstacles = useMemo<Obstacle[]>(() => [...venues.map((v) => ({ x: v.x, z: v.z, w: v.w, d: v.d })), ...airportSolids(airport)], [venues, airport]);
+  const obstacles = useMemo<Obstacle[]>(
+    () => [...venues.flatMap((v) => (v.walkIn ? worldWalls(v) : [{ x: v.x, z: v.z, w: v.w, d: v.d }])), ...airportSolids(airport)],
+    [venues, airport],
+  );
   const trip = useWorld((s) => s.trip);
   const setTrip = useWorld((s) => s.setTrip);
   const riding = useWorld((s) => s.riding);
@@ -282,7 +287,14 @@ function blockedAt(structures: Placed[], obstacles: Obstacle[], x: number, z: nu
   if (mode === 'walk' && !onLand(x, z, 0, boundaryRadius, airport)) return true;
   if (mode !== 'walk' && r > boundaryRadius + WATER_RANGE) return true;
   if (mode === 'plane') return false;
-  for (const o of obstacles) if (Math.abs(x - o.x) < o.w / 2 + PLAYER_R && Math.abs(z - o.z) < o.d / 2 + PLAYER_R) return true;
+  for (const o of obstacles) {
+    let dx = x - o.x, dz = z - o.z;
+    if (o.rot) {
+      const c = Math.cos(o.rot), s = Math.sin(o.rot);
+      [dx, dz] = [dx * c - dz * s, dx * s + dz * c];
+    }
+    if (Math.abs(dx) < o.w / 2 + PLAYER_R && Math.abs(dz) < o.d / 2 + PLAYER_R) return true;
+  }
   for (const s of structures) {
     if (s.kind === 'lantern' || s.segment > 0) continue;
     if (Math.abs(x - s.x) < s.width / 2 + PLAYER_R && Math.abs(z - s.z) < s.depth / 2 + PLAYER_R) return true;

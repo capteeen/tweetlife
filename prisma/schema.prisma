@@ -24,12 +24,12 @@ enum Access {
 }
 
 enum StructureKind {
-  pillar     // standalone text post
-  spire      // segment of a thread (same conversation_id, authored by owner)
-  monolith   // post with photo — framed, shows the real image
-  obelisk    // post with video
+  pillar // standalone text post
+  spire // segment of a thread (same conversation_id, authored by owner)
+  monolith // post with photo — framed, shows the real image
+  obelisk // post with video
   outbuilding // reply to someone else
-  lantern    // repost — light, no mass
+  lantern // repost — light, no mass
 }
 
 enum RunStatus {
@@ -48,61 +48,61 @@ enum RunKind {
 
 /// A signed-in X account. Tokens are AES-256-GCM encrypted with TOKEN_ENCRYPTION_KEY.
 model User {
-  id                 String   @id // X user id
-  handle             String   @unique
-  name               String
-  avatarUrl          String?
-  accessTokenEnc     String
-  refreshTokenEnc    String?
-  tokenExpiresAt     DateTime
-  scopes             String
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
-  revokedAt          DateTime?
+  id              String    @id // X user id
+  handle          String    @unique
+  name            String
+  avatarUrl       String?
+  accessTokenEnc  String
+  refreshTokenEnc String?
+  tokenExpiresAt  DateTime
+  scopes          String
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  revokedAt       DateTime?
 
-  world              World?
-  marks              Mark[]
-  lanterns           Lantern[]
-  apiCalls           ApiCall[]
-  player             Player?
+  world    World?
+  marks    Mark[]
+  lanterns Lantern[]
+  apiCalls ApiCall[]
+  player   Player?
 }
 
 model World {
-  id              String      @id @default(cuid())
-  handle          String      @unique
-  xUserId         String      @unique
-  owner           User        @relation(fields: [xUserId], references: [id], onDelete: Cascade)
+  id               String      @id @default(cuid())
+  handle           String      @unique
+  xUserId          String      @unique
+  owner            User        @relation(fields: [xUserId], references: [id], onDelete: Cascade)
   /// The X account's created_at — drives sky phase.
   accountCreatedAt DateTime
-  createdAt       DateTime    @default(now())
-  biome           String      @default("meadow") // meadow | dune | tundra | reef | ember
-  access          Access      @default(followers)
-  listedOnExplore Boolean     @default(false)
-  landmarkPostId  String?     // manual pin; null = highest engagement post of all time
-  followersCount  Int         @default(0)
-  followingCount  Int         @default(0)
-  postCount       Int         @default(0) // public_metrics.tweet_count from X — real, may exceed what we could fetch
-  lastSyncAt      DateTime?
-  nextSyncAt      DateTime?
-  ingestState     IngestState @default(queued)
-  ingestError     String?
+  createdAt        DateTime    @default(now())
+  biome            String      @default("meadow") // meadow | dune | tundra | reef | ember
+  access           Access      @default(followers)
+  listedOnExplore  Boolean     @default(false)
+  landmarkPostId   String? // manual pin; null = highest engagement post of all time
+  followersCount   Int         @default(0)
+  followingCount   Int         @default(0)
+  postCount        Int         @default(0) // public_metrics.tweet_count from X — real, may exceed what we could fetch
+  lastSyncAt       DateTime?
+  nextSyncAt       DateTime?
+  ingestState      IngestState @default(queued)
+  ingestError      String?
   /// Newest post id we have — since_id for incremental sync.
-  newestPostId    String?
+  newestPostId     String?
   /// Oldest post id we have — pagination_token resumes from here on first build if interrupted.
-  oldestPostId    String?
-  showReplies     Boolean     @default(true)
-  showMetrics     Boolean     @default(true)
-  chatEnabled     Boolean     @default(false)
+  oldestPostId     String?
+  showReplies      Boolean     @default(true)
+  showMetrics      Boolean     @default(true)
+  chatEnabled      Boolean     @default(false)
   /// Owner-laid paths: JSON array of [{x,z}] polylines in world units.
-  paths           Json        @default("[]")
-  updatedAt       DateTime    @updatedAt
+  paths            Json        @default("[]")
+  updatedAt        DateTime    @updatedAt
 
-  structures      Structure[]
-  marks           Mark[]
-  ingestRuns      IngestRun[]
-  lanterns        Lantern[]
-  sessions        VisitorSession[]
-  timelapses      TimelapseJob[]
+  structures Structure[]
+  marks      Mark[]
+  ingestRuns IngestRun[]
+  lanterns   Lantern[]
+  sessions   VisitorSession[]
+  timelapses TimelapseJob[]
 
   @@index([listedOnExplore, access])
 }
@@ -118,8 +118,8 @@ model Structure {
   referencedId   String?
   text           String
   mediaUrl       String?
-  mediaKind      String?       // photo | video | animated_gif
-  likes          Int?          // null = metrics missing from X; structure renders at minimum scale
+  mediaKind      String? // photo | video | animated_gif
+  likes          Int? // null = metrics missing from X; structure renders at minimum scale
   reposts        Int?
   replies        Int?
   impressions    Int?
@@ -129,7 +129,7 @@ model Structure {
   metricsAt      DateTime      @default(now())
   createdAt      DateTime      @default(now())
 
-  lanterns       Lantern[]
+  lanterns Lantern[]
 
   @@unique([worldId, postId])
   @@index([worldId, postedAt])
@@ -138,18 +138,18 @@ model Structure {
 
 /// A guestbook stone.
 model Mark {
-  id        String   @id @default(cuid())
-  worldId   String
-  world     World    @relation(fields: [worldId], references: [id], onDelete: Cascade)
-  byUserId  String
-  by        User     @relation(fields: [byUserId], references: [id], onDelete: Cascade)
-  byHandle  String
-  text      String
-  x         Float
-  z         Float
+  id       String   @id @default(cuid())
+  worldId  String
+  world    World    @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  byUserId String
+  by       User     @relation(fields: [byUserId], references: [id], onDelete: Cascade)
+  byHandle String
+  text     String
+  x        Float
+  z        Float
   /// true when the owner follows the visitor back (one cached relationship check).
-  bright    Boolean  @default(false)
-  at        DateTime @default(now())
+  bright   Boolean  @default(false)
+  at       DateTime @default(now())
 
   @@unique([worldId, byUserId])
   @@index([worldId, at])
@@ -171,14 +171,14 @@ model Lantern {
 }
 
 model VisitorSession {
-  id            String   @id @default(cuid())
+  id            String    @id @default(cuid())
   worldId       String
-  world         World    @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  world         World     @relation(fields: [worldId], references: [id], onDelete: Cascade)
   visitorId     String?
   visitorHandle String
-  x             Float    @default(0)
-  z             Float    @default(0)
-  joinedAt      DateTime @default(now())
+  x             Float     @default(0)
+  z             Float     @default(0)
+  joinedAt      DateTime  @default(now())
   leftAt        DateTime?
 
   @@index([worldId, joinedAt])
@@ -209,15 +209,15 @@ model IngestRun {
 
 /// One row per outbound request to api.x.com. This is the budget ledger — monthly quota is SUM(1) here.
 model ApiCall {
-  id        BigInt   @id @default(autoincrement())
-  at        DateTime @default(now())
-  userId    String?
-  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  endpoint  String
-  status    Int
+  id                 BigInt    @id @default(autoincrement())
+  at                 DateTime  @default(now())
+  userId             String?
+  user               User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  endpoint           String
+  status             Int
   rateLimitRemaining Int?
   rateLimitReset     DateTime?
-  durationMs Int
+  durationMs         Int
 
   @@index([at])
   @@index([endpoint, at])
@@ -251,20 +251,20 @@ model Incident {
 // ---------------------------------------------------------------------------------------------
 
 model Player {
-  id         String   @id // = User.id
-  user       User     @relation(fields: [id], references: [id], onDelete: Cascade)
-  bags       Int      @default(10000)
-  vibes      Int      @default(70) // fun
-  clout      Int      @default(50) // social
-  gas        Int      @default(80) // energy
-  status     String   @default("Just arrived")
+  id          String   @id // = User.id
+  user        User     @relation(fields: [id], references: [id], onDelete: Cascade)
+  bags        Int      @default(10000)
+  vibes       Int      @default(70) // fun
+  clout       Int      @default(50) // social
+  gas         Int      @default(80) // energy
+  status      String   @default("Just arrived")
   /// The look picked in the avatar creator (lib/life/look.ts). Null = seeded from the handle.
-  look       Json?
+  look        Json?
   /// True for players created after the avatar creator shipped, until they pick a look.
-  lookPending Boolean @default(false)
-  lastTickAt DateTime @default(now())
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  lookPending Boolean  @default(false)
+  lastTickAt  DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   wallet     Wallet?
   walletTxs  WalletTx[]
@@ -273,14 +273,15 @@ model Player {
   sent       Interaction[] @relation("sent")
   received   Interaction[] @relation("received")
   assets     Asset[]
+  paperCoins PaperCoin[]
 }
 
 model BagTx {
   id       String   @id @default(cuid())
   playerId String
   player   Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
-  kind     String   // buy | sell | tip_in | tip_out | quest | welcome
-  amount   Int      // signed
+  kind     String // buy | sell | tip_in | tip_out | quest | welcome
+  amount   Int // signed
   note     String
   at       DateTime @default(now())
 
@@ -346,12 +347,30 @@ model WalletTx {
   id        String   @id @default(cuid())
   playerId  String
   player    Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
-  kind      String   // swap_buy | swap_sell | send | airdrop
-  lamports  BigInt   // SOL moved, signed (negative = out); 0 when unknown
+  kind      String // swap_buy | swap_sell | send | airdrop
+  lamports  BigInt // SOL moved, signed (negative = out); 0 when unknown
   mint      String?
   signature String?  @unique
   note      String
   at        DateTime @default(now())
 
   @@index([playerId, at])
+}
+
+/// A memecoin bought with bags at the Coin Shop: a paper position priced from the live DexScreener feed.
+/// No chain, no wallet; selling turns it back into bags at the live price.
+model PaperCoin {
+  id        String   @id @default(cuid())
+  playerId  String
+  player    Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  chain     String
+  mint      String
+  symbol    String
+  icon      String?
+  units     Float
+  /// bags paid in, net of anything sold (for profit and loss)
+  costBags  Int
+  updatedAt DateTime @updatedAt
+
+  @@unique([playerId, mint])
 }

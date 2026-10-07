@@ -14,39 +14,40 @@ export default async function How() {
           depends on it uses its minimum, and the post card says so.
         </p>
 
-        <Section title="Each post becomes one structure">
-          <Rule k="Standalone text" v="a pillar (hexagonal stone column)." />
-          <Rule k="Thread" v="posts sharing a conversation_id and authored by the owner stack into one spire, one segment per post." />
-          <Rule k="Photo" v="a framed monolith showing the real image, loaded only when you are near it." />
-          <Rule k="Video / GIF" v="a screen obelisk." />
-          <Rule k="Reply to someone else" v="a small outbuilding attached to the nearest structure posted within the same hour." />
-          <Rule k="Repost" v="a lantern: light, no mass." />
+        <Section title="Each post becomes one building">
+          <Rule k="Standalone text" v="a building on its own lot, facing the street." />
+          <Rule k="Thread" v="posts sharing a conversation_id and authored by the owner stack into one tower, one storey-block per post." />
+          <Rule k="Photo" v="a building with the real image as a billboard on its facade, loaded only when you are near it." />
+          <Rule k="Video / GIF" v="a building with a dark screen across its front." />
+          <Rule k="Reply to someone else" v="a small shed beside the building posted within the same hour (it takes no lot of its own)." />
+          <Rule k="Repost" v="a street lamp on the sidewalk in front of the previous building: light, no mass." />
         </Section>
 
         <Section title="Engagement becomes geometry (log scaled)">
-          <Rule k="like_count" v="height = base + 1.35 · log10(1 + likes). Ten likes add ~1.4 units; a million adds ~8." />
-          <Rule k="retweet_count" v="width = base + 0.45 · log10(1 + reposts)." />
-          <Rule k="reply_count" v="windows = min(24, round(1.5 · log2(1 + replies)))." />
+          <Rule k="like_count" v="height = base + 2.4 · log10(1 + likes). Ten likes add about a storey; a million adds ~14 units." />
+          <Rule k="retweet_count" v="footprint width = base + 0.6 · log10(1 + reposts), capped by the lot." />
+          <Rule k="reply_count" v="lit windows on the facade = min(40, round(2.5 · log2(1 + replies)))." />
           <Rule k="impression_count" v="glow = min(1, log10(1 + impressions) / 7). Ten million impressions is full glow." />
           <Rule k="Missing metrics" v="minimum scale, no windows, no glow. The card reads “metrics not available”." />
         </Section>
 
-        <Section title="Posting cadence becomes terrain">
+        <Section title="Posting cadence becomes the map">
           <p className="text-sm text-white/70">
-            Structures sit on a spiral keyed to created_at: the oldest post is at the centre, the newest at the edge. Walking outward walks
-            forward through the account&apos;s history. The ground under each post is coloured by the gap since the previous post:
+            The city is a road grid of blocks, eight lots each. Blocks fill chronologically from the centre block outward in rings, so
+            walking outward walks forward through the account&apos;s history. Each block is coloured by the gaps between the posts on it:
           </p>
-          <Rule k="≤ 7 days" v="lush." />
-          <Rule k="7–30 days" v="dry." />
-          <Rule k="30+ days" v="sand. A long silence is a wide band of barren ground you cross." />
-          <Rule k="Beyond the newest post" v="the gap from the last post to today sets the outermost band." />
+          <Rule k="≤ 7 days between posts" v="lush: green blocks with sidewalk trees." />
+          <Rule k="7–30 days" v="dry: yellowed blocks, few trees." />
+          <Rule k="30+ days" v="sand: bare blocks, no trees." />
+          <Rule k="Silence" v="every 3 days of quiet beyond a week leaves one vacant lot (up to 24), so a long silence is a stretch of empty lots you walk past." />
+          <Rule k="Beyond the newest block" v="the countryside around the city takes the class of the gap from the last post to today." />
         </Section>
 
         <Section title="The account itself">
-          <Rule k="followers_count" v="boundary radius = max(fit, 36 + 22 · log10(1 + followers)) and the number of ambient residents." />
+          <Rule k="followers_count" v="boundary radius = max(city + margin, 60 + 30 · log10(1 + followers)), the number of residents walking the streets, and the cars in traffic." />
           <Rule k="Account created_at" v="sky phase: new accounts at dawn, ~3 years at noon, ~8 at gold evening, 14+ at night." />
-          <Rule k="Highest-engagement post" v="the landmark: a light column always on the horizon, text readable up close. Owners can pin a different one." />
-          <Rule k="Determinism" v="every rotation and resident path is seeded from the handle, so the world is identical on every device." />
+          <Rule k="Highest-engagement post" v="the landmark: a light column always on the horizon, text readable at its door. Owners can pin a different one." />
+          <Rule k="Determinism" v="roof colours, tree placement, resident routes and traffic are seeded from the handle, so the city is identical on every device." />
         </Section>
 
         <Section title="Access and what visitors can do">

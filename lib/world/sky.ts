@@ -18,7 +18,7 @@ export function skyColors(t: number) {
 export function sunFor(t: number) {
   // low warm sun at dawn/evening, high at noon, dim moon at night
   const elevation = t < 0.5 ? 0.25 + t * 1.3 : 0.9 - (t - 0.5) * 1.4;
-  const intensity = t > 0.85 ? 0.35 : 1.6 - Math.abs(t - 0.4) * 1.2;
+  const intensity = t > 0.85 ? 0.5 : 2.0 - Math.abs(t - 0.4) * 1.0;
   const color = t > 0.85 ? '#9FB4D9' : t > 0.5 ? '#FFD2A3' : t < 0.18 ? '#FFC9A8' : '#FFF6E8';
   return { elevation: Math.max(0.15, elevation), intensity: Math.max(0.3, intensity), color };
 }

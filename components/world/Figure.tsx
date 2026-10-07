@@ -3,7 +3,10 @@ import { useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { Text } from '@react-three/drei';
+
 import { prng, hashString } from '@/lib/world/seed';
+// Self-hosted label font (Inter, SIL OFL) so no label ever fetches from a CDN.
+const FONT = '/fonts/inter-600.woff';
 
 // A low-poly person. Appearance (skin, hair, outfit) is seeded from the handle so a visitor looks the same
 // everywhere; limbs swing in a walk cycle while moving. Shared by the player, other visitors and residents.
@@ -171,7 +174,7 @@ export function Figure({ seed, speedRef, label, labelColor = '#FFFFFF', dim = fa
         </group>
       </group>
       {label && (
-        <Text position={[0, shoulderY + 0.62, 0]} fontSize={0.22} color={labelColor} outlineWidth={0.02} outlineColor="#0B0E14" anchorX="center" anchorY="bottom">
+        <Text font={FONT} position={[0, shoulderY + 0.62, 0]} fontSize={0.22} color={labelColor} outlineWidth={0.02} outlineColor="#0B0E14" anchorX="center" anchorY="bottom">
           {label}
         </Text>
       )}

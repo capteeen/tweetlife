@@ -17,7 +17,7 @@ export type WorldState = {
   peers: Record<string, Peer>;
   chat: ChatLine[];
   playerPos: { x: number; z: number; yaw: number };
-  spawnAt: { x: number; z: number } | null;
+  spawnAt: { x: number; z: number; rot: number; depth: number } | null;
   guestbookOpen: boolean;
   chatOpen: boolean;
   setModel: (m: WorldModel, skyline: boolean, me: Me) => void;
@@ -28,7 +28,7 @@ export type WorldState = {
   dropPeer: (id: string) => void;
   pushChat: (c: ChatLine) => void;
   setPlayerPos: (p: { x: number; z: number; yaw: number }) => void;
-  setSpawn: (p: { x: number; z: number } | null) => void;
+  setSpawn: (p: { x: number; z: number; rot: number; depth: number } | null) => void;
   addMark: (m: MarkModel) => void;
   clearMarks: (id?: string) => void;
   setGuestbookOpen: (v: boolean) => void;

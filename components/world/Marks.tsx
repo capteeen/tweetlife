@@ -3,9 +3,12 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { Text } from '@react-three/drei';
+
 import type { MarkModel } from '@/lib/world/load';
 import { LANTERN } from '@/lib/world/biomes';
 import { useWorld } from './store';
+// Self-hosted label font (Inter, SIL OFL) so no label ever fetches from a CDN.
+const FONT = '/fonts/inter-600.woff';
 
 // Guestbook stones. Bright stones (owner follows the visitor back) glow harder.
 
@@ -62,7 +65,7 @@ export function Marks({ marks }: { marks: MarkModel[] }) {
       )}
       {near && (
         <group position={[near.x, 1.1, near.z]} rotation={[0, Math.atan2(playerPos.x - near.x, playerPos.z - near.z), 0]}>
-          <Text fontSize={0.22} color="#0B0E14" outlineWidth={0.02} outlineColor="#FFF4DC" anchorX="center" anchorY="bottom" maxWidth={4} textAlign="center">
+          <Text font={FONT} fontSize={0.22} color="#0B0E14" outlineWidth={0.02} outlineColor="#FFF4DC" anchorX="center" anchorY="bottom" maxWidth={4} textAlign="center">
             {`@${near.byHandle}\n${near.text}`}
           </Text>
         </group>

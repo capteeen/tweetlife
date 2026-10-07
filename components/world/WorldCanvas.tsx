@@ -9,7 +9,8 @@ import type { MarkModel } from '@/lib/world/load';
 import { PALETTES, type Biome } from '@/lib/world/biomes';
 import { Sky } from './Sky';
 import { skyColors, sunFor } from '@/lib/world/sky';
-import { Terrain } from './Terrain';
+import { City } from './City';
+import { Cars } from './Cars';
 import { Structures } from './Structures';
 import { Player } from './Player';
 import { Marks } from './Marks';
@@ -29,7 +30,7 @@ export type SceneProps = {
   handle: string;
   showMetrics: boolean;
   mode: 'walk' | 'boundary' | 'still';
-  spawn?: { x: number; z: number } | null;
+  spawn?: { x: number; z: number; rot: number; depth: number } | null;
   /** for still frames: camera placement */
   still?: { x: number; y: number; z: number; lookAt?: [number, number, number] };
   onReady?: () => void;
@@ -49,7 +50,7 @@ export function WorldCanvas(props: SceneProps) {
       camera={{ fov: 50, near: 0.3, far: R * 6 + 400, position: [R * 0.9, R * 0.35, R * 0.9] }}
       onCreated={({ gl }) => {
         gl.toneMapping = THREE.ACESFilmicToneMapping;
-        gl.toneMappingExposure = 1.05;
+        gl.toneMappingExposure = 1.18;
       }}
       style={{ position: 'absolute', inset: 0 }}
       onPointerMissed={() => useWorld.getState().select(null)}
@@ -79,11 +80,12 @@ function Scene(props: SceneProps) {
       onReady();
     }
   });
-  const sunPos: [number, number, number] = [R * 0.8, R * sun.elevation, R * 0.4];
+  const sunPos: [number, number, number] = [R * 0.55, R * sun.elevation, -R * 0.6];
   return (
     <>
       <Sky t={geometry.skyT} radius={R * 5 + 300} />
-      <hemisphereLight args={['#DCE8F5', '#5C5544', 0.55]} />
+      <hemisphereLight args={['#DCE8F5', '#6B6A5A', 1.15]} />
+      <ambientLight intensity={0.25} />
       <directionalLight
         position={sunPos}
         intensity={sun.intensity}
@@ -98,12 +100,13 @@ function Scene(props: SceneProps) {
         shadow-camera-near={1}
         shadow-camera-far={R * 4}
       />
-      <Terrain bands={geometry.bands} boundaryRadius={R} biome={biome} handle={handle} paths={paths} />
+      <City blocks={geometry.blocks} grid={geometry.grid} outside={geometry.outside} boundaryRadius={R} biome={biome} handle={handle} paths={paths} />
+      <Cars count={geometry.cars} grid={geometry.grid} handle={handle} />
       <Structures structures={geometry.structures} showMetrics={showMetrics} interactive={mode === 'walk'} />
       {/* ambient-occlusion stand-in: one baked contact shadow pass under everything */}
-      <ContactShadows frames={1} position={[0, 0.02, 0]} scale={R * 2.2} blur={2.4} opacity={0.45} far={12} resolution={1024} />
+      <ContactShadows frames={1} position={[0, 0.3, 0]} scale={geometry.contentRadius * 2.1 + 20} blur={2} opacity={0.4} far={14} resolution={1024} />
       <Marks marks={marks} />
-      <Residents count={geometry.residents} radius={geometry.contentRadius + 8} handle={handle} />
+      <Residents count={geometry.residents} radius={geometry.contentRadius + 20} handle={handle} />
       {mode === 'walk' && (
         <>
           <Player structures={geometry.structures} boundaryRadius={R} spawn={spawn ?? null} />
@@ -121,10 +124,10 @@ function BoundaryOrbit({ radius, landmark }: { radius: number; landmark: { x: nu
   const { camera } = useThree();
   useFrame(({ clock }) => {
     const t = clock.elapsedTime * 0.045;
-    const d = radius * 1.35;
-    camera.position.set(Math.cos(t) * d, radius * 0.28 + 6, Math.sin(t) * d);
-    const lx = landmark ? landmark.x * 0.35 : 0, lz = landmark ? landmark.z * 0.35 : 0;
-    camera.lookAt(lx, (landmark?.height ?? 6) * 0.35, lz);
+    const d = radius * 1.1;
+    camera.position.set(Math.cos(t) * d, radius * 0.75, Math.sin(t) * d);
+    const lx = landmark ? landmark.x * 0.3 : 0, lz = landmark ? landmark.z * 0.3 : 0;
+    camera.lookAt(lx, 0, lz);
   });
   return null;
 }

@@ -28,7 +28,8 @@ lib/x/               THE ONLY PLACE X IS TOUCHED
   api.ts             typed wrappers: users/me, users/:id/tweets, tweets?ids, users/:id/following
   ingest.ts          first build (page-by-page), incremental (since_id), nightly metrics refresh
   relationship.ts    "does visitor follow owner?" with Redis cache (24h positive / 1h negative), fails closed
-lib/world/           pure geometry: classify, spiral layout, log scaling, terrain bands, sky phase (seeded by handle)
+lib/world/           pure geometry: classify, city-grid layout (blocks fill chronologically from the centre), log scaling,
+                     block terrain by posting gaps, vacant lots for silences, sky phase (seeded by handle)
 lib/queue/           BullMQ queues (ingest, timelapse) with retries and a visible dead-letter list
 worker/index.ts      ingestion worker + scheduler (incremental every 6h, metrics nightly 03:00 UTC)
 worker/timelapse.ts  Playwright + ffmpeg: 20s MP4 of the world assembling from account creation to today

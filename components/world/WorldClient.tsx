@@ -43,7 +43,7 @@ export function WorldClient({ handle, spawnPostId, embed }: { handle: string; sp
       if (spawnPostId) {
         const s = j.world.geometry.structures.find((p) => p.postId === spawnPostId);
         if (s) {
-          setSpawn({ x: s.x, z: s.z });
+          setSpawn({ x: s.x, z: s.z, rot: s.rot, depth: s.depth });
           useWorld.getState().select(s);
         }
       }

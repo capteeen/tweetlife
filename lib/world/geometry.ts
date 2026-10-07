@@ -1,7 +1,9 @@
 import { seededFor } from './seed';
 
-// Pure world geometry. Input is the structure rows as stored (real post fields only);
-// output is what the renderer draws. No randomness beyond the handle-seeded PRNG.
+// Pure world geometry: the account's real posts laid out as a city.
+// Blocks sit on a road grid and fill chronologically from the centre block outward in rings, so
+// walking outward walks forward through the account's history. Each post is a building on a lot.
+// No randomness beyond the handle-seeded PRNG.
 
 export type StructureKind = 'pillar' | 'spire' | 'monolith' | 'obelisk' | 'outbuilding' | 'lantern';
 export type TerrainClass = 'lush' | 'dry' | 'sand';
@@ -31,13 +33,19 @@ export type Placed = {
   kind: StructureKind;
   x: number;
   z: number;
-  /** base elevation (thread segments stack) */
+  /** base elevation (tower segments stack) */
   y: number;
+  /** 0 = front faces +z, PI = front faces -z (always axis aligned, facing the street) */
   rot: number;
   height: number;
+  /** footprint along x */
   width: number;
+  /** footprint along z */
+  depth: number;
   windows: number;
   glow: number; // 0..1
+  /** roof palette index 0..3 */
+  roof: number;
   text: string;
   mediaUrl: string | null;
   mediaKind: string | null;
@@ -47,59 +55,95 @@ export type Placed = {
   impressions: number | null;
   postedAt: string;
   lanternsLit: number;
-  /** index in chronological order — the spiral position */
+  /** chronological lot index */
   index: number;
-  /** thread segment index (0 = root) */
+  /** tower segment index (0 = root) */
   segment: number;
   isLandmark: boolean;
   metricsKnown: boolean;
 };
 
-export type TerrainBand = { rIn: number; rOut: number; cls: TerrainClass };
+export type Lot = { x: number; z: number; w: number; d: number; cls: TerrainClass; facing: 1 | -1 };
+export type Block = { i: number; j: number; x: number; z: number; cls: TerrainClass; vacant: Lot[]; used: number };
+
+export type CityGrid = {
+  /** ring count: blocks span i,j in [-K, K] */
+  K: number;
+  pitchX: number;
+  pitchZ: number;
+  blockW: number;
+  blockD: number;
+  road: number;
+  sidewalk: number;
+};
 
 export type WorldGeometry = {
   structures: Placed[];
-  bands: TerrainBand[];
+  blocks: Block[];
+  grid: CityGrid;
+  /** terrain class of the countryside beyond the city (gap from the newest post to now) */
+  outside: TerrainClass;
   boundaryRadius: number;
   contentRadius: number;
   skyPhase: SkyPhase;
   skyT: number; // 0..1 along dawn->night
   residents: number;
+  cars: number;
   landmarkId: string | null;
 };
 
-// Spiral: Fermat r = SPACING * sqrt(i), golden angle. Slot i for chronological index i.
-export const SPACING = 4.4;
-const GOLDEN = Math.PI * (3 - Math.sqrt(5));
+// City dimensions (world units ≈ metres).
+export const LOT_W = 7;
+export const LOT_D = 11;
+export const LOTS_PER_SIDE = 4;
+export const BLOCK_W = LOT_W * LOTS_PER_SIDE; // 28
+export const BLOCK_D = LOT_D * 2; // 22, two rows back to back
+export const SIDEWALK = 2;
+export const ROAD = 7;
+export const PITCH_X = BLOCK_W + 2 * SIDEWALK + ROAD; // 39
+export const PITCH_Z = BLOCK_D + 2 * SIDEWALK + ROAD; // 33
+export const LOTS_PER_BLOCK = LOTS_PER_SIDE * 2;
 
-export function spiralSlot(i: number): { x: number; z: number; r: number; theta: number } {
-  const r = SPACING * Math.sqrt(i + 1);
-  const theta = i * GOLDEN;
-  return { x: Math.cos(theta) * r, z: Math.sin(theta) * r, r, theta };
+/** Block coordinates in fill order: ring by ring from the centre, each ring clockwise from the top. */
+export function blockOrder(count: number): { i: number; j: number }[] {
+  const out: { i: number; j: number }[] = [];
+  for (let k = 0; out.length < count; k++) {
+    if (k === 0) {
+      out.push({ i: 0, j: 0 });
+      continue;
+    }
+    const ring: { i: number; j: number }[] = [];
+    for (let i = -k; i <= k; i++) for (let j = -k; j <= k; j++) if (Math.max(Math.abs(i), Math.abs(j)) === k) ring.push({ i, j });
+    ring.sort((a, b) => Math.atan2(a.i, -a.j) - Math.atan2(b.i, -b.j));
+    out.push(...ring);
+  }
+  return out.slice(0, count);
 }
 
-/** Inverse of spiralSlot's radius: which chronological index sits at radius r. */
-export function indexAtRadius(r: number): number {
-  return Math.max(0, (r / SPACING) ** 2 - 1);
+export function lotAt(block: { i: number; j: number }, l: number): Lot {
+  const bx = block.i * PITCH_X, bz = block.j * PITCH_Z;
+  const row: 1 | -1 = l < LOTS_PER_SIDE ? -1 : 1; // north row faces -z, south row faces +z
+  const col = l % LOTS_PER_SIDE;
+  return { x: bx - BLOCK_W / 2 + LOT_W / 2 + col * LOT_W, z: bz + (row * LOT_D) / 2, w: LOT_W, d: LOT_D, cls: 'lush', facing: row };
 }
 
 // Engagement -> geometry, log scaled so a 9M-view post is a landmark without crushing everything.
-const MIN_HEIGHT: Record<StructureKind, number> = { pillar: 1.6, spire: 1.4, monolith: 2.2, obelisk: 2.4, outbuilding: 0.9, lantern: 0.6 };
-const MIN_WIDTH: Record<StructureKind, number> = { pillar: 0.7, spire: 0.8, monolith: 1.3, obelisk: 1.0, outbuilding: 0.6, lantern: 0.3 };
+const MIN_HEIGHT: Record<StructureKind, number> = { pillar: 3.2, spire: 3.0, monolith: 4.0, obelisk: 4.2, outbuilding: 1.6, lantern: 3.2 };
+const MIN_WIDTH: Record<StructureKind, number> = { pillar: 3.6, spire: 3.8, monolith: 4.4, obelisk: 4.2, outbuilding: 1.8, lantern: 0.3 };
 
 export function scaleHeight(kind: StructureKind, likes: number | null) {
   const base = MIN_HEIGHT[kind];
-  if (likes == null) return base;
-  return base + Math.log10(1 + likes) * 1.35; // 10 likes ~ +1.4, 10k ~ +5.4, 1M ~ +8.1
+  if (likes == null || kind === 'lantern') return base;
+  return base + Math.log10(1 + likes) * 2.4; // 10 likes ~ +2.5 (one floor), 10k ~ +9.6, 1M ~ +14.4
 }
 export function scaleWidth(kind: StructureKind, reposts: number | null) {
   const base = MIN_WIDTH[kind];
-  if (reposts == null) return base;
-  return base + Math.log10(1 + reposts) * 0.45;
+  if (reposts == null || kind === 'lantern') return base;
+  return Math.min(LOT_W - 1, base + Math.log10(1 + reposts) * 0.6);
 }
 export function scaleWindows(replies: number | null) {
   if (replies == null) return 0;
-  return Math.min(24, Math.round(Math.log2(1 + replies) * 1.5));
+  return Math.min(40, Math.round(Math.log2(1 + replies) * 2.5));
 }
 export function scaleGlow(impressions: number | null) {
   if (impressions == null) return 0;
@@ -125,13 +169,16 @@ export function skyFromAccountAge(accountCreatedAt: Date, now = new Date()): { p
 }
 
 export function boundaryRadiusFor(followersCount: number, contentRadius: number) {
-  // followers set the boundary; the world always fits inside it with a walkable margin.
-  const fromFollowers = 36 + Math.log10(1 + followersCount) * 22; // 0 -> 36, 1k -> 102, 1M -> 168
-  return Math.max(contentRadius + 18, fromFollowers);
+  // followers set the boundary; the city always fits inside it with a margin of countryside.
+  const fromFollowers = 60 + Math.log10(1 + followersCount) * 30; // 0 -> 60, 1k -> 150, 1M -> 240
+  return Math.max(contentRadius + 30, fromFollowers);
 }
 
 export function residentsFor(followersCount: number) {
   return Math.min(40, Math.round(Math.log10(1 + followersCount) * 5));
+}
+export function carsFor(followersCount: number) {
+  return Math.min(24, 2 + Math.round(Math.log10(1 + followersCount) * 3));
 }
 
 export type BuildOptions = {
@@ -145,20 +192,17 @@ export type BuildOptions = {
 
 export function buildWorld(rowsIn: StructureRow[], opts: BuildOptions): WorldGeometry {
   const now = opts.now ?? new Date();
-  const rand = seededFor(opts.handle, 'rot');
+  const rand = seededFor(opts.handle, 'city');
   const rows = rowsIn
     .filter((r) => !r.hidden)
     .filter((r) => opts.showReplies || r.kind !== 'outbuilding')
     .sort((a, b) => a.postedAt.localeCompare(b.postedAt) || a.postId.localeCompare(b.postId));
 
-  // Threads: group spire segments and pillars that share a conversation with other owner posts.
+  // Threads: owner posts sharing a conversation with a self-reply stack into one tower.
   const byConv = new Map<string, StructureRow[]>();
   for (const r of rows) if (r.conversationId) byConv.get(r.conversationId)?.push(r) ?? byConv.set(r.conversationId, [r]);
-  const threadRoot = new Map<string, StructureRow>(); // conversationId -> root row
-  for (const [conv, group] of byConv) {
-    const hasSpire = group.some((g) => g.kind === 'spire');
-    if (group.length > 1 && hasSpire) threadRoot.set(conv, group[0]);
-  }
+  const threadRoot = new Map<string, StructureRow>();
+  for (const [conv, group] of byConv) if (group.length > 1 && group.some((g) => g.kind === 'spire')) threadRoot.set(conv, group[0]);
 
   // Landmark: pinned post, else the highest-engagement post of all time.
   let landmarkId: string | null = null;
@@ -175,21 +219,27 @@ export function buildWorld(rowsIn: StructureRow[], opts: BuildOptions): WorldGeo
     }
   }
 
+  // Pass 1: assign lots. Lamps (reposts) and sheds (replies to others) attach to the previous building's
+  // lot and do not consume one. Silences longer than a week leave vacant lots behind.
+  type LotAssign = { cls: TerrainClass; occupied: boolean };
+  const lots: LotAssign[] = [];
   const placed: Placed[] = [];
-  const slotOf = new Map<string, Placed>(); // postId -> placed (for thread stacking / outbuilding attach)
-  let slot = 0;
-  const bands: TerrainBand[] = [];
+  const byPost = new Map<string, Placed>();
   let prevTime: number | null = null;
+  let lastBuilding: Placed | null = null;
 
-  const pushBand = (rIn: number, rOut: number, cls: TerrainClass) => {
-    const last = bands[bands.length - 1];
-    if (last && last.cls === cls) last.rOut = rOut;
-    else bands.push({ rIn, rOut, cls });
+  let order: { i: number; j: number }[] = blockOrder(9);
+  const lotFor = (idx: number): Lot => {
+    const b = Math.floor(idx / LOTS_PER_BLOCK);
+    if (b >= order.length) order = blockOrder(Math.max(b + 1, order.length * 2));
+    return lotAt(order[b], idx % LOTS_PER_BLOCK);
   };
 
   for (const r of rows) {
     const t = Date.parse(r.postedAt);
-    const kindIsThreadSegment = r.conversationId && threadRoot.has(r.conversationId) && threadRoot.get(r.conversationId) !== r;
+    const gapDays = prevTime == null ? 0 : (t - prevTime) / 86400000;
+    const gapCls = terrainClassForGapDays(gapDays);
+    prevTime = t;
     const metricsKnown = r.likes != null;
     const base = {
       id: r.id,
@@ -207,11 +257,13 @@ export function buildWorld(rowsIn: StructureRow[], opts: BuildOptions): WorldGeo
       glow: scaleGlow(r.impressions),
       isLandmark: r.postId === landmarkId,
       metricsKnown,
+      roof: Math.floor(rand() * 4),
     };
 
-    if (kindIsThreadSegment) {
-      // Stack on the root's column.
-      const root = slotOf.get(threadRoot.get(r.conversationId as string)!.postId);
+    // Tower segment: stack on the thread root's building.
+    const isSegment = r.conversationId && threadRoot.has(r.conversationId) && threadRoot.get(r.conversationId) !== r;
+    if (isSegment) {
+      const root = byPost.get(threadRoot.get(r.conversationId as string)!.postId);
       if (root) {
         const siblings = placed.filter((p) => p.x === root.x && p.z === root.z);
         const y = siblings.reduce((acc, p) => acc + p.height, 0);
@@ -223,85 +275,131 @@ export function buildWorld(rowsIn: StructureRow[], opts: BuildOptions): WorldGeo
           y,
           rot: root.rot,
           height: scaleHeight('spire', r.likes),
-          width: Math.max(0.6, root.width * 0.92),
+          width: Math.max(2.4, root.width * 0.9),
+          depth: Math.max(2.4, root.depth * 0.9),
           index: root.index,
           segment: siblings.length,
         };
         placed.push(p);
-        slotOf.set(r.postId, p);
+        byPost.set(r.postId, p);
         continue;
       }
     }
 
-    if (r.kind === 'outbuilding') {
-      // Attach to the nearest structure posted within the same hour; otherwise it takes a small slot of its own.
+    // Lamp (repost): on the sidewalk in front of the previous building.
+    if (r.kind === 'lantern' && lastBuilding) {
+      const side = lastBuilding.rot === 0 ? 1 : -1;
+      const p: Placed = {
+        ...base,
+        kind: 'lantern',
+        x: lastBuilding.x + (rand() - 0.5) * (LOT_W - 1.5),
+        z: lastBuilding.z + side * (lastBuilding.depth / 2 + 1.2 + SIDEWALK),
+        y: 0,
+        rot: lastBuilding.rot,
+        height: MIN_HEIGHT.lantern,
+        width: MIN_WIDTH.lantern,
+        depth: MIN_WIDTH.lantern,
+        index: lastBuilding.index,
+        segment: 0,
+      };
+      placed.push(p);
+      byPost.set(r.postId, p);
+      continue;
+    }
+
+    // Shed (reply to someone else): beside the nearest building posted within the same hour, else the previous one.
+    if (r.kind === 'outbuilding' && lastBuilding) {
       const hourAgo = t - 3600 * 1000;
-      const parent = [...placed].reverse().find((p) => p.kind !== 'outbuilding' && p.kind !== 'lantern' && Date.parse(p.postedAt) >= hourAgo);
-      if (parent) {
-        const a = rand() * Math.PI * 2;
-        const d = parent.width + 0.9;
-        const p: Placed = {
-          ...base,
-          kind: 'outbuilding',
-          x: parent.x + Math.cos(a) * d,
-          z: parent.z + Math.sin(a) * d,
-          y: 0,
-          rot: rand() * Math.PI * 2,
-          height: scaleHeight('outbuilding', r.likes),
-          width: scaleWidth('outbuilding', r.reposts),
-          index: parent.index,
-          segment: 0,
-        };
-        placed.push(p);
-        slotOf.set(r.postId, p);
-        continue;
-      }
+      const parent = [...placed].reverse().find((p) => p.kind !== 'outbuilding' && p.kind !== 'lantern' && Date.parse(p.postedAt) >= hourAgo) ?? lastBuilding;
+      const w = scaleWidth('outbuilding', r.reposts);
+      const sideX = rand() < 0.5 ? -1 : 1;
+      const p: Placed = {
+        ...base,
+        kind: 'outbuilding',
+        x: parent.x + sideX * (parent.width / 2 + w / 2 + 0.3),
+        z: parent.z + (parent.rot === 0 ? -1 : 1) * (parent.depth / 2 + w * 0.45 + 0.3),
+        y: 0,
+        rot: parent.rot,
+        height: scaleHeight('outbuilding', r.likes),
+        width: w,
+        depth: w * 0.9,
+        index: parent.index,
+        segment: 0,
+      };
+      placed.push(p);
+      byPost.set(r.postId, p);
+      continue;
     }
 
-    // A silence longer than a week skips spiral slots, so quiet periods are visibly barren ground
-    // you walk across rather than a line between two posts. Capped so a years-long gap stays walkable.
-    const gapDays = prevTime == null ? 0 : (t - prevTime) / 86400000;
-    const rPrev = slot === 0 ? 0 : spiralSlot(slot - 1).r;
-    if (gapDays > 7) slot += Math.min(60, Math.floor((gapDays - 7) / 4));
+    // Vacant lots for the silence before this post.
+    if (gapDays > 7) {
+      const skip = Math.min(24, Math.floor((gapDays - 7) / 3));
+      for (let k = 0; k < skip; k++) lots.push({ cls: gapCls, occupied: false });
+    }
 
-    const { x, z, r: radius } = spiralSlot(slot);
+    const idx = lots.length;
+    const lot = lotFor(idx);
     const kind: StructureKind = r.conversationId && threadRoot.get(r.conversationId) === r ? 'spire' : r.kind;
+    const width = scaleWidth(kind, r.reposts);
+    const depth = Math.min(LOT_D - 3, width * 1.2 + 1.5);
     const p: Placed = {
       ...base,
       kind,
-      x,
-      z,
+      x: lot.x,
+      // buildings sit toward the street side of their lot, leaving a back yard
+      z: lot.z + lot.facing * (LOT_D / 2 - depth / 2 - 1.2),
       y: 0,
-      rot: rand() * Math.PI * 2,
+      rot: lot.facing === 1 ? 0 : Math.PI,
       height: scaleHeight(kind, r.likes),
-      width: scaleWidth(kind, r.reposts),
-      index: slot,
+      width,
+      depth,
+      index: idx,
       segment: 0,
     };
+    lots.push({ cls: gapCls, occupied: true });
     placed.push(p);
-    slotOf.set(r.postId, p);
-
-    // Terrain band from the previous post's radius to this one = the gap since the previous post.
-    pushBand(rPrev, radius, terrainClassForGapDays(gapDays));
-    prevTime = t;
-    slot++;
+    byPost.set(r.postId, p);
+    lastBuilding = p;
   }
 
-  const contentRadius = slot === 0 ? 0 : spiralSlot(slot - 1).r;
-  const boundaryRadius = boundaryRadiusFor(opts.followersCount, contentRadius);
-  // Outside the newest post: the gap from the last post to now.
+  // Blocks: terrain class by majority of their lots; vacant lots listed for rendering.
   const tailDays = prevTime == null ? 365 : (now.getTime() - prevTime) / 86400000;
-  pushBand(contentRadius, boundaryRadius + 10, terrainClassForGapDays(tailDays));
-
+  const outside = terrainClassForGapDays(tailDays);
+  const nBlocks = Math.max(1, Math.ceil(lots.length / LOTS_PER_BLOCK));
+  if (nBlocks > order.length) order = blockOrder(nBlocks);
+  const blocks: Block[] = [];
+  for (let b = 0; b < nBlocks; b++) {
+    const bl = order[b];
+    const counts: Record<TerrainClass, number> = { lush: 0, dry: 0, sand: 0 };
+    const vacant: Lot[] = [];
+    let used = 0;
+    for (let l = 0; l < LOTS_PER_BLOCK; l++) {
+      const a = lots[b * LOTS_PER_BLOCK + l];
+      const cls = a ? a.cls : outside;
+      counts[cls]++;
+      if (!a || !a.occupied) vacant.push({ ...lotAt(bl, l), cls });
+      else used++;
+    }
+    const cls = (Object.keys(counts) as TerrainClass[]).sort((p, q) => counts[q] - counts[p])[0];
+    blocks.push({ i: bl.i, j: bl.j, x: bl.i * PITCH_X, z: bl.j * PITCH_Z, cls, vacant, used });
+  }
+  const K = blocks.reduce((m, b) => Math.max(m, Math.abs(b.i), Math.abs(b.j)), 0);
+  const grid: CityGrid = { K, pitchX: PITCH_X, pitchZ: PITCH_Z, blockW: BLOCK_W, blockD: BLOCK_D, road: ROAD, sidewalk: SIDEWALK };
+  const contentRadius = Math.hypot((K + 0.5) * PITCH_X, (K + 0.5) * PITCH_Z);
+  const boundaryRadius = boundaryRadiusFor(opts.followersCount, contentRadius);
   const sky = skyFromAccountAge(opts.accountCreatedAt, now);
+
   return {
     structures: placed,
-    bands,
+    blocks,
+    grid,
+    outside,
     boundaryRadius,
     contentRadius,
     skyPhase: sky.phase,
     skyT: sky.t,
     residents: residentsFor(opts.followersCount),
+    cars: carsFor(opts.followersCount),
     landmarkId,
   };
 }

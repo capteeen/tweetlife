@@ -712,6 +712,11 @@ function SettingsApp({ handle }: { handle: string }) {
   const me = useWorld((s) => s.me);
   return (
     <div className="mt-3 space-y-2 text-sm">
+      {me && (
+        <a className="btn w-full" href={`/create?next=${encodeURIComponent(`/w/${handle}`)}`}>
+          👕 Change my look
+        </a>
+      )}
       {me?.isOwner && (
         <Link className="btn w-full" href="/my-world">
           Owner dashboard

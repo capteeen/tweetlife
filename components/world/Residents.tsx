@@ -8,6 +8,8 @@ import { Figure } from './Figure';
 import { Vehicle, riderOffset } from './Vehicle';
 import { ITEMS } from '@/lib/life/market';
 import type { Peer as PeerT } from './store';
+import { residentLook } from '@/lib/life/look';
+import { useLookOf } from '@/components/life/useLook';
 
 // Residents: ambient people whose count comes from followers_count, wandering on seeded loops.
 // Peers: the real visitors currently inside, from the presence room.
@@ -37,6 +39,7 @@ export function Residents({ count, radius, handle }: { count: number; radius: nu
 
 function Resident({ loop: l, radius }: { loop: { seed: string; cx: number; cz: number; r: number; speed: number; phase: number; dir: number }; radius: number }) {
   const ref = useRef<THREE.Group>(null);
+  const look = useMemo(() => residentLook(l.seed), [l.seed]);
   useFrame(({ clock }) => {
     const g = ref.current;
     if (!g) return;
@@ -51,7 +54,7 @@ function Resident({ loop: l, radius }: { loop: { seed: string; cx: number; cz: n
   });
   return (
     <group ref={ref}>
-      <Figure seed={l.seed} alwaysWalk dim />
+      <Figure seed={l.seed} look={look} alwaysWalk dim />
     </group>
   );
 }
@@ -75,6 +78,7 @@ function Peer({ peer }: { peer: PeerT }) {
   const item = peer.ride ? ITEMS.find((i) => i.id === peer.ride) ?? null : null;
   const ro = riderOffset(item);
   const speed = useRef(0);
+  const look = useLookOf(peer.handle);
   const last = useRef({ x: peer.x, z: peer.z, t: performance.now() });
   useFrame(() => {
     const g = ref.current;
@@ -101,7 +105,7 @@ function Peer({ peer }: { peer: PeerT }) {
     >
       {item && <Vehicle item={item} />}
       <group position={[0, ro.y, 0]} scale={ro.scale}>
-        <Figure seed={peer.handle} speedRef={speed} label={`@${peer.handle}`} dim={!ro.show} />
+        <Figure seed={peer.handle} look={look} speedRef={speed} label={`@${peer.handle}`} dim={!ro.show} />
       </group>
     </group>
   );

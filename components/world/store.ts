@@ -4,6 +4,7 @@ import type { WorldModel, MarkModel } from '@/lib/world/load';
 import type { Placed } from '@/lib/world/geometry';
 import type { PlacedVenue } from '@/lib/life/venues';
 import type { Item } from '@/lib/life/market';
+import type { Look } from '@/lib/life/look';
 import type { HomeItem } from '@/lib/life/home';
 
 export type Peer = { id: string; handle: string; x: number; z: number; yaw: number; at: number; ride?: string | null };
@@ -14,7 +15,7 @@ export type MarketKind = 'car' | 'boat' | 'plane' | 'home' | null;
 
 export type LifeMe = {
   id: string; handle: string; name: string; avatarUrl: string | null; bags: number; status: string;
-  vibes: number; clout: number; gas: number; mood: string; moodEmoji: string;
+  vibes: number; clout: number; gas: number; mood: string; moodEmoji: string; look: Look | null; lookPending: boolean;
 };
 export type WalletData = {
   address: string;

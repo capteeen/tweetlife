@@ -8,7 +8,7 @@ import type * as Party from 'partykit/server';
 const MAX_PER_ROOM = 50;
 const CHAT_RANGE = 14;
 
-type Visitor = { id: string; handle: string; x: number; z: number; yaw: number; at: number; ride: string | null };
+type Visitor = { id: string; handle: string; x: number; z: number; yaw: number; at: number; ride: string | null; act: string | null };
 
 export default class WorldRoom implements Party.Server {
   visitors = new Map<string, Visitor>();
@@ -33,7 +33,7 @@ export default class WorldRoom implements Party.Server {
       return;
     }
     const v = JSON.parse(ctx.request.headers.get('x-visitor') ?? '{}') as { id: string; handle: string };
-    const visitor: Visitor = { id: v.id, handle: v.handle, x: 0, z: 0, yaw: 0, at: Date.now(), ride: null };
+    const visitor: Visitor = { id: v.id, handle: v.handle, x: 0, z: 0, yaw: 0, at: Date.now(), ride: null, act: null };
     this.visitors.set(conn.id, visitor);
     conn.send(JSON.stringify({ t: 'hello', me: conn.id, peers: [...this.visitors.values()] }));
     this.room.broadcast(JSON.stringify({ t: 'join', peer: visitor }), [conn.id]);
@@ -42,7 +42,7 @@ export default class WorldRoom implements Party.Server {
   onMessage(raw: string, sender: Party.Connection) {
     const me = this.visitors.get(sender.id);
     if (!me) return;
-    let msg: { t: string; x?: number; z?: number; yaw?: number; text?: string; ride?: string | null; to?: string; kind?: string; delta?: unknown };
+    let msg: { t: string; x?: number; z?: number; yaw?: number; text?: string; ride?: string | null; act?: string | null; to?: string; kind?: string; delta?: unknown };
     try {
       msg = JSON.parse(raw);
     } catch {
@@ -53,8 +53,10 @@ export default class WorldRoom implements Party.Server {
       me.z = msg.z;
       me.yaw = msg.yaw ?? 0;
       me.ride = typeof msg.ride === 'string' ? msg.ride : null;
+      // an everyday activity being played (dance, stretch...), so others see it too
+      me.act = typeof msg.act === 'string' ? msg.act.slice(0, 16) : null;
       me.at = Date.now();
-      this.room.broadcast(JSON.stringify({ t: 'pos', id: me.id, x: me.x, z: me.z, yaw: me.yaw, ride: me.ride }), [sender.id]);
+      this.room.broadcast(JSON.stringify({ t: 'pos', id: me.id, x: me.x, z: me.z, yaw: me.yaw, ride: me.ride, act: me.act }), [sender.id]);
     } else if (msg.t === 'social' && typeof msg.text === 'string') {
       // a social action or venue effect: deliver to the named visitor, or to everyone within earshot
       const line = { t: 'social', id: crypto.randomUUID(), from: me.handle, kind: msg.kind ?? 'social', text: msg.text.slice(0, 200), delta: msg.delta ?? null, at: Date.now() };

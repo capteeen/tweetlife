@@ -2,11 +2,14 @@
 import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { Canvas, useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
-import { ContactShadows } from '@react-three/drei';
+import { Billboard, ContactShadows, Text } from '@react-three/drei';
 import { Figure } from '@/components/world/Figure';
 import { sticks } from '@/components/world/TouchSticks';
 import { DOOR_X, FOOTPRINT, ROOM_D, ROOM_W, SLOTS, SPAWN, WALL_H, furnitureById, hasPower, type Furniture, type HomeView } from '@/lib/life/home';
 import { useHome } from './store';
+import { useWorld } from '@/components/world/store';
+import { tiredness } from '@/lib/life/activities';
+import type { FigureAct } from '@/components/world/figureMoves';
 import { FurnitureMesh } from './Furniture';
 
 // The house, seen the way the reference shows it: a fixed three-quarter view of one room with two walls,
@@ -177,6 +180,12 @@ function Walker({ placed, handle }: { placed: Furniture[]; handle: string | null
   const keys = useRef<Record<string, boolean>>({});
   const acting = useHome((s) => s.acting);
   const { camera } = useThree();
+  const actRef = useRef<FigureAct | null>(null);
+  const tiredRef = useRef(0);
+  const zzz = useRef<THREE.Group>(null);
+  // my own look when it's me walking around my house
+  const look = useWorld((s) => (s.life?.me && s.life.me.handle === handle ? s.life.me.look : null));
+  const sleeping = acting?.action.pose === 'lie';
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -215,7 +224,7 @@ function Walker({ placed, handle }: { placed: Furniture[]; handle: string | null
     facing.current = Math.atan2(s.x - s.use.x, s.z - s.use.z) || facing.current;
   }, [acting]);
 
-  useFrame((_, dt) => {
+  useFrame((state, dt) => {
     const d = Math.min(dt, 0.05);
     let mx = 0, mz = 0;
     if (!acting) {
@@ -229,6 +238,19 @@ function Walker({ placed, handle }: { placed: Furniture[]; handle: string | null
     }
     const len = Math.hypot(mx, mz);
     speedRef.current = Math.min(1, len);
+    // everyday moves (dance, stretch...) play until they end, you walk off, or a piece of furniture takes over
+    const st = useWorld.getState();
+    if (st.doing && (len > 0.05 || acting || Date.now() > st.doing.until)) st.setDoing(null);
+    actRef.current = st.doing?.id ?? null;
+    tiredRef.current = acting || st.life?.me?.handle !== handle ? 0 : tiredness(st.life?.me?.gas ?? 100);
+    // sleeping: a slow drift of Zs over the bed
+    if (zzz.current) {
+      zzz.current.children.forEach((c, i) => {
+        const k = (state.clock.elapsedTime * 0.45 + i / 3) % 1;
+        c.position.set(0.2 + k * 0.4, 0.5 + k * 1.3, -1.45); // over the head, which lies along -z here
+        c.scale.setScalar(0.6 + k * 0.7);
+      });
+    }
     if (len > 0) {
       // screen-relative: "up" walks away from the camera along the room's diagonal view
       const yaw = Math.atan2(camera.position.x - LOOK.x, camera.position.z - LOOK.z);
@@ -247,7 +269,8 @@ function Walker({ placed, handle }: { placed: Furniture[]; handle: string | null
       // poses: lying is the figure laid flat over the bed; sitting lowers it onto the seat
       if (acting?.action.pose === 'lie') {
         group.current.position.y = 0.75;
-        group.current.rotation.set(-Math.PI / 2, 0, facing.current);
+        // head on the pillow end (the piece's back), whichever way you walked up to it
+        group.current.rotation.set(-Math.PI / 2, 0, -SLOTS[acting.item.slot].rot);
       } else if (acting?.action.pose === 'sit') {
         group.current.position.y = -0.35;
       }
@@ -256,7 +279,18 @@ function Walker({ placed, handle }: { placed: Furniture[]; handle: string | null
 
   return (
     <group ref={group}>
-      <Figure seed={handle ?? 'visitor'} speedRef={speedRef} label={handle ? `@${handle}` : undefined} labelColor="#BFE3FF" />
+      <Figure seed={handle ?? 'visitor'} look={look} speedRef={speedRef} actRef={actRef} tiredRef={tiredRef} label={handle ? `@${handle}` : undefined} labelColor="#BFE3FF" />
+      {sleeping && (
+        <group ref={zzz} rotation={[Math.PI / 2, 0, 0]}>
+          {[0, 1, 2].map((i) => (
+            <Billboard key={i}>
+              <Text fontSize={0.32} color="#BFE3FF" outlineWidth={0.02} outlineColor="#0B0E14" font="/fonts/inter-600.woff">
+                z
+              </Text>
+            </Billboard>
+          ))}
+        </group>
+      )}
     </group>
   );
 }

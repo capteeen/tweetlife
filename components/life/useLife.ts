@@ -1,8 +1,10 @@
 'use client';
 import { useEffect } from 'react';
-import { useWorld, type LifeData, type WalletData } from '@/components/world/store';
+import { useWorld, type LifeData, type LifeMe, type WalletData } from '@/components/world/store';
+import type { Activity, ActivityId } from '@/lib/life/activities';
 import { ITEMS, type Item } from '@/lib/life/market';
 import type { Furniture, FurnitureAction, PowerState } from '@/lib/life/home';
+import { refreshBalloons } from '@/components/world/Balloons';
 
 // Client side of the life layer: load the player's data, perform actions, keep the store in sync.
 
@@ -100,6 +102,20 @@ export const lifeActions = {
     await refreshLife();
     return r;
   },
+  /** Start an everyday activity; the avatar plays it while the server applies the stats. */
+  async activity(activityId: ActivityId) {
+    const r = await j<{ ok: true; me: Pick<LifeMe, 'vibes' | 'clout' | 'gas' | 'mood'>; activity: Activity }>('/api/life/activity', { method: 'POST', body: JSON.stringify({ op: 'do', activityId }) });
+    const s = useWorld.getState();
+    s.patchMe({ ...r.me, status: r.activity.line });
+    s.setDoing({ id: r.activity.id, until: Date.now() + r.activity.seconds * 1000 });
+    return r;
+  },
+  /** Report distance walked on foot; the server takes the gas. */
+  async walk(walked: number, sprinted: number) {
+    const r = await j<{ ok: true; me: Pick<LifeMe, 'gas'> }>('/api/life/activity', { method: 'POST', body: JSON.stringify({ op: 'walk', walked, sprinted }) });
+    useWorld.getState().patchMe({ gas: r.me.gas });
+    return r;
+  },
   async claim(questId: string) {
     const r = await j<{ ok: true; reward: number }>('/api/life/quests', { method: 'POST', body: JSON.stringify({ questId }) });
     await refreshLife();
@@ -124,6 +140,7 @@ export const lifeActions = {
     const r = await j<{ ok: true; signature: string; url: string; outAmount: string; priceImpactPct: string }>('/api/wallet/swap', { method: 'POST', body: JSON.stringify({ side, mint, amount, symbol }) });
     await refreshWallet();
     await refreshLife();
+    refreshBalloons();
     useWorld.getState().pushToast(side === 'buy' ? `Aped $${symbol ?? ''} on-chain 🦍` : `Sold $${symbol ?? ''} ✓`, 'wallet');
     return r;
   },

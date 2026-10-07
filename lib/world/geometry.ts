@@ -178,7 +178,7 @@ export function residentsFor(followersCount: number) {
   return Math.min(40, Math.round(Math.log10(1 + followersCount) * 5));
 }
 export function carsFor(followersCount: number) {
-  return Math.min(24, 2 + Math.round(Math.log10(1 + followersCount) * 3));
+  return Math.min(64, 8 + Math.round(Math.log10(1 + followersCount) * 7));
 }
 
 export type BuildOptions = {

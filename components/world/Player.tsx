@@ -8,10 +8,15 @@ import { BLOCK_D, ROAD, SIDEWALK, surfaceY } from '@/lib/world/geometry';
 import { sticks } from './TouchSticks';
 import { Figure } from './Figure';
 import { Vehicle, riderOffset } from './Vehicle';
+import { Balloons, HAND, useSlumpRef } from './Balloons';
 import { placeVenues } from '@/lib/life/venues';
+import { SPRINT_MIN_GAS, SPRINT_MULT, paceFor, tiredness, walkCost } from '@/lib/life/activities';
+import { lifeActions } from '@/components/life/useLife';
+import type { FigureAct } from './figureMoves';
 
 // Third-person orbit-and-walk. WASD/arrows + mouse-drag on desktop, twin virtual sticks on mobile.
 // The avatar is a low-poly figure; the camera orbits it. Structures push the player out softly.
+// On foot, walking burns gas (Shift sprints, faster and hungrier); a tired player slows down and slouches.
 
 const SPEED = 9;
 const CAM_DIST = 11;
@@ -48,6 +53,12 @@ export function Player({ structures, blocks, grid, boundaryRadius, contentRadius
   const speedRef = useRef(0);
   const me = useWorld((s) => s.me);
   const look = useWorld((s) => s.life?.me?.look ?? null);
+  const hand = useRef<THREE.Object3D>(null);
+  const slumpRef = useSlumpRef(me?.handle ?? '');
+  const actRef = useRef<FigureAct | null>(null);
+  const tiredRef = useRef(0);
+  // distance on foot not yet reported to the server
+  const walked = useRef({ walk: 0, sprint: 0, sending: false });
 
   // Spawn: stand a few units away from the deep-linked structure, facing it.
   useEffect(() => {
@@ -116,6 +127,13 @@ export function Player({ structures, blocks, grid, boundaryRadius, contentRadius
     }
     const len = Math.hypot(mx, mz);
     speedRef.current = Math.min(1, len);
+    const st = useWorld.getState();
+    const gas = st.life?.me?.gas;
+    const onFoot = !riding && gas != null;
+    tiredRef.current = onFoot ? tiredness(gas) : 0;
+    // an activity plays until it ends or you walk off
+    if (st.doing && (len > 0.05 || riding || Date.now() > st.doing.until)) st.setDoing(null);
+    actRef.current = st.doing && !riding ? st.doing.id : null;
     if (len > 0) {
       mx /= Math.max(1, len);
       mz /= Math.max(1, len);
@@ -124,14 +142,31 @@ export function Player({ structures, blocks, grid, boundaryRadius, contentRadius
       const vx = mx * c - mz * s;
       const vz = mx * s + mz * c;
       const mode: MoveMode = riding?.kind === 'plane' ? 'plane' : riding?.kind === 'boat' ? 'boat' : 'walk';
-      const step = SPEED * (riding?.speed ?? 1) * d * Math.min(1, len);
+      const sprint = onFoot && !!(keys.current.ShiftLeft || keys.current.ShiftRight) && gas >= SPRINT_MIN_GAS;
+      const pace = onFoot ? paceFor(gas) * (sprint ? SPRINT_MULT : 1) : 1;
+      const step = SPEED * (riding?.speed ?? 1) * pace * d * Math.min(1, len);
       const nx = pos.current.x + vx * step, nz = pos.current.z + vz * step;
+      const before = { x: pos.current.x, z: pos.current.z };
       // Slide-and-block: a step that would end inside a building is refused; try each axis alone so
       // walls can be followed. Nothing ever pushes the player, so nothing can trap them.
       if (!blockedAt(structures, obstacles, nx, nz, boundaryRadius, mode)) pos.current.set(nx, pos.current.y, nz);
       else if (!blockedAt(structures, obstacles, nx, pos.current.z, boundaryRadius, mode)) pos.current.x = nx;
       else if (!blockedAt(structures, obstacles, pos.current.x, nz, boundaryRadius, mode)) pos.current.z = nz;
       facing.current = Math.atan2(vx, vz);
+      if (onFoot) {
+        const moved = Math.hypot(pos.current.x - before.x, pos.current.z - before.z);
+        if (sprint) walked.current.sprint += moved;
+        else walked.current.walk += moved;
+      }
+    }
+    // every whole gas walked off goes to the server (it never pays anything back, so a lost report only helps you)
+    const w = walked.current;
+    if (!w.sending && walkCost(w.walk, w.sprint) >= 1) {
+      const sent = { walk: w.walk, sprint: w.sprint };
+      w.walk = 0;
+      w.sprint = 0;
+      w.sending = true;
+      lifeActions.walk(sent.walk, sent.sprint).catch(() => {}).finally(() => (w.sending = false));
     }
     // the jet climbs to cruising height; everything else sits on the ground (or the water)
     const targetAlt = riding?.kind === 'plane' ? 16 : 0;
@@ -183,9 +218,11 @@ export function Player({ structures, blocks, grid, boundaryRadius, contentRadius
       {riding && <Vehicle item={riding} />}
       {ro.show && (
         <group position={[0, ro.y, 0]} scale={ro.scale}>
-          <Figure seed={me?.handle ?? 'visitor'} look={me ? look : null} speedRef={speedRef} label={me ? `@${me.handle}` : undefined} labelColor="#BFE3FF" />
+          <Figure seed={me?.handle ?? 'visitor'} look={me ? look : null} speedRef={speedRef} actRef={actRef} tiredRef={tiredRef} slumpRef={slumpRef} label={me ? `@${me.handle}` : undefined} labelColor="#BFE3FF" />
+          <object3D ref={hand} position={HAND} />
         </group>
       )}
+      {me && <Balloons handle={me.handle} hand={hand} scale={ro.scale} visible={ro.show} />}
       {!ro.show && me && (
         <Figure seed={me.handle} look={look} speedRef={speedRef} label={`@${me.handle}`} labelColor="#BFE3FF" dim />
       )}

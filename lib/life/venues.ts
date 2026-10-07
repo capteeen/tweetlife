@@ -1,7 +1,8 @@
 import type { Stats } from './stats';
+import { SPARE_SLOTS, airportLayout, districtOf, slotAngle, venueRingRadius } from '@/lib/world/layout';
 
-// Venues: the city's services, on a ring just outside the post blocks so they are never mistaken for
-// posts. Same set in every world; placement is deterministic from the city size.
+// Venues: the city's services, in districts on a ring just outside the post blocks so they are never
+// mistaken for posts. Same set in every world; placement is deterministic from the city size.
 
 export type VenueAction = {
   id: string;
@@ -67,24 +68,43 @@ export const VENUES: Venue[] = [
   },
   { id: 'dealership', name: 'Dealership', emoji: '🚗', color: '#FFD166', blurb: 'Keke to Lambo.', actions: [], app: 'market', marketKind: 'car' },
   { id: 'marina', name: 'Marina', emoji: '⚓', color: '#6FA8C7', blurb: 'Boats. Leave the shore.', actions: [], app: 'market', marketKind: 'boat' },
-  { id: 'airport', name: 'Airstrip', emoji: '✈️', color: '#BFE3FF', blurb: 'Fly over everything.', actions: [], app: 'market', marketKind: 'plane' },
+  { id: 'airport', name: 'Airport', emoji: '✈️', color: '#BFE3FF', blurb: 'Runway, terminal and hangar. Buy a jet and fly over everything.', actions: [], app: 'market', marketKind: 'plane' },
   { id: 'exchange', name: 'The Trenches', emoji: '📈', color: '#06D6A0', blurb: 'Live memecoins. Ape with bags.', actions: [], app: 'trenches' },
 ];
 
 export const venueById = (id: string) => VENUES.find((v) => v.id === id) ?? null;
 
-export type PlacedVenue = Venue & { x: number; z: number; rot: number; w: number; d: number; h: number };
+export type PlacedVenue = Venue & {
+  x: number; z: number; rot: number; w: number; d: number; h: number;
+  /** district name for the sheet and the map */
+  district: string;
+  /** drawn by its own scene component (the airport terminal), not the generic venue building */
+  custom?: boolean;
+};
 
 export const VENUE_W = 9;
 export const VENUE_D = 9;
 export const VENUE_H = 6;
 
-/** Venues on a ring just outside the city, evenly spaced, facing the centre. */
-export function placeVenues(contentRadius: number): PlacedVenue[] {
-  const r = contentRadius + 16;
-  return VENUES.map((v, i) => {
-    const a = (i / VENUES.length) * Math.PI * 2 + Math.PI / 2; // start at the south (closest to the default spawn's side)
-    const x = Math.cos(a) * r, z = Math.sin(a) * r;
-    return { ...v, x, z, rot: Math.atan2(-x, -z), w: VENUE_W, d: VENUE_D, h: VENUE_H };
+/**
+ * Venues sit in districts on a ring just outside the city, facing the centre (see lib/world/layout.ts).
+ * The airport is the terminal on the airport island. `boundaryRadius` defaults to the smallest a world gets.
+ */
+export function placeVenues(contentRadius: number, boundaryRadius = contentRadius + 30): PlacedVenue[] {
+  const r = venueRingRadius(contentRadius);
+  const spare = [...SPARE_SLOTS];
+  let extra = 0;
+  return VENUES.map((v) => {
+    if (v.id === 'airport') {
+      const t = airportLayout(contentRadius, boundaryRadius).terminal;
+      return { ...v, x: t.x, z: t.z, rot: -Math.PI / 2, w: t.w, d: t.d, h: 7, district: 'Airport island', custom: true };
+    }
+    const dd = districtOf(v.id);
+    const slot = dd ? dd.slots[dd.venues.indexOf(v.id)] : spare.shift();
+    // past the spare slots, further venues go on an outer ring
+    const rr = slot === undefined ? r + 22 : r;
+    const a = slot === undefined ? slotAngle(extra++ * 2 + 1) : slotAngle(slot);
+    const x = Math.cos(a) * rr, z = Math.sin(a) * rr;
+    return { ...v, x, z, rot: Math.atan2(-x, -z), w: VENUE_W, d: VENUE_D, h: VENUE_H, district: dd?.name ?? 'Downtown' };
   });
 }

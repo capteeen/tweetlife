@@ -14,6 +14,7 @@ import { StatBars } from '@/components/life/StatBars';
 import { Phone } from '@/components/life/Phone';
 import { PeerCard } from '@/components/life/PeerCard';
 import { VenueCard } from '@/components/life/VenueCard';
+import { CityMap, TripBanner } from '@/components/life/CityMap';
 import { useLife } from '@/components/life/useLife';
 import { placeVenues } from '@/lib/life/venues';
 
@@ -189,16 +190,18 @@ export function WorldClient({ handle, spawnPostId, embed, backdrop }: { handle: 
           <PeerCard worldId={model.id} sendSocial={sendSocial} />
           <VenueCard sendSocial={sendSocial} />
           <Phone sendSocial={sendSocial} handle={model.handle} />
+          <TripBanner />
+          <CityMap />
           {nearVenue && !selectedVenue && (
             <button
               className="pointer-events-auto absolute bottom-20 [@media(any-pointer:coarse)]:bottom-56 left-1/2 z-20 -translate-x-1/2 rounded-full chrome px-4 py-2 text-sm font-semibold hover:bg-white/10"
               onClick={() => {
-                const v = placeVenues(g.contentRadius).find((x) => x.id === nearVenue);
+                const v = placeVenues(g.contentRadius, g.boundaryRadius).find((x) => x.id === nearVenue);
                 if (v) selectVenue(v);
               }}
             >
               {(() => {
-                const v = placeVenues(g.contentRadius).find((x) => x.id === nearVenue);
+                const v = placeVenues(g.contentRadius, g.boundaryRadius).find((x) => x.id === nearVenue);
                 return v ? `${v.emoji} Enter ${v.name}` : 'Enter';
               })()}
             </button>
@@ -210,6 +213,12 @@ export function WorldClient({ handle, spawnPostId, embed, backdrop }: { handle: 
               </div>
             ))}
           </div>
+          <button
+            className="pointer-events-auto absolute bottom-32 right-3 z-20 rounded-full chrome px-4 py-2 text-sm font-semibold hover:bg-white/10"
+            onClick={() => useWorld.getState().setMapOpen(true)}
+          >
+            🗺️ Map
+          </button>
           {me && (
             <a href="/home" className="pointer-events-auto absolute bottom-20 right-3 z-20 [@media(any-pointer:coarse)]:bottom-56 rounded-full chrome px-4 py-2 text-sm font-semibold hover:bg-white/10">
               🏠 Go home

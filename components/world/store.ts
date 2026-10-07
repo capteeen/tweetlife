@@ -12,6 +12,8 @@ import type { ActivityId } from '@/lib/life/activities';
 export type Doing = { id: ActivityId; until: number } | null;
 
 export type Peer = { id: string; handle: string; x: number; z: number; yaw: number; at: number; ride?: string | null; act?: ActivityId | null };
+/** A ride in progress: the player follows `path` for `duration` seconds from `startedAt` (ms). */
+export type Trip = { mode: string; emoji: string; label: string; path: { x: number; z: number }[]; startedAt: number; duration: number; itemId?: string | null };
 export type ChatLine = { id: string; from: string; text: string; at: number; x: number; z: number };
 export type Toast = { id: string; text: string; kind: string; at: number };
 export type PhoneApp = 'home' | 'trenches' | 'wallet' | 'solana' | 'hustle' | 'market' | 'garage' | 'house' | 'rich' | 'gist' | 'map' | 'guestbook' | 'settings';
@@ -65,6 +67,8 @@ export type WorldState = {
   nearVenue: string | null;
   riding: Item | null;
   teleport: { x: number; z: number } | null;
+  trip: Trip | null;
+  mapOpen: boolean;
   toasts: Toast[];
   doing: Doing;
 
@@ -91,6 +95,8 @@ export type WorldState = {
   setNearVenue: (id: string | null) => void;
   setRiding: (i: Item | null) => void;
   setTeleport: (t: { x: number; z: number } | null) => void;
+  setTrip: (t: Trip | null) => void;
+  setMapOpen: (v: boolean) => void;
   pushToast: (text: string, kind?: string) => void;
   dropToast: (id: string) => void;
   setDoing: (d: Doing) => void;
@@ -116,6 +122,8 @@ export const useWorld = create<WorldState>((set) => ({
   nearVenue: null,
   riding: null,
   teleport: null,
+  trip: null,
+  mapOpen: false,
   toasts: [],
   doing: null,
   setModel: (model, skyline, me) => set({ model, skyline, me }),
@@ -156,6 +164,8 @@ export const useWorld = create<WorldState>((set) => ({
   setNearVenue: (nearVenue) => set({ nearVenue }),
   setRiding: (riding) => set({ riding }),
   setTeleport: (teleport) => set({ teleport }),
+  setTrip: (trip) => set({ trip }),
+  setMapOpen: (mapOpen) => set({ mapOpen, ...(mapOpen ? { selected: null, selectedPeer: null, selectedVenue: null } : {}) }),
   pushToast: (text, kind = 'info') => set((s) => ({ toasts: [...s.toasts.slice(-4), { id: Math.random().toString(36).slice(2), text, kind, at: Date.now() }] })),
   dropToast: (id) => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
   setDoing: (doing) => set({ doing }),

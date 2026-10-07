@@ -80,6 +80,11 @@ export const lifeActions = {
     await refreshLife();
     return r;
   },
+  async travel(mode: string, to: string) {
+    const r = await j<{ ok: true }>('/api/life/travel', { method: 'POST', body: JSON.stringify({ mode, to }) });
+    await refreshLife();
+    return r;
+  },
   async buyFurniture(itemId: string) {
     const r = await j<{ ok: true; item: Furniture }>('/api/life/home', { method: 'POST', body: JSON.stringify({ op: 'buy', itemId }) });
     await refreshLife();

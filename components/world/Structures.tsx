@@ -8,28 +8,18 @@ import type { Placed, StructureKind } from '@/lib/world/geometry';
 import { LANTERN } from '@/lib/world/biomes';
 import { useWorld } from './store';
 import { plain3d } from '@/lib/world/text3d';
+import { Buildings } from './Buildings';
 // Self-hosted label font (Inter, SIL OFL) so no label ever fetches from a CDN.
 const FONT = '/fonts/inter-600.woff';
 
-// Buildings. One InstancedMesh for all building bodies, one for roofs, one for windows, plus lamps
-// (reposts) and sheds (replies). Post photos are never drawn in the world.
+// Buildings (see Buildings.tsx: procedural houses, shops, warehouses, mid-rises, offices and towers,
+// instanced), plus lamps (reposts). Post photos are never drawn in the world.
 // Low-poly, flat-shaded; no textures.
 
-const WALL = ['#8A96A8', '#9AA6B8', '#A9B3C2', '#B8C0CC', '#D4C3A5', '#E8DCC8', '#C9CFD8'];
-const ROOF = ['#C0392B', '#E67E22', '#6B7280', '#8A96A8'];
 const SCREEN = '#1B2436';
 const tmp = new THREE.Object3D();
-const tmpColor = new THREE.Color();
 
 const BUILDING_KINDS: StructureKind[] = ['pillar', 'spire', 'monolith', 'obelisk', 'outbuilding'];
-
-function wallColor(s: Placed) {
-  // a stable tone per building; landmark is the pale stone; glow brightens toward warm white
-  const i = Math.abs(Math.round(s.x * 3 + s.z * 7 + s.segment * 11)) % WALL.length;
-  tmpColor.set(s.isLandmark ? '#F1E8D6' : WALL[i]);
-  tmpColor.lerp(new THREE.Color('#FFF4DC'), s.glow * 0.3);
-  return tmpColor;
-}
 
 export function Structures({ structures, showMetrics, interactive }: { structures: Placed[]; showMetrics: boolean; interactive: boolean }) {
   const buildings = useMemo(() => structures.filter((s) => BUILDING_KINDS.includes(s.kind)), [structures]);
@@ -38,142 +28,12 @@ export function Structures({ structures, showMetrics, interactive }: { structure
   void showMetrics;
   return (
     <group>
-      <Bodies items={buildings} interactive={interactive} />
-      <Roofs items={buildings} />
-      <Windows structures={buildings} />
+      <Buildings items={buildings} interactive={interactive} />
       <Screens items={screens} />
       <Lamps items={lamps} interactive={interactive} />
       <LitLanterns structures={buildings} />
       <Landmark structures={structures} />
     </group>
-  );
-}
-
-function placeBody(s: Placed) {
-  tmp.position.set(s.x, s.y + s.height / 2, s.z);
-  tmp.rotation.set(0, s.rot, 0);
-  tmp.scale.set(s.width, s.height, s.depth);
-  tmp.updateMatrix();
-}
-
-function Bodies({ items, interactive }: { items: Placed[]; interactive: boolean }) {
-  const ref = useRef<THREE.InstancedMesh>(null);
-  const geometry = useMemo(() => new THREE.BoxGeometry(1, 1, 1), []);
-  const select = useWorld((s) => s.select);
-  const selected = useWorld((s) => s.selected);
-
-  useEffect(() => {
-    const mesh = ref.current;
-    if (!mesh) return;
-    items.forEach((s, i) => {
-      placeBody(s);
-      mesh.setMatrixAt(i, tmp.matrix);
-      mesh.setColorAt(i, wallColor(s));
-    });
-    mesh.count = items.length;
-    mesh.instanceMatrix.needsUpdate = true;
-    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-    mesh.computeBoundingSphere();
-  }, [items]);
-
-  // The selected building breathes a little.
-  useFrame(({ clock }) => {
-    const mesh = ref.current;
-    if (!mesh || !selected) return;
-    const i = items.findIndex((s) => s.id === selected.id);
-    if (i < 0) return;
-    const s = items[i];
-    const pulse = 1 + Math.sin(clock.elapsedTime * 3) * 0.012;
-    tmp.position.set(s.x, s.y + s.height / 2, s.z);
-    tmp.rotation.set(0, s.rot, 0);
-    tmp.scale.set(s.width * pulse, s.height, s.depth * pulse);
-    tmp.updateMatrix();
-    mesh.setMatrixAt(i, tmp.matrix);
-    mesh.instanceMatrix.needsUpdate = true;
-  });
-
-  const onClick = (e: ThreeEvent<MouseEvent>) => {
-    if (!interactive) return;
-    e.stopPropagation();
-    if (e.instanceId == null) return;
-    select(items[e.instanceId] ?? null);
-  };
-
-  if (items.length === 0) return null;
-  return (
-    <instancedMesh ref={ref} args={[geometry, undefined, items.length]} castShadow receiveShadow onClick={onClick} frustumCulled={false}>
-      <meshStandardMaterial flatShading roughness={0.9} metalness={0} />
-    </instancedMesh>
-  );
-}
-
-/** A slab on top of every building and tower segment, in one of four roof colours. */
-function Roofs({ items }: { items: Placed[] }) {
-  const ref = useRef<THREE.InstancedMesh>(null);
-  const geometry = useMemo(() => new THREE.BoxGeometry(1, 1, 1), []);
-  useEffect(() => {
-    const mesh = ref.current;
-    if (!mesh) return;
-    items.forEach((s, i) => {
-      const lip = s.kind === 'outbuilding' ? 0.2 : 0.35;
-      tmp.position.set(s.x, s.y + s.height + 0.14, s.z);
-      tmp.rotation.set(0, s.rot, 0);
-      tmp.scale.set(s.width + lip, 0.28, s.depth + lip);
-      tmp.updateMatrix();
-      mesh.setMatrixAt(i, tmp.matrix);
-      mesh.setColorAt(i, tmpColor.set(ROOF[s.roof % ROOF.length]));
-    });
-    mesh.count = items.length;
-    mesh.instanceMatrix.needsUpdate = true;
-    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-  }, [items]);
-  if (items.length === 0) return null;
-  return (
-    <instancedMesh ref={ref} args={[geometry, undefined, items.length]} castShadow receiveShadow frustumCulled={false}>
-      <meshStandardMaterial flatShading roughness={0.8} />
-    </instancedMesh>
-  );
-}
-
-/** reply_count -> windows on the street-facing facade, only for buildings near the player. */
-function Windows({ structures }: { structures: Placed[] }) {
-  const ref = useRef<THREE.InstancedMesh>(null);
-  const playerPos = useWorld((s) => s.playerPos);
-  const lastRef = useRef({ x: NaN, z: NaN });
-  const geometry = useMemo(() => new THREE.BoxGeometry(0.6, 0.8, 0.08), []);
-  const max = 2400;
-
-  useFrame(() => {
-    const mesh = ref.current;
-    if (!mesh) return;
-    const { x: px, z: pz } = playerPos;
-    if (Math.hypot(px - lastRef.current.x, pz - lastRef.current.z) < 8) return;
-    lastRef.current = { x: px, z: pz };
-    let n = 0;
-    for (const s of structures) {
-      if (s.windows === 0 || n >= max) continue;
-      if (Math.hypot(s.x - px, s.z - pz) > 90) continue;
-      const cols = Math.max(1, Math.floor((s.width - 0.8) / 1.1));
-      const rows = Math.max(1, Math.floor((s.height - 1.2) / 1.3));
-      const count = Math.min(s.windows, cols * rows);
-      const face = s.rot === 0 ? 1 : -1;
-      for (let i = 0; i < count && n < max; i++) {
-        const c = i % cols, r = Math.floor(i / cols);
-        const lx = (c + 0.5) / cols - 0.5;
-        tmp.position.set(s.x + lx * (s.width - 0.6), s.y + 0.9 + r * 1.3, s.z + face * (s.depth / 2 + 0.03));
-        tmp.rotation.set(0, 0, 0);
-        tmp.scale.set(1, 1, 1);
-        tmp.updateMatrix();
-        mesh.setMatrixAt(n++, tmp.matrix);
-      }
-    }
-    mesh.count = n;
-    mesh.instanceMatrix.needsUpdate = true;
-  });
-  return (
-    <instancedMesh ref={ref} args={[geometry, undefined, max]} frustumCulled={false}>
-      <meshStandardMaterial color="#FFE9C2" emissive="#FFD089" emissiveIntensity={0.7} />
-    </instancedMesh>
   );
 }
 

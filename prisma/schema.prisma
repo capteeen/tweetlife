@@ -1,0 +1,240 @@
+// TweetLife data model.
+// Everything the app renders is read from here. /lib/x is the only writer that talks to X.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum IngestState {
+  queued
+  building
+  live
+  failed
+}
+
+enum Access {
+  followers
+  public
+  invite
+}
+
+enum StructureKind {
+  pillar     // standalone text post
+  spire      // segment of a thread (same conversation_id, authored by owner)
+  monolith   // post with photo — framed, shows the real image
+  obelisk    // post with video
+  outbuilding // reply to someone else
+  lantern    // repost — light, no mass
+}
+
+enum RunStatus {
+  queued
+  running
+  succeeded
+  failed
+  dead // exhausted retries; shown in the dead-letter list with a manual retry
+}
+
+enum RunKind {
+  first_build
+  incremental
+  metrics_refresh
+}
+
+/// A signed-in X account. Tokens are AES-256-GCM encrypted with TOKEN_ENCRYPTION_KEY.
+model User {
+  id                 String   @id // X user id
+  handle             String   @unique
+  name               String
+  avatarUrl          String?
+  accessTokenEnc     String
+  refreshTokenEnc    String?
+  tokenExpiresAt     DateTime
+  scopes             String
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  revokedAt          DateTime?
+
+  world              World?
+  marks              Mark[]
+  lanterns           Lantern[]
+  apiCalls           ApiCall[]
+}
+
+model World {
+  id              String      @id @default(cuid())
+  handle          String      @unique
+  xUserId         String      @unique
+  owner           User        @relation(fields: [xUserId], references: [id], onDelete: Cascade)
+  /// The X account's created_at — drives sky phase.
+  accountCreatedAt DateTime
+  createdAt       DateTime    @default(now())
+  biome           String      @default("meadow") // meadow | dune | tundra | reef | ember
+  access          Access      @default(followers)
+  listedOnExplore Boolean     @default(false)
+  landmarkPostId  String?     // manual pin; null = highest engagement post of all time
+  followersCount  Int         @default(0)
+  followingCount  Int         @default(0)
+  postCount       Int         @default(0) // public_metrics.tweet_count from X — real, may exceed what we could fetch
+  lastSyncAt      DateTime?
+  nextSyncAt      DateTime?
+  ingestState     IngestState @default(queued)
+  ingestError     String?
+  /// Newest post id we have — since_id for incremental sync.
+  newestPostId    String?
+  /// Oldest post id we have — pagination_token resumes from here on first build if interrupted.
+  oldestPostId    String?
+  showReplies     Boolean     @default(true)
+  showMetrics     Boolean     @default(true)
+  chatEnabled     Boolean     @default(false)
+  /// Owner-laid paths: JSON array of [{x,z}] polylines in world units.
+  paths           Json        @default("[]")
+  updatedAt       DateTime    @updatedAt
+
+  structures      Structure[]
+  marks           Mark[]
+  ingestRuns      IngestRun[]
+  lanterns        Lantern[]
+  sessions        VisitorSession[]
+  timelapses      TimelapseJob[]
+
+  @@index([listedOnExplore, access])
+}
+
+model Structure {
+  id             String        @id @default(cuid())
+  worldId        String
+  world          World         @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  postId         String
+  kind           StructureKind
+  conversationId String?
+  /// For replies: the post id replied to. For reposts: the reposted post id.
+  referencedId   String?
+  text           String
+  mediaUrl       String?
+  mediaKind      String?       // photo | video | animated_gif
+  likes          Int?          // null = metrics missing from X; structure renders at minimum scale
+  reposts        Int?
+  replies        Int?
+  impressions    Int?
+  postedAt       DateTime
+  hidden         Boolean       @default(false)
+  lanternsLit    Int           @default(0)
+  metricsAt      DateTime      @default(now())
+  createdAt      DateTime      @default(now())
+
+  lanterns       Lantern[]
+
+  @@unique([worldId, postId])
+  @@index([worldId, postedAt])
+  @@index([worldId, conversationId])
+}
+
+/// A guestbook stone.
+model Mark {
+  id        String   @id @default(cuid())
+  worldId   String
+  world     World    @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  byUserId  String
+  by        User     @relation(fields: [byUserId], references: [id], onDelete: Cascade)
+  byHandle  String
+  text      String
+  x         Float
+  z         Float
+  /// true when the owner follows the visitor back (one cached relationship check).
+  bright    Boolean  @default(false)
+  at        DateTime @default(now())
+
+  @@unique([worldId, byUserId])
+  @@index([worldId, at])
+}
+
+/// An on-world like. One per visitor per structure.
+model Lantern {
+  id          String    @id @default(cuid())
+  worldId     String
+  world       World     @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  structureId String
+  structure   Structure @relation(fields: [structureId], references: [id], onDelete: Cascade)
+  byUserId    String
+  by          User      @relation(fields: [byUserId], references: [id], onDelete: Cascade)
+  at          DateTime  @default(now())
+
+  @@unique([structureId, byUserId])
+  @@index([worldId, at])
+}
+
+model VisitorSession {
+  id            String   @id @default(cuid())
+  worldId       String
+  world         World    @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  visitorHandle String
+  x             Float    @default(0)
+  z             Float    @default(0)
+  joinedAt      DateTime @default(now())
+  leftAt        DateTime?
+
+  @@index([worldId, joinedAt])
+}
+
+model IngestRun {
+  id           String    @id @default(cuid())
+  worldId      String
+  world        World     @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  kind         RunKind
+  status       RunStatus @default(queued)
+  startedAt    DateTime  @default(now())
+  finishedAt   DateTime?
+  pagesFetched Int       @default(0)
+  postsWritten Int       @default(0)
+  calls        Int       @default(0)
+  attempts     Int       @default(0)
+  error        String?
+  jobId        String?
+
+  @@index([worldId, startedAt])
+  @@index([status])
+}
+
+/// One row per outbound request to api.x.com. This is the budget ledger — monthly quota is SUM(1) here.
+model ApiCall {
+  id        BigInt   @id @default(autoincrement())
+  at        DateTime @default(now())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  endpoint  String
+  status    Int
+  rateLimitRemaining Int?
+  rateLimitReset     DateTime?
+  durationMs Int
+
+  @@index([at])
+  @@index([endpoint, at])
+}
+
+model TimelapseJob {
+  id         String    @id @default(cuid())
+  worldId    String
+  world      World     @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  status     RunStatus @default(queued)
+  startedAt  DateTime  @default(now())
+  finishedAt DateTime?
+  filePath   String?
+  error      String?
+
+  @@index([worldId, startedAt])
+}
+
+/// Operator-authored incident notes shown on /status.
+model Incident {
+  id         String    @id @default(cuid())
+  title      String
+  body       String
+  startedAt  DateTime  @default(now())
+  resolvedAt DateTime?
+}

@@ -1,0 +1,56 @@
+{
+  "name": "tweetlife",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Your X account, as a world. Every post becomes a structure in a persistent low-poly 3D world built from the account's real timeline.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "prisma generate && next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "worker": "tsx worker/index.ts",
+    "worker:timelapse": "tsx worker/timelapse.ts",
+    "party:dev": "partykit dev",
+    "party:deploy": "partykit deploy",
+    "db:migrate": "prisma migrate deploy",
+    "db:migrate:dev": "prisma migrate dev",
+    "db:generate": "prisma generate",
+    "postinstall": "prisma generate"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.19.1",
+    "@react-three/drei": "^9.112.0",
+    "@react-three/fiber": "^8.17.8",
+    "@react-three/postprocessing": "^2.16.3",
+    "bullmq": "^5.12.12",
+    "ioredis": "^5.4.1",
+    "jose": "^5.8.0",
+    "next": "14.2.15",
+    "partysocket": "^1.0.2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "three": "^0.168.0",
+    "zod": "^3.23.8",
+    "zustand": "^4.5.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20.16.5",
+    "@types/react": "^18.3.5",
+    "@types/react-dom": "^18.3.0",
+    "@types/three": "^0.168.0",
+    "autoprefixer": "^10.4.20",
+    "eslint": "^8.57.0",
+    "eslint-config-next": "14.2.15",
+    "partykit": "^0.0.111",
+    "playwright": "^1.47.0",
+    "postcss": "^8.4.45",
+    "prisma": "^5.19.1",
+    "tailwindcss": "^3.4.10",
+    "tsx": "^4.19.1",
+    "typescript": "^5.5.4"
+  },
+  "engines": {
+    "node": ">=18.17"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "$schema": "https://www.partykit.io/schema.json",
+  "name": "tweetlife",
+  "main": "party/world.ts",
+  "compatibilityDate": "2024-09-01",
+  "parties": { "world": "party/world.ts" },
+  "vars": {}
+}

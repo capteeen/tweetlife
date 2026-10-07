@@ -1,0 +1,92 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --base: #0b0e14;
+  --x: #1d9bf0;
+  --lantern: #ffd089;
+  color-scheme: dark;
+}
+
+html,
+body {
+  height: 100%;
+  background: var(--base);
+  color: #e8ecf3;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 22px;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* translucent chrome */
+.chrome {
+  background: rgba(11, 14, 20, 0.62);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 font-medium transition;
+  background: var(--x);
+  color: #fff;
+}
+.btn:hover {
+  filter: brightness(1.08);
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.btn-ghost {
+  @apply inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 font-medium transition;
+  background: rgba(255, 255, 255, 0.08);
+  color: #e8ecf3;
+}
+.btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+.btn-danger {
+  @apply inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 font-medium transition;
+  background: rgba(244, 63, 94, 0.18);
+  color: #fda4af;
+}
+
+.card {
+  @apply rounded-2xl p-5;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.label {
+  @apply text-xs uppercase tracking-wider;
+  color: rgba(232, 236, 243, 0.55);
+}
+
+input[type='text'],
+textarea,
+select {
+  @apply w-full rounded-xl px-3 py-2;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #e8ecf3;
+}
+input:focus,
+textarea:focus,
+select:focus {
+  outline: 2px solid var(--x);
+  outline-offset: 0;
+}
+
+canvas {
+  touch-action: none;
+  display: block;
+}

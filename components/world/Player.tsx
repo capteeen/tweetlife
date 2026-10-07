@@ -13,6 +13,10 @@ import { placeVenues } from '@/lib/life/venues';
 import { SPRINT_MIN_GAS, SPRINT_MULT, paceFor, tiredness, walkCost } from '@/lib/life/activities';
 import { lifeActions } from '@/components/life/useLife';
 import type { FigureAct } from './figureMoves';
+import { airportLayout, airportSolids, along, onLand, type Airport } from '@/lib/world/layout';
+import { RideVehicle } from './RideVehicle';
+import { worldWalls } from '@/lib/world/interiors';
+import { carItem } from '@/components/life/travel';
 
 // Third-person orbit-and-walk. WASD/arrows + mouse-drag on desktop, twin virtual sticks on mobile.
 // The avatar is a low-poly figure; the camera orbits it. Structures push the player out softly.
@@ -27,11 +31,18 @@ type Spawn = { x: number; z: number; rot: number; depth: number } | null;
 // Without a deep link the visitor starts on the road north of the oldest block, facing the city centre.
 const DEFAULT_SPAWN = { x: 0, z: -(BLOCK_D / 2 + SIDEWALK + ROAD / 2) };
 
-type Obstacle = { x: number; z: number; w: number; d: number };
+/** w/d along the obstacle's own axes; `rot` turns it like a venue (walls of walk-in venues). */
+type Obstacle = { x: number; z: number; w: number; d: number; rot?: number };
 
 export function Player({ structures, blocks, grid, boundaryRadius, contentRadius, spawn }: { structures: Placed[]; blocks: Block[]; grid: CityGrid; boundaryRadius: number; contentRadius: number; spawn: Spawn }) {
-  const venues = useMemo(() => placeVenues(contentRadius), [contentRadius]);
-  const obstacles = useMemo<Obstacle[]>(() => venues.map((v) => ({ x: v.x, z: v.z, w: v.w, d: v.d })), [venues]);
+  const venues = useMemo(() => placeVenues(contentRadius, boundaryRadius), [contentRadius, boundaryRadius]);
+  const airport = useMemo(() => airportLayout(contentRadius, boundaryRadius), [contentRadius, boundaryRadius]);
+  const obstacles = useMemo<Obstacle[]>(
+    () => [...venues.flatMap((v) => (v.walkIn ? worldWalls(v) : [{ x: v.x, z: v.z, w: v.w, d: v.d }])), ...airportSolids(airport)],
+    [venues, airport],
+  );
+  const trip = useWorld((s) => s.trip);
+  const setTrip = useWorld((s) => s.setTrip);
   const riding = useWorld((s) => s.riding);
   const teleport = useWorld((s) => s.teleport);
   const setTeleport = useWorld((s) => s.setTeleport);
@@ -63,19 +74,19 @@ export function Player({ structures, blocks, grid, boundaryRadius, contentRadius
   // Spawn: stand a few units away from the deep-linked structure, facing it.
   useEffect(() => {
     if (!teleport) return;
-    const free = freeSpotNear(structures, obstacles, teleport.x, teleport.z, boundaryRadius, 'walk');
+    const free = freeSpotNear(structures, obstacles, teleport.x, teleport.z, boundaryRadius, 'walk', airport);
     pos.current.set(free.x, 0, free.z);
     setTeleport(null);
-  }, [teleport, structures, obstacles, boundaryRadius, setTeleport]);
+  }, [teleport, structures, obstacles, boundaryRadius, setTeleport, airport]);
 
   useEffect(() => {
     if (!spawn) return;
     // stand on the sidewalk in front of the building, camera behind so the building fills the view
     const face = spawn.rot === 0 ? 1 : -1;
-    const free = freeSpotNear(structures, obstacles, spawn.x, spawn.z + face * (spawn.depth / 2 + 4.5), boundaryRadius, 'walk');
+    const free = freeSpotNear(structures, obstacles, spawn.x, spawn.z + face * (spawn.depth / 2 + 4.5), boundaryRadius, 'walk', airport);
     pos.current.set(free.x, 0, free.z);
     yaw.current = Math.atan2(pos.current.x - spawn.x, pos.current.z - spawn.z);
-  }, [spawn, structures, obstacles, boundaryRadius]);
+  }, [spawn, structures, obstacles, boundaryRadius, airport]);
 
   useEffect(() => {
     const el = gl.domElement;
@@ -123,7 +134,26 @@ export function Player({ structures, blocks, grid, boundaryRadius, contentRadius
   useFrame((state, dt) => {
     const d = Math.min(dt, 0.05);
     let mx = 0, mz = 0;
-    if (!guestbookOpen && !chatOpen) {
+    // on a ride: follow the route, then step off at the nearest open spot
+    const tr = useWorld.getState().trip;
+    if (tr) {
+      const t = (performance.now() - tr.startedAt) / 1000 / tr.duration;
+      const p = along(tr.path, t);
+      if (t >= 1) {
+        const free = freeSpotNear(structures, obstacles, p.x, p.z, boundaryRadius, 'walk', airport);
+        pos.current.set(free.x, pos.current.y, free.z);
+        setTrip(null);
+      } else {
+        pos.current.set(p.x, pos.current.y, p.z);
+        // turn smoothly into corners
+        let dh = p.heading - facing.current;
+        while (dh > Math.PI) dh -= Math.PI * 2;
+        while (dh < -Math.PI) dh += Math.PI * 2;
+        facing.current += dh * Math.min(1, d * 8);
+      }
+      speedRef.current = tr.mode === 'trek' ? 1 : 0;
+    }
+    if (!tr && !guestbookOpen && !chatOpen) {
       const k = keys.current;
       if (k.KeyW || k.ArrowUp) mz -= 1;
       if (k.KeyS || k.ArrowDown) mz += 1;
@@ -136,7 +166,7 @@ export function Player({ structures, blocks, grid, boundaryRadius, contentRadius
       pitch.current = THREE.MathUtils.clamp(pitch.current + sticks.right.y * 1.5 * d, 0.12, 1.25);
     }
     const len = Math.hypot(mx, mz);
-    speedRef.current = Math.min(1, len);
+    if (!tr) speedRef.current = Math.min(1, len);
     const st = useWorld.getState();
     const gas = st.life?.me?.gas;
     const onFoot = !riding && gas != null;
@@ -159,9 +189,9 @@ export function Player({ structures, blocks, grid, boundaryRadius, contentRadius
       const before = { x: pos.current.x, z: pos.current.z };
       // Slide-and-block: a step that would end inside a building is refused; try each axis alone so
       // walls can be followed. Nothing ever pushes the player, so nothing can trap them.
-      if (!blockedAt(structures, obstacles, nx, nz, boundaryRadius, mode)) pos.current.set(nx, pos.current.y, nz);
-      else if (!blockedAt(structures, obstacles, nx, pos.current.z, boundaryRadius, mode)) pos.current.x = nx;
-      else if (!blockedAt(structures, obstacles, pos.current.x, nz, boundaryRadius, mode)) pos.current.z = nz;
+      if (!blockedAt(structures, obstacles, nx, nz, boundaryRadius, mode, airport)) pos.current.set(nx, pos.current.y, nz);
+      else if (!blockedAt(structures, obstacles, nx, pos.current.z, boundaryRadius, mode, airport)) pos.current.x = nx;
+      else if (!blockedAt(structures, obstacles, pos.current.x, nz, boundaryRadius, mode, airport)) pos.current.z = nz;
       facing.current = Math.atan2(vx, vz);
       if (onFoot) {
         const moved = Math.hypot(pos.current.x - before.x, pos.current.z - before.z);
@@ -179,14 +209,14 @@ export function Player({ structures, blocks, grid, boundaryRadius, contentRadius
       lifeActions.walk(sent.walk, sent.sprint).catch(() => {}).finally(() => (w.sending = false));
     }
     // the jet climbs to cruising height; everything else sits on the ground (or the water)
-    const targetAlt = riding?.kind === 'plane' ? 16 : 0;
+    const targetAlt = riding?.kind === 'plane' && !tr ? 16 : 0;
     altitude.current += (targetAlt - altitude.current) * Math.min(1, d * 2);
     // stand on whatever surface is underfoot (road, sidewalk, block, lot); quick ease so curbs read as a step
     const floor = surfaceY(blocks, grid, pos.current.x, pos.current.z, boundaryRadius);
     ground.current = ground.current === null ? floor : ground.current + (floor - ground.current) * Math.min(1, d * 20);
     pos.current.y = altitude.current + ground.current;
     // if a vehicle was put away mid-air or on the water, walk back to solid ground
-    if (!riding && Math.hypot(pos.current.x, pos.current.z) > boundaryRadius - 1.5) {
+    if (!riding && !tr && !onLand(pos.current.x, pos.current.z, contentRadius, boundaryRadius, airport)) {
       const r = Math.hypot(pos.current.x, pos.current.z);
       pos.current.x *= (boundaryRadius - 2) / r;
       pos.current.z *= (boundaryRadius - 2) / r;
@@ -199,13 +229,14 @@ export function Player({ structures, blocks, grid, boundaryRadius, contentRadius
     if (state.clock.elapsedTime - lastPublish.current > 0.1) {
       let nearest: string | null = null, nd = 9;
       for (const v of venues) {
-        const dist = Math.hypot(v.x - pos.current.x, v.z - pos.current.z) - v.w / 2;
+        const dist = Math.hypot(Math.max(0, Math.abs(v.x - pos.current.x) - v.w / 2), Math.max(0, Math.abs(v.z - pos.current.z) - v.d / 2));
         if (dist < nd) { nd = dist; nearest = v.id; }
       }
+      if (tr) nearest = null; // no "Enter" prompts for places you pass on a ride
       if (nearest !== useWorld.getState().nearVenue) setNearVenue(nearest);
     }
     // camera orbit, pulled in when it would sit inside a building
-    let dist = CAM_DIST * (riding?.kind === 'plane' ? 2.2 : riding ? 1.3 : 1);
+    let dist = CAM_DIST * (tr && tr.mode !== 'trek' ? 1.6 : riding?.kind === 'plane' ? 2.2 : riding ? 1.3 : 1);
     let cx = 0, cy = 0, cz = 0;
     for (; dist >= 2.5; dist -= 0.75) {
       cx = pos.current.x + Math.sin(yaw.current) * Math.cos(pitch.current) * dist;
@@ -222,10 +253,14 @@ export function Player({ structures, blocks, grid, boundaryRadius, contentRadius
     }
   });
 
-  const ro = riderOffset(riding);
+  // on a ride, the ride replaces whatever you were driving
+  const tripCar = trip?.mode === 'own' ? carItem(trip.itemId) : null;
+  const shown = trip ? (trip.mode === 'trek' ? null : tripCar) : riding;
+  const ro = trip && trip.mode !== 'trek' && !tripCar ? (trip.mode === 'okada' || trip.mode === 'keke' ? { y: 0.55, show: true, scale: 0.8 } : { y: 0.4, show: true, scale: 0.72 }) : riderOffset(shown);
   return (
     <group ref={group}>
-      {riding && <Vehicle item={riding} />}
+      {shown && <Vehicle item={shown} />}
+      {trip && trip.mode !== 'trek' && trip.mode !== 'own' && <RideVehicle mode={trip.mode} />}
       {ro.show && (
         <group position={[0, ro.y, 0]} scale={ro.scale}>
           <Figure seed={me?.handle ?? 'visitor'} look={me ? look : null} speedRef={speedRef} actRef={actRef} tiredRef={tiredRef} slumpRef={slumpRef} label={me ? `@${me.handle}` : undefined} labelColor="#BFE3FF" />
@@ -247,12 +282,19 @@ export type MoveMode = 'walk' | 'boat' | 'plane';
 const WATER_RANGE = 140;
 
 /** True when a player at (x, z) would overlap a building/venue footprint or leave the allowed area for this mode. */
-function blockedAt(structures: Placed[], obstacles: Obstacle[], x: number, z: number, boundaryRadius: number, mode: MoveMode) {
+function blockedAt(structures: Placed[], obstacles: Obstacle[], x: number, z: number, boundaryRadius: number, mode: MoveMode, airport: Airport) {
   const r = Math.hypot(x, z);
-  if (mode === 'walk' && r > boundaryRadius - 1.5) return true;
+  if (mode === 'walk' && !onLand(x, z, 0, boundaryRadius, airport)) return true;
   if (mode !== 'walk' && r > boundaryRadius + WATER_RANGE) return true;
   if (mode === 'plane') return false;
-  for (const o of obstacles) if (Math.abs(x - o.x) < o.w / 2 + PLAYER_R && Math.abs(z - o.z) < o.d / 2 + PLAYER_R) return true;
+  for (const o of obstacles) {
+    let dx = x - o.x, dz = z - o.z;
+    if (o.rot) {
+      const c = Math.cos(o.rot), s = Math.sin(o.rot);
+      [dx, dz] = [dx * c - dz * s, dx * s + dz * c];
+    }
+    if (Math.abs(dx) < o.w / 2 + PLAYER_R && Math.abs(dz) < o.d / 2 + PLAYER_R) return true;
+  }
   for (const s of structures) {
     if (s.kind === 'lantern' || s.segment > 0) continue;
     if (Math.abs(x - s.x) < s.width / 2 + PLAYER_R && Math.abs(z - s.z) < s.depth / 2 + PLAYER_R) return true;
@@ -261,12 +303,12 @@ function blockedAt(structures: Placed[], obstacles: Obstacle[], x: number, z: nu
 }
 
 /** The nearest open spot to (x, z), searched in rings of half a unit. */
-function freeSpotNear(structures: Placed[], obstacles: Obstacle[], x: number, z: number, boundaryRadius: number, mode: MoveMode) {
-  if (!blockedAt(structures, obstacles, x, z, boundaryRadius, mode)) return { x, z };
+function freeSpotNear(structures: Placed[], obstacles: Obstacle[], x: number, z: number, boundaryRadius: number, mode: MoveMode, airport: Airport) {
+  if (!blockedAt(structures, obstacles, x, z, boundaryRadius, mode, airport)) return { x, z };
   for (let r = 0.5; r <= 14; r += 0.5) {
     for (let a = 0; a < Math.PI * 2; a += Math.PI / 8) {
       const px = x + Math.cos(a) * r, pz = z + Math.sin(a) * r;
-      if (!blockedAt(structures, obstacles, px, pz, boundaryRadius, mode)) return { x: px, z: pz };
+      if (!blockedAt(structures, obstacles, px, pz, boundaryRadius, mode, airport)) return { x: px, z: pz };
     }
   }
   return { x, z };

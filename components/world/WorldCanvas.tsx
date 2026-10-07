@@ -12,6 +12,7 @@ import { skyColors, sunFor } from '@/lib/world/sky';
 import { City } from './City';
 import { Cars } from './Cars';
 import { Venues } from './Venues';
+import { CityExtras } from './CityExtras';
 import { Structures } from './Structures';
 import { Player } from './Player';
 import { Marks } from './Marks';
@@ -58,7 +59,7 @@ export function WorldCanvas(props: SceneProps) {
       onPointerMissed={() => useWorld.getState().select(null)}
     >
       <color attach="background" args={[fogColor]} />
-      <fog attach="fog" args={[fogColor, R * 0.9, R * 2.6]} />
+      <fog attach="fog" args={[fogColor, R * 0.9 + 40, R * 2.6 + 140]} />
       <Suspense fallback={null}>
         <Scene {...props} />
         <Preload all />
@@ -103,8 +104,17 @@ function Scene(props: SceneProps) {
         shadow-camera-far={R * 4}
       />
       <City blocks={geometry.blocks} grid={geometry.grid} outside={geometry.outside} boundaryRadius={R} biome={biome} handle={handle} paths={paths} />
+      <CityExtras
+        contentRadius={geometry.contentRadius}
+        boundaryRadius={R}
+        grid={geometry.grid}
+        hasCity={geometry.structures.length > 0}
+        biome={biome}
+        handle={handle}
+        structures={geometry.structures}
+      />
       <Cars count={geometry.cars} grid={geometry.grid} handle={handle} />
-      {geometry.structures.length > 0 && <Venues contentRadius={geometry.contentRadius} interactive={mode === 'walk'} />}
+      {geometry.structures.length > 0 && <Venues contentRadius={geometry.contentRadius} boundaryRadius={R} interactive={mode === 'walk'} />}
       <Structures structures={geometry.structures} showMetrics={showMetrics} interactive={mode === 'walk'} />
       {/* ambient-occlusion stand-in: one baked contact shadow pass under everything */}
       <ContactShadows frames={1} position={[0, 0.3, 0]} scale={geometry.contentRadius * 2.1 + 20} blur={2} opacity={0.4} far={14} resolution={1024} />

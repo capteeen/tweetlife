@@ -8,7 +8,7 @@ import { BLOCK_D, ROAD, SIDEWALK } from '@/lib/world/geometry';
 import { sticks } from './TouchSticks';
 import { Figure } from './Figure';
 import { Vehicle, riderOffset } from './Vehicle';
-import { Balloons, HAND } from './Balloons';
+import { Balloons, HAND, useSlumpRef } from './Balloons';
 import { placeVenues } from '@/lib/life/venues';
 
 // Third-person orbit-and-walk. WASD/arrows + mouse-drag on desktop, twin virtual sticks on mobile.
@@ -49,6 +49,7 @@ export function Player({ structures, boundaryRadius, contentRadius, spawn }: { s
   const me = useWorld((s) => s.me);
   const look = useWorld((s) => s.life?.me?.look ?? null);
   const hand = useRef<THREE.Object3D>(null);
+  const slumpRef = useSlumpRef(me?.handle ?? '');
 
   // Spawn: stand a few units away from the deep-linked structure, facing it.
   useEffect(() => {
@@ -181,7 +182,7 @@ export function Player({ structures, boundaryRadius, contentRadius, spawn }: { s
       {riding && <Vehicle item={riding} />}
       {ro.show && (
         <group position={[0, ro.y, 0]} scale={ro.scale}>
-          <Figure seed={me?.handle ?? 'visitor'} look={me ? look : null} speedRef={speedRef} label={me ? `@${me.handle}` : undefined} labelColor="#BFE3FF" />
+          <Figure seed={me?.handle ?? 'visitor'} look={me ? look : null} speedRef={speedRef} slumpRef={slumpRef} label={me ? `@${me.handle}` : undefined} labelColor="#BFE3FF" />
           <object3D ref={hand} position={HAND} />
         </group>
       )}

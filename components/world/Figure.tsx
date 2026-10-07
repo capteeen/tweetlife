@@ -26,6 +26,8 @@ type Props = {
   dim?: boolean;
   /** residents always walk */
   alwaysWalk?: boolean;
+  /** 0 = upright, 1 = slumped (after a rug). Read each frame. */
+  slumpRef?: React.MutableRefObject<number>;
 };
 
 // Geometry is built once per distinct size and shared by every figure in the world.
@@ -88,7 +90,7 @@ const headShell = (yMin: number, inflate: number, back = false) =>
     );
   });
 
-export function Figure({ seed, look: chosen, speedRef, label, labelColor = '#FFFFFF', dim = false, alwaysWalk = false }: Props) {
+export function Figure({ seed, look: chosen, speedRef, label, labelColor = '#FFFFFF', dim = false, alwaysWalk = false, slumpRef }: Props) {
   const look = useMemo(() => chosen ?? lookFor(seed), [chosen, seed]);
   const lArm = useRef<THREE.Group>(null);
   const rArm = useRef<THREE.Group>(null);
@@ -133,6 +135,12 @@ export function Figure({ seed, look: chosen, speedRef, label, labelColor = '#FFF
       chest.current.scale.setScalar(1 + Math.sin(idle.current * 2.2) * 0.012 * (1 - s));
       chest.current.rotation.y = -Math.sin(p) * 0.12 * s;
     }
+    // Rekt: shoulders roll forward and the head drops.
+    const slump = slumpRef?.current ?? 0;
+    if (chest.current) chest.current.rotation.x = 0.32 * slump;
+    if (head.current) head.current.rotation.x = 0.45 * slump;
+    if (lArm.current) lArm.current.rotation.x -= 0.3 * slump; // hang straight down despite the lean
+    if (rArm.current) rArm.current.rotation.x -= 0.3 * slump; // hang straight down despite the lean
     if (head.current) head.current.rotation.y = Math.sin(p) * 0.1 * s + Math.sin(idle.current * 0.4) * 0.25 * (1 - s);
   });
 

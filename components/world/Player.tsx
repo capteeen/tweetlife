@@ -2,9 +2,9 @@
 import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame, useThree } from '@react-three/fiber';
-import type { Placed } from '@/lib/world/geometry';
+import type { Block, CityGrid, Placed } from '@/lib/world/geometry';
 import { useWorld } from './store';
-import { BLOCK_D, ROAD, SIDEWALK } from '@/lib/world/geometry';
+import { BLOCK_D, ROAD, SIDEWALK, surfaceY } from '@/lib/world/geometry';
 import { sticks } from './TouchSticks';
 import { Figure } from './Figure';
 import { Vehicle, riderOffset } from './Vehicle';
@@ -29,7 +29,7 @@ const DEFAULT_SPAWN = { x: 0, z: -(BLOCK_D / 2 + SIDEWALK + ROAD / 2) };
 
 type Obstacle = { x: number; z: number; w: number; d: number };
 
-export function Player({ structures, boundaryRadius, contentRadius, spawn }: { structures: Placed[]; boundaryRadius: number; contentRadius: number; spawn: Spawn }) {
+export function Player({ structures, blocks, grid, boundaryRadius, contentRadius, spawn }: { structures: Placed[]; blocks: Block[]; grid: CityGrid; boundaryRadius: number; contentRadius: number; spawn: Spawn }) {
   const venues = useMemo(() => placeVenues(contentRadius), [contentRadius]);
   const obstacles = useMemo<Obstacle[]>(() => venues.map((v) => ({ x: v.x, z: v.z, w: v.w, d: v.d })), [venues]);
   const riding = useWorld((s) => s.riding);
@@ -37,6 +37,7 @@ export function Player({ structures, boundaryRadius, contentRadius, spawn }: { s
   const setTeleport = useWorld((s) => s.setTeleport);
   const setNearVenue = useWorld((s) => s.setNearVenue);
   const altitude = useRef(0);
+  const ground = useRef<number | null>(null);
   const { camera, gl } = useThree();
   const group = useRef<THREE.Group>(null);
   const pos = useRef(new THREE.Vector3(DEFAULT_SPAWN.x, 0, DEFAULT_SPAWN.z));
@@ -170,7 +171,10 @@ export function Player({ structures, boundaryRadius, contentRadius, spawn }: { s
     // the jet climbs to cruising height; everything else sits on the ground (or the water)
     const targetAlt = riding?.kind === 'plane' ? 16 : 0;
     altitude.current += (targetAlt - altitude.current) * Math.min(1, d * 2);
-    pos.current.y = altitude.current;
+    // stand on whatever surface is underfoot (road, sidewalk, block, lot); quick ease so curbs read as a step
+    const floor = surfaceY(blocks, grid, pos.current.x, pos.current.z, boundaryRadius);
+    ground.current = ground.current === null ? floor : ground.current + (floor - ground.current) * Math.min(1, d * 20);
+    pos.current.y = altitude.current + ground.current;
     // if a vehicle was put away mid-air or on the water, walk back to solid ground
     if (!riding && Math.hypot(pos.current.x, pos.current.z) > boundaryRadius - 1.5) {
       const r = Math.hypot(pos.current.x, pos.current.z);

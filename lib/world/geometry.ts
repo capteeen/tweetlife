@@ -403,3 +403,32 @@ export function buildWorld(rowsIn: StructureRow[], opts: BuildOptions): WorldGeo
     landmarkId,
   };
 }
+
+// Top surfaces of the ground layers City.tsx draws, so walkers stand on them instead of on y = 0.
+const ASPHALT_TOP = 0.04;
+const SIDEWALK_TOP = 0.2;
+const BLOCK_TOP = 0.26;
+const LOT_TOP = 0.28;
+const COUNTRYSIDE_TOP = -0.05;
+
+/** Height of the walkable surface at (x, z): vacant lot, block, sidewalk, road, or countryside. */
+export function groundHeightAt(blocks: Block[], grid: CityGrid, x: number, z: number): number {
+  const { K, pitchX, pitchZ, blockW, blockD, road, sidewalk } = grid;
+  if (blocks.length === 0) return COUNTRYSIDE_TOP;
+  const cityW = (2 * K + 1) * pitchX + road, cityD = (2 * K + 1) * pitchZ + road;
+  if (Math.abs(x) > cityW / 2 || Math.abs(z) > cityD / 2) return COUNTRYSIDE_TOP;
+  const i = Math.round(x / pitchX), j = Math.round(z / pitchZ);
+  const b = blocks.find((bl) => bl.i === i && bl.j === j);
+  if (!b) return ASPHALT_TOP;
+  const dx = Math.abs(x - b.x), dz = Math.abs(z - b.z);
+  if (dx > blockW / 2 + sidewalk || dz > blockD / 2 + sidewalk) return ASPHALT_TOP;
+  if (dx > blockW / 2 || dz > blockD / 2) return SIDEWALK_TOP;
+  for (const v of b.vacant) if (Math.abs(x - v.x) < v.w / 2 - 0.3 && Math.abs(z - v.z) < v.d / 2 - 0.3) return LOT_TOP;
+  return BLOCK_TOP;
+}
+
+
+/** Ground height for walkers and cars inside the boundary; boats past the shore keep the water line. */
+export function surfaceY(blocks: Block[], grid: CityGrid, x: number, z: number, boundaryRadius: number) {
+  return Math.hypot(x, z) > boundaryRadius ? 0 : groundHeightAt(blocks, grid, x, z);
+}

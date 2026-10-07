@@ -109,11 +109,11 @@ function Scene(props: SceneProps) {
       {/* ambient-occlusion stand-in: one baked contact shadow pass under everything */}
       <ContactShadows frames={1} position={[0, 0.3, 0]} scale={geometry.contentRadius * 2.1 + 20} blur={2} opacity={0.4} far={14} resolution={1024} />
       <Marks marks={marks} />
-      <Residents count={geometry.residents} radius={geometry.contentRadius + 20} handle={handle} />
+      <Residents count={geometry.residents} radius={geometry.contentRadius + 20} handle={handle} blocks={geometry.blocks} grid={geometry.grid} />
       {mode === 'walk' && (
         <>
-          <Player structures={geometry.structures} boundaryRadius={R} contentRadius={geometry.contentRadius} spawn={spawn ?? null} />
-          <Peers />
+          <Player structures={geometry.structures} blocks={geometry.blocks} grid={geometry.grid} boundaryRadius={R} contentRadius={geometry.contentRadius} spawn={spawn ?? null} />
+          <Peers blocks={geometry.blocks} grid={geometry.grid} boundaryRadius={R} />
           <BalloonFeed />
         </>
       )}

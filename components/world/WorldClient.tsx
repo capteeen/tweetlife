@@ -191,7 +191,7 @@ export function WorldClient({ handle, spawnPostId, embed, backdrop }: { handle: 
           <Phone sendSocial={sendSocial} handle={model.handle} />
           {nearVenue && !selectedVenue && (
             <button
-              className="pointer-events-auto absolute bottom-20 left-1/2 z-20 -translate-x-1/2 rounded-full chrome px-4 py-2 text-sm font-semibold hover:bg-white/10"
+              className="pointer-events-auto absolute bottom-20 [@media(any-pointer:coarse)]:bottom-56 left-1/2 z-20 -translate-x-1/2 rounded-full chrome px-4 py-2 text-sm font-semibold hover:bg-white/10"
               onClick={() => {
                 const v = placeVenues(g.contentRadius).find((x) => x.id === nearVenue);
                 if (v) selectVenue(v);
@@ -211,7 +211,7 @@ export function WorldClient({ handle, spawnPostId, embed, backdrop }: { handle: 
             ))}
           </div>
           {me && (
-            <a href="/home" className="pointer-events-auto absolute bottom-20 right-3 z-20 rounded-full chrome px-4 py-2 text-sm font-semibold hover:bg-white/10">
+            <a href="/home" className="pointer-events-auto absolute bottom-20 right-3 z-20 [@media(any-pointer:coarse)]:bottom-56 rounded-full chrome px-4 py-2 text-sm font-semibold hover:bg-white/10">
               🏠 Go home
             </a>
           )}

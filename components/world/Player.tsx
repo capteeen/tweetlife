@@ -96,17 +96,27 @@ export function Player({ structures, blocks, grid, boundaryRadius, contentRadius
       pitch.current = THREE.MathUtils.clamp(pitch.current + dy * 0.004, 0.12, 1.25);
     };
     const pu = () => (drag.current = null);
+    // a key released while the tab was in the background never sends keyup; drop everything held so the player doesn't keep walking
+    const release = () => {
+      keys.current = {};
+      drag.current = null;
+    };
+    const vis = () => document.hidden && release();
     window.addEventListener('keydown', down);
     window.addEventListener('keyup', up);
     el.addEventListener('pointerdown', pd);
     window.addEventListener('pointermove', pm);
     window.addEventListener('pointerup', pu);
+    window.addEventListener('blur', release);
+    document.addEventListener('visibilitychange', vis);
     return () => {
       window.removeEventListener('keydown', down);
       window.removeEventListener('keyup', up);
       el.removeEventListener('pointerdown', pd);
       window.removeEventListener('pointermove', pm);
       window.removeEventListener('pointerup', pu);
+      window.removeEventListener('blur', release);
+      document.removeEventListener('visibilitychange', vis);
     };
   }, [gl]);
 

@@ -12,12 +12,12 @@ export function TravelPicker({ to, label }: { to: Pt; label: string }) {
   const playerPos = useWorld((s) => s.playerPos);
   const options = useMemo(() => rideOptions(), [assets]); // eslint-disable-line react-hooks/exhaustive-deps
   const length = useMemo(() => pathLength(plannedRoute(to)), [to, playerPos.x, playerPos.z]); // eslint-disable-line react-hooks/exhaustive-deps
-  const [pick, setPick] = useState<string>(() => (options.find((o) => o.id === 'own') ? 'own' : 'keke'));
+  const [pick, setPick] = useState<string>(() => (options.find((o) => o.id === 'own') ? 'own' : 'bus'));
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const ride = options.find((o) => o.id === pick) ?? options[0];
   const broke = !!me && ride.bags > me.bags;
-  const tired = !!me && ride.id === 'trek' && me.gas < 6;
+  const tired = !!me && ride.id === 'walk' && me.gas < 6;
 
   const go = async () => {
     setBusy(true);
@@ -38,7 +38,7 @@ export function TravelPicker({ to, label }: { to: Pt; label: string }) {
         <span>Getting there</span>
         <span className="num">{Math.round(length)} m away</span>
       </div>
-      <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+      <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
         {options.map((o) => {
           const sec = tripSeconds(length, o.speed);
           const on = o.id === pick;
@@ -68,7 +68,7 @@ export function TravelPicker({ to, label }: { to: Pt; label: string }) {
         disabled={busy || broke || tired}
         onClick={go}
       >
-        {busy ? 'Booking…' : broke ? `You need ${ride.bags - me.bags} more bags` : tired ? 'Too tired to trek' : `Go · ${ride.bags ? `${ride.bags} bags` : 'Free'}`}
+        {busy ? 'Booking…' : broke ? `You need ${ride.bags - me.bags} more bags` : tired ? 'Too tired to walk' : `Go · ${ride.bags ? `${ride.bags} bags` : 'Free'}`}
       </button>
       {err && <p className="mt-2 text-xs text-rose-300">{err}</p>}
     </div>

@@ -6,7 +6,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 // wheels with rims, bumpers, grille and lights. Parts are merged per material so a model costs one draw call
 // per material, and every geometry is built once and cached. Models face +z, wheels on the ground at y = 0.
 
-export type CarModel = 'sedan' | 'hatch' | 'suv' | 'pickup' | 'danfo' | 'sport' | 'keke';
+export type CarModel = 'sedan' | 'hatch' | 'suv' | 'pickup' | 'danfo' | 'sport' | 'keke' | 'taxi' | 'van' | 'bus';
 export type CarPart = 'paint' | 'glass' | 'trim' | 'rim' | 'head' | 'tail';
 export const CAR_PARTS: CarPart[] = ['paint', 'glass', 'trim', 'rim', 'head', 'tail'];
 
@@ -69,6 +69,24 @@ const SPECS: Record<CarModel, Spec> = {
     cabin: [[0.75, 0.8], [-0.15, 1.15], [-0.8, 1.15], [-1.75, 0.9]],
     roof: [-0.12, -0.85, 1.15], colors: ['#E63946', '#FFD166', '#06D6A0', '#F28C28', '#F4F1DE'],
   },
+  taxi: {
+    L: 4.5, W: 1.85, y0: 0.28, wheelR: 0.36, axles: [{ z: 1.45 }, { z: -1.4 }], lightY: 0.62,
+    top: [[2.25, 0.5], [2.22, 0.68], [2.0, 0.8], [1.0, 0.88], [-1.45, 0.92], [-2.15, 0.9], [-2.25, 0.72], [-2.25, 0.5]],
+    cabin: [[1.0, 0.86], [0.25, 1.38], [-0.9, 1.38], [-1.5, 0.9]],
+    roof: [0.27, -0.93, 1.38], colors: ['#F7C600'],
+  },
+  van: {
+    L: 5.0, W: 2.0, y0: 0.38, wheelR: 0.42, axles: [{ z: 1.75 }, { z: -1.6 }], lightY: 0.8,
+    top: [[2.5, 0.6], [2.5, 1.05], [2.3, 1.25], [-2.5, 1.25], [-2.5, 0.6]],
+    cabin: [[2.3, 1.22], [1.95, 2.1], [-2.48, 2.1], [-2.48, 1.22]],
+    roof: [1.98, -2.5, 2.1], colors: ['#F4F1DE', '#F4F1DE', '#C9CED6', '#2D2D2D'],
+  },
+  bus: {
+    L: 9.0, W: 2.45, y0: 0.45, wheelR: 0.5, axles: [{ z: 3.0 }, { z: -2.7 }], lightY: 0.85,
+    top: [[4.5, 0.6], [4.5, 1.5], [-4.5, 1.5], [-4.5, 0.6]],
+    cabin: [[4.5, 1.48], [4.45, 2.6], [-4.48, 2.6], [-4.48, 1.48]],
+    roof: [4.45, -4.48, 2.6], colors: ['#1F4E79', '#F4F1DE'],
+  },
   keke: {
     L: 2.7, W: 1.3, y0: 0.32, wheelR: 0.28, axles: [{ z: 1.0, single: true }, { z: -0.85 }], lightY: 0.8,
     top: [[1.3, 0.45], [1.32, 0.75], [1.1, 1.05], [0.6, 1.0], [-1.25, 0.95], [-1.35, 0.7], [-1.35, 0.45]],
@@ -80,8 +98,9 @@ export const TRAFFIC_MODELS: { model: CarModel; weight: number; speed: number }[
   { model: 'sedan', weight: 5, speed: 1 },
   { model: 'hatch', weight: 4, speed: 1 },
   { model: 'suv', weight: 3, speed: 0.95 },
-  { model: 'danfo', weight: 3, speed: 0.8 },
-  { model: 'keke', weight: 3, speed: 0.7 },
+  { model: 'taxi', weight: 3, speed: 1 },
+  { model: 'van', weight: 2, speed: 0.85 },
+  { model: 'bus', weight: 1, speed: 0.7 },
   { model: 'pickup', weight: 2, speed: 0.9 },
   { model: 'sport', weight: 1, speed: 1.25 },
 ];
@@ -135,7 +154,7 @@ function build(s: Spec, model: CarModel, open: boolean): Record<CarPart, THREE.B
     const beltY = Math.min(s.cabin[0][1], s.cabin[s.cabin.length - 1][1]);
     const roofY = s.roof ? s.roof[2] : beltY + 0.4;
     // B pillar (and a C pillar on long cabins) as painted strips over the side glass
-    const pillars = model === 'danfo' ? [0.9, -0.3, -1.4] : model === 'pickup' ? [] : [(s.cabin[1][0] + s.cabin[2][0]) / 2 - 0.05];
+    const pillars = model === 'danfo' || model === 'van' ? [0.9, -0.3, -1.4] : model === 'bus' ? [3.2, 1.6, 0, -1.6, -3.2] : model === 'pickup' ? [] : [(s.cabin[1][0] + s.cabin[2][0]) / 2 - 0.05];
     for (const pz of pillars) box('paint', W - 0.18, roofY - beltY, 0.1, 0, (roofY + beltY) / 2, pz);
     // drip rail along the roof edge
     box('trim', W - 0.16, 0.04, Math.abs(rz0 - rz1) * 0.5, 0, beltY + 0.02, (rz0 + rz1) / 2);
@@ -181,6 +200,17 @@ function build(s: Spec, model: CarModel, open: boolean): Record<CarPart, THREE.B
     }
     box('trim', W - 0.4, 0.06, L * 0.6, 0, 2.24, -0.4);
     for (const z of [-1.8, -0.4, 1.0]) box('trim', W - 0.3, 0.12, 0.06, 0, 2.2, z);
+  }
+  if (model === 'taxi') {
+    // checker band along both sides, and the lit sign on the roof
+    for (const sx of [-1, 1]) for (let k = 0; k < 14; k++) box('trim', 0.02, 0.07, 0.14, sx * (hw + 0.005), 0.74 + (k % 2) * 0.07, 1.6 - k * 0.24);
+    if (!open) box('head', 0.75, 0.24, 0.3, 0, 1.55, -0.35);
+  }
+  if (model === 'bus') {
+    // destination sign over the windscreen, a stripe along the sides, and a bike rack on the nose
+    box('head', W - 0.5, 0.26, 0.04, 0, 2.38, hl + 0.01);
+    for (const sx of [-1, 1]) box('trim', 0.02, 0.14, L - 0.6, sx * (hw + 0.005), 1.15, 0);
+    box('trim', W - 0.6, 0.5, 0.08, 0, 0.75, hl + 0.3);
   }
   if (model === 'pickup') {
     // the bed: dark floor between painted walls

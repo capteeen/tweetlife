@@ -1,74 +1,102 @@
 'use client';
-import type { ReactNode } from 'react';
+import { useEffect, useMemo } from 'react';
+import { CAR_PARTS, carMaterial, carParts, type CarModel } from './carModels';
 
-// The public rides you can take around the city, low-poly and facing +z like the figure.
-// Danfo: the yellow bus with black stripes. Keke: the tricycle. Okada: the motorbike. Cab: yellow with a roof sign.
+// The rides you can take around the city, facing +z like the figure. The bus, taxi and rideshare are the same
+// procedural models as traffic; the taxi and rideshare are open-topped so you can see yourself riding. The bike and e-scooter are built here.
 
-const m = (color: string, extra?: Record<string, unknown>) => <meshStandardMaterial color={color} flatShading roughness={0.55} metalness={0.15} {...extra} />;
+const m = (color: string, extra?: Record<string, unknown>) => <meshStandardMaterial color={color} flatShading roughness={0.5} metalness={0.3} {...extra} />;
 
-function Wheel({ x, y = 0.32, z, r = 0.32, w = 0.28 }: { x: number; y?: number; z: number; r?: number; w?: number }) {
+function Wheel({ z, r, w = 0.08, y = r }: { z: number; r: number; w?: number; y?: number }) {
   return (
-    <mesh position={[x, y, z]} rotation={[0, 0, Math.PI / 2]}>
-      <cylinderGeometry args={[r, r, w, 10]} />
+    <mesh position={[0, y, z]} rotation={[0, 0, Math.PI / 2]}>
+      <cylinderGeometry args={[r, r, w, 14]} />
       {m('#141414')}
     </mesh>
   );
 }
 
-function Box({ p, s, c, extra }: { p: [number, number, number]; s: [number, number, number]; c: string; extra?: Record<string, unknown> }) {
+function Bar({ p, s, c, rx = 0 }: { p: [number, number, number]; s: [number, number, number]; c: string; rx?: number }) {
   return (
-    <mesh position={p} castShadow>
+    <mesh position={p} rotation={[rx, 0, 0]} castShadow>
       <boxGeometry args={s} />
-      {m(c, extra)}
+      {m(c)}
     </mesh>
   );
 }
 
+/** A dock bike: teal frame, basket on the front. */
+function Bike() {
+  return (
+    <group>
+      <Wheel z={0.6} r={0.34} />
+      <Wheel z={-0.6} r={0.34} />
+      <Bar p={[0, 0.55, 0]} s={[0.07, 0.07, 1.1]} c="#06D6A0" rx={0.25} />
+      <Bar p={[0, 0.62, -0.32]} s={[0.07, 0.6, 0.07]} c="#06D6A0" rx={-0.2} />
+      <Bar p={[0, 0.72, 0.5]} s={[0.07, 0.6, 0.07]} c="#06D6A0" rx={0.25} />
+      <Bar p={[0, 0.95, -0.35]} s={[0.18, 0.06, 0.3]} c="#1B1B1B" />
+      <Bar p={[0, 1.02, 0.6]} s={[0.6, 0.05, 0.05]} c="#333" />
+      <Bar p={[0, 0.88, 0.82]} s={[0.36, 0.22, 0.28]} c="#2D2D2D" />
+    </group>
+  );
+}
+
+/** A rental e-scooter: deck, stem, bars and a light. */
+function Scooter() {
+  return (
+    <group>
+      <Wheel z={0.5} r={0.12} w={0.07} />
+      <Wheel z={-0.45} r={0.12} w={0.07} />
+      <Bar p={[0, 0.16, 0]} s={[0.22, 0.06, 0.95]} c="#2D2D2D" />
+      <Bar p={[0, 0.65, 0.48]} s={[0.06, 1.0, 0.06]} c="#2EC4B6" rx={0.12} />
+      <Bar p={[0, 1.13, 0.54]} s={[0.55, 0.05, 0.05]} c="#1B1B1B" />
+      <mesh position={[0, 0.95, 0.58]}>
+        <boxGeometry args={[0.12, 0.08, 0.05]} />
+        <meshStandardMaterial color="#FFF6D8" emissive="#FFF1C4" emissiveIntensity={1.4} toneMapped={false} />
+      </mesh>
+    </group>
+  );
+}
+
+const CAR_RIDES: Record<string, { model: CarModel; paint: string }> = {
+  bus: { model: 'bus', paint: '#1F4E79' },
+  taxi: { model: 'taxi', paint: '#F7C600' },
+  rideshare: { model: 'suv', paint: '#2D2D2D' },
+};
+
+function CarRide({ model, paint, rideshare }: { model: CarModel; paint: string; rideshare?: boolean }) {
+  const parts = carParts(model, model !== 'bus'); // you ride inside the bus; the others are open so you show
+  const mats = useMemo(() => CAR_PARTS.map((p) => carMaterial(p, paint)), [paint]);
+  useEffect(() => () => mats.forEach((x) => x.dispose()), [mats]);
+  return (
+    <group>
+      {CAR_PARTS.map((p, i) => parts[p] && <mesh key={p} geometry={parts[p]!} material={mats[i]} castShadow={p === 'paint'} />)}
+      {rideshare && (
+        // the glowing app sign on the dash
+        <mesh position={[0, 1.3, 1.05]}>
+          <boxGeometry args={[0.5, 0.16, 0.05]} />
+          <meshStandardMaterial color="#FF2E88" emissive="#FF2E88" emissiveIntensity={1.6} toneMapped={false} />
+        </mesh>
+      )}
+    </group>
+  );
+}
+
 export function RideVehicle({ mode }: { mode: string }) {
-  let body: ReactNode = null;
-  if (mode === 'danfo') {
-    body = (
-      <>
-        <Box p={[0, 1.05, 0]} s={[2, 1.5, 4.6]} c="#FFC300" />
-        <Box p={[0, 0.75, 0]} s={[2.02, 0.16, 4.62]} c="#111" />
-        <Box p={[0, 1.15, 0]} s={[2.02, 0.12, 4.62]} c="#111" />
-        <Box p={[0, 1.45, 0.2]} s={[2.04, 0.55, 3.6]} c="#1B2436" extra={{ roughness: 0.25 }} />
-        <Box p={[0, 1.4, 2.32]} s={[1.7, 0.6, 0.05]} c="#1B2436" extra={{ roughness: 0.25 }} />
-        <Box p={[0, 1.9, -0.4]} s={[1.6, 0.18, 2.6]} c="#3A3A3A" />
-        {[-1, 1].flatMap((sx) => [-1.5, 1.5].map((sz) => <Wheel key={`${sx}${sz}`} x={sx * 0.95} z={sz} />))}
-      </>
-    );
-  } else if (mode === 'keke') {
-    body = (
-      <>
-        <Box p={[0, 0.65, -0.2]} s={[1.3, 0.55, 2.2]} c="#2E9E4F" />
-        <Box p={[0, 1.55, -0.2]} s={[1.36, 0.12, 2.3]} c="#FFD166" />
-        {[-1, 1].flatMap((sx) => [-1.2, 0.8].map((sz) => <Box key={`${sx}${sz}`} p={[sx * 0.62, 1.15, sz]} s={[0.08, 0.8, 0.08]} c="#333" />))}
-        <Box p={[0, 1.15, 0.85]} s={[1.1, 0.7, 0.05]} c="#BFE3FF" extra={{ transparent: true, opacity: 0.5 }} />
-        <Wheel x={0} z={1.05} r={0.28} w={0.18} />
-        {[-1, 1].map((sx) => <Wheel key={sx} x={sx * 0.68} z={-1} r={0.28} w={0.18} />)}
-      </>
-    );
-  } else if (mode === 'okada') {
-    body = (
-      <>
-        <Box p={[0, 0.65, 0]} s={[0.35, 0.35, 1.6]} c="#E63946" />
-        <Box p={[0, 0.9, -0.25]} s={[0.4, 0.14, 0.9]} c="#1B1B1B" />
-        <Box p={[0, 1.05, 0.7]} s={[0.9, 0.06, 0.06]} c="#333" />
-        <Wheel x={0} z={0.75} r={0.36} w={0.14} />
-        <Wheel x={0} z={-0.75} r={0.36} w={0.14} />
-      </>
-    );
-  } else {
-    body = (
-      <>
-        <Box p={[0, 0.55, 0]} s={[1.8, 0.65, 3.6]} c="#F4D35E" />
-        <Box p={[0, 1.1, -0.15]} s={[1.5, 0.55, 1.9]} c="#1B2436" extra={{ roughness: 0.25 }} />
-        <Box p={[0, 0.56, 0]} s={[1.82, 0.12, 3.62]} c="#2D2D2D" />
-        <Box p={[0, 1.5, -0.15]} s={[0.7, 0.25, 0.3]} c="#FFFFFF" extra={{ emissive: '#FFD089', emissiveIntensity: 0.6 }} />
-        {[-1, 1].flatMap((sx) => [-1.15, 1.15].map((sz) => <Wheel key={`${sx}${sz}`} x={sx * 0.9} z={sz} />))}
-      </>
-    );
-  }
-  return <group>{body}</group>;
+  if (mode === 'bike') return <Bike />;
+  if (mode === 'scooter') return <Scooter />;
+  const c = CAR_RIDES[mode] ?? CAR_RIDES.taxi;
+  return <CarRide model={c.model} paint={c.paint} rideshare={mode === 'rideshare'} />;
+}
+
+/** How far the camera pulls back on each ride. */
+export const rideCamera = (mode: string) => (mode === 'bus' ? 1.8 : mode === 'bike' || mode === 'scooter' ? 1 : 1.35);
+
+/** Where the figure sits or stands on each ride. */
+export function rideRider(mode: string): { y: number; show: boolean; scale: number } {
+  if (mode === 'bike') return { y: 0.5, show: true, scale: 0.8 };
+  if (mode === 'scooter') return { y: 0.2, show: true, scale: 0.85 };
+  if (mode === 'bus') return { y: 1.2, show: false, scale: 0.85 };
+  if (mode === 'rideshare') return { y: 0.75, show: true, scale: 0.85 };
+  return { y: 0.55, show: true, scale: 0.85 };
 }

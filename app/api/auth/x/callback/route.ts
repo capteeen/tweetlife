@@ -9,6 +9,7 @@ import { enqueueIngest } from '@/lib/queue/queues';
 import { XApiError } from '@/lib/x/types';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 30;
 
 // OAuth callback. On first sign-in this creates the user's world and queues its first build.
 // We use the signer's own token to read the signer's own timeline.

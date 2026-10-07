@@ -80,20 +80,28 @@ export async function syncProfile(worldId: string) {
   return me;
 }
 
+export type StepOptions = {
+  /** Stop (returning done: false) once this time passes; the run resumes on the next step. Inline mode. */
+  deadline?: number;
+};
+
 /**
  * First build or incremental sync. Walks pagination writing structures as each page lands.
- * `run` is the IngestRun row the worker created; counts are updated on it per page.
+ * `run` is the IngestRun row; counts are updated on it per page. Resumable: a first build resumes below
+ * the oldest post already stored, an incremental run restarts from since_id (duplicates are skipped).
  */
-export async function ingestTimeline(run: IngestRun, kind: Extract<RunKind, 'first_build' | 'incremental'>) {
+export async function ingestTimeline(run: IngestRun, kind: Extract<RunKind, 'first_build' | 'incremental'>, opts: StepOptions = {}) {
   const { world, ctx } = await ownerContext(run.worldId);
   const maxPosts = env().X_FIRST_BUILD_MAX_POSTS;
-  const progress: Progress = { postsWritten: 0, pagesFetched: 0, calls: 0 };
+  const progress: Progress = { postsWritten: run.postsWritten, pagesFetched: run.pagesFetched, calls: run.calls };
 
   await db.world.update({ where: { id: world.id }, data: { ingestState: 'building', ingestError: null } });
 
-  // Profile first: followers_count sets the boundary; also confirms the token works before we page.
-  await syncProfile(world.id);
-  progress.calls++;
+  // Profile first (once per run): followers_count sets the boundary; also confirms the token works before we page.
+  if (run.pagesFetched === 0) {
+    await syncProfile(world.id);
+    progress.calls++;
+  }
 
   let paginationToken: string | undefined;
   let newestSeen: string | null = world.newestPostId;
@@ -124,8 +132,10 @@ export async function ingestTimeline(run: IngestRun, kind: Extract<RunKind, 'fir
     if (page.oldestId && (!oldestSeen || BigInt(page.oldestId) < BigInt(oldestSeen))) oldestSeen = page.oldestId;
 
     await Promise.all([
-      db.ingestRun.update({ where: { id: run.id }, data: { ...progress } }),
-      db.world.update({ where: { id: world.id }, data: { newestPostId: newestSeen, oldestPostId: oldestSeen } }),
+      db.ingestRun.update({ where: { id: run.id }, data: { ...progress, heartbeatAt: new Date() } }),
+      // An incremental run only advances newestPostId when it completes, so an interrupted run re-reads
+      // from the old since_id instead of skipping the pages it never reached.
+      db.world.update({ where: { id: world.id }, data: { oldestPostId: oldestSeen, ...(kind === 'first_build' ? { newestPostId: newestSeen } : {}) } }),
       publishProgress(world.id, progress),
     ]);
 
@@ -133,14 +143,15 @@ export async function ingestTimeline(run: IngestRun, kind: Extract<RunKind, 'fir
     if (!page.nextToken || page.tweets.length === 0) break;
     if (kind === 'first_build' && total >= maxPosts) break;
     paginationToken = page.nextToken;
+    if (opts.deadline && Date.now() > opts.deadline) return { ...progress, done: false };
   }
 
   await db.world.update({
     where: { id: world.id },
-    data: { ingestState: 'live', lastSyncAt: new Date(), nextSyncAt: new Date(Date.now() + 6 * 3600 * 1000) },
+    data: { ingestState: 'live', newestPostId: newestSeen, lastSyncAt: new Date(), nextSyncAt: new Date(Date.now() + 6 * 3600 * 1000) },
   });
   await redis().del(progressKey(world.id)).catch(() => {});
-  return progress;
+  return { ...progress, done: true };
 }
 
 /** Nightly: re-read metrics for posts from the last 30 days, 100 ids per call. */
@@ -180,5 +191,5 @@ export async function refreshRecentMetrics(run: IngestRun) {
   await syncProfile(world.id);
   progress.calls++;
   await db.world.update({ where: { id: world.id }, data: { lastSyncAt: new Date() } });
-  return progress;
+  return { ...progress, done: true };
 }

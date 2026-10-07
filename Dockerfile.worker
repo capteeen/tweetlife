@@ -1,0 +1,17 @@
+# Optional: the BullMQ ingestion worker (INGEST_MODE=worker) and/or the timelapse renderer, for hosts
+# other than Vercel (Railway, Fly, Render, a VPS). Vercel deployments do not need this: they run
+# ingestion inline via /api/cron/tick. Timelapse rendering always needs this image (Chromium + ffmpeg).
+#
+#   docker build -f Dockerfile.worker -t tweetlife-worker .
+#   docker run --env-file .env tweetlife-worker                       # ingestion worker
+#   docker run --env-file .env tweetlife-worker npm run worker:timelapse
+
+FROM mcr.microsoft.com/playwright:v1.47.0-jammy
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+ENV NODE_ENV=production PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+COPY package.json package-lock.json ./
+COPY prisma ./prisma
+RUN npm ci --no-audit --no-fund
+COPY . .
+CMD ["npm", "run", "worker"]

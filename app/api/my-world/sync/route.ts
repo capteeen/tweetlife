@@ -5,6 +5,7 @@ import { enqueueIngest } from '@/lib/queue/queues';
 import { redis } from '@/lib/redis';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 30;
 
 // "Sync now" from the dashboard. Rate limited to once per 10 minutes per world — it costs real calls.
 export async function POST() {

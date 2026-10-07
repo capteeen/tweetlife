@@ -39,6 +39,7 @@ export async function getSession(): Promise<SessionUser | null> {
   const raw = cookies().get(COOKIE)?.value;
   if (!raw) return null;
   try {
+    // env() throws when SESSION_SECRET is unset; treat that as "signed out", the setup notice explains why
     const { payload } = await jwtVerify(raw, secret());
     if (!payload.sub) return null;
     return {
@@ -56,7 +57,11 @@ export async function getSession(): Promise<SessionUser | null> {
 export async function getUser() {
   const s = await getSession();
   if (!s) return null;
-  const user = await db.user.findUnique({ where: { id: s.id } });
-  if (!user || user.revokedAt) return null;
-  return user;
+  try {
+    const user = await db.user.findUnique({ where: { id: s.id } });
+    if (!user || user.revokedAt) return null;
+    return user;
+  } catch {
+    return null; // database unreachable or not migrated: the pages show the setup notice
+  }
 }

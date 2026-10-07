@@ -2,38 +2,18 @@ import { Worker, type Job } from 'bullmq';
 import { db } from '../lib/db';
 import { bullConnection } from '../lib/redis';
 import { INGEST_QUEUE, enqueueIngest, type IngestJob } from '../lib/queue/queues';
-import { ingestTimeline, refreshRecentMetrics } from '../lib/x/ingest';
-import { BudgetExhaustedError, XApiError } from '../lib/x/types';
+import { runIngest } from '../lib/ingest/runner';
 
-// Ingestion worker. Run with `npm run worker`. One process consumes first builds, incremental
-// syncs and nightly metric refreshes; concurrency is low on purpose — the limiter does the pacing.
+// Ingestion worker for INGEST_MODE=worker. Run with `npm run worker`. One process consumes first builds,
+// incremental syncs and nightly metric refreshes; concurrency is low on purpose — the limiter does the pacing.
+// (On Vercel there is no worker: INGEST_MODE=inline and /api/cron/tick does this inside the web app.)
 
 async function handleJob(job: Job<IngestJob>) {
-  const { runId, kind } = job.data;
-  const run = await db.ingestRun.update({
-    where: { id: runId },
-    data: { status: 'running', attempts: { increment: 1 }, error: null, startedAt: new Date() },
-  });
-  try {
-    if (kind === 'metrics_refresh') await refreshRecentMetrics(run);
-    else await ingestTimeline(run, kind);
-    await db.ingestRun.update({ where: { id: runId }, data: { status: 'succeeded', finishedAt: new Date() } });
-  } catch (e) {
-    const err = e as Error;
-    const final = job.attemptsMade + 1 >= (job.opts.attempts ?? 1);
-    // Budget exhaustion and revoked auth are not retryable; mark dead immediately.
-    const terminal = e instanceof BudgetExhaustedError || (e instanceof XApiError && e.isAuth);
-    await db.ingestRun.update({
-      where: { id: runId },
-      data: { status: final || terminal ? 'dead' : 'failed', error: err.message.slice(0, 1000), finishedAt: new Date() },
-    });
-    if (kind !== 'metrics_refresh') {
-      await db.world.update({ where: { id: run.worldId }, data: { ingestState: 'failed', ingestError: err.message.slice(0, 500) } });
-    }
-    if (terminal) {
-      await job.discard();
-    }
-    throw e;
+  const r = await runIngest(job.data.runId);
+  if (r.outcome === 'retry') throw new Error(r.error ?? 'ingest failed'); // BullMQ retries with backoff
+  if (r.outcome === 'dead') {
+    await job.discard();
+    throw new Error(r.error ?? 'ingest dead');
   }
 }
 

@@ -60,12 +60,38 @@ Requirements: Node 18.17+, Postgres, Redis, ffmpeg (timelapse only), an X develo
 6. Sign in with X as the operator. Your world is queued and built from your timeline. In `/my-world` set access to
    **public** and put your handle in `OPERATOR_HANDLE` — it is then embedded on `/`, labelled as the real account it is.
 
-### Deploying
+### Deploying on Vercel (no separate worker needed)
 
-Any host that runs a Node server + a long-lived worker process works (Railway, Fly, Render, a VPS). Vercel can host
-the Next.js app but **not** the BullMQ worker; run `npm run worker` elsewhere against the same Postgres and Redis.
-The app must be served over HTTPS: the session cookie is `SameSite=None; Secure` so sign-in survives inside a tweet
-card iframe.
+1. Import the repo. Add the **Prisma Postgres** (prefix `DATABASE` → `DATABASE_URL`) and **Redis** (prefix `REDIS`
+   → `REDIS_URL`) integrations. Other prefixes also work: the app accepts `POSTGRES_URL`, `POSTGRES_PRISMA_URL`,
+   `KV_URL`, `STORAGE_URL`, `<PREFIX>_URL` variants (`lib/db-url.ts`).
+2. Set the remaining environment variables (Settings → Environment Variables): `SESSION_SECRET`,
+   `TOKEN_ENCRYPTION_KEY`, `X_CLIENT_ID`, `X_CLIENT_SECRET`, `X_API_TIER`, `X_MONTHLY_CALL_BUDGET`, `CRON_SECRET`
+   (`openssl rand -hex 32`), `OPERATOR_HANDLE`, `ADMIN_HANDLES`. `NEXT_PUBLIC_APP_URL` is optional on Vercel — it
+   falls back to the production deployment URL — but set it once you have a custom domain.
+3. Deploy. The build (`vercel-build`) runs `prisma migrate deploy` itself, so there is no manual migration step.
+4. In the X developer portal set the OAuth 2.0 callback to `https://<your-domain>/api/auth/x/callback`.
+
+On Vercel the app runs in **inline ingestion mode** (`INGEST_MODE=inline`, the default when `VERCEL` is set): there
+is no BullMQ worker. `/api/cron/tick` claims queued `IngestRun` rows and advances them in ≤45 s steps inside a
+serverless function, persisting progress per page; while work remains it re-triggers itself, so a first build
+completes in minutes. Sign-in, "Sync now", a retry, and any visit to a world that is still building all wake it.
+`vercel.json` also schedules it nightly (03:10 UTC — the daily cadence is what Vercel's Hobby plan allows; on Pro
+you can set it to `*/10 * * * *` so 6-hourly incremental syncs run on time without a visitor nudging them).
+
+Until the deployment is configured, every page shows a setup notice naming the missing variables instead of
+crashing.
+
+**Timelapse rendering** is the one thing that cannot run inline (it needs Chromium + ffmpeg). It is optional; to
+enable it run `npm run worker:timelapse` anywhere with the same `DATABASE_URL`/`REDIS_URL`/`SESSION_SECRET`
+(`Dockerfile.worker`, `render.yaml`). Without it the dashboard's Render button queues a job that stays `queued`.
+
+### Deploying anywhere else
+
+Any host that runs a Node server + a long-lived process works (Railway, Fly, Render, a VPS): run `npm start` and
+`npm run worker` (`INGEST_MODE=worker`, BullMQ) against the same Postgres and Redis. `Dockerfile.worker` builds the
+worker image; `render.yaml` is a Render blueprint for it. The app must be served over HTTPS: the session cookie is
+`SameSite=None; Secure` so sign-in survives inside a tweet card iframe.
 
 ## X API tier, per-world call cost and the monthly budget
 

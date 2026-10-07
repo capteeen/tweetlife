@@ -6,6 +6,7 @@ import { isAdmin } from '@/lib/env';
 import { retryRun } from '@/lib/queue/queues';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 30;
 
 // Manual retry of a dead-letter ingestion run. The world's owner or an admin.
 const Body = z.object({ runId: z.string().min(1) });

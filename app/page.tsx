@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { Footer, Header, SignInButton } from '@/components/ui/Chrome';
 import { getSession } from '@/lib/session';
-import { env } from '@/lib/env';
+import { env, envProblems } from '@/lib/env';
+import { SetupNotice, probeDatabase } from '@/components/ui/SetupNotice';
 import { findWorldByHandle } from '@/lib/world/load';
 import { db } from '@/lib/db';
 import { compact } from '@/lib/format';
@@ -13,16 +14,20 @@ export const dynamic = 'force-dynamic';
 
 export default async function Landing({ searchParams }: { searchParams: { auth_error?: string } }) {
   const user = await getSession();
-  const operatorHandle = env().OPERATOR_HANDLE.replace(/^@/, '');
-  const operator = operatorHandle ? await findWorldByHandle(operatorHandle) : null;
+  const problems = envProblems();
+  const dbProblem = await probeDatabase();
+  const configured = problems.length === 0 && !dbProblem;
+  const operatorHandle = configured ? env().OPERATOR_HANDLE.replace(/^@/, '') : '';
+  const operator = operatorHandle ? await findWorldByHandle(operatorHandle).catch(() => null) : null;
   const showcase = operator && operator.access === 'public' ? operator : null;
-  const showcaseCount = showcase ? await db.structure.count({ where: { worldId: showcase.id, hidden: false } }) : 0;
-  const worldCount = await db.world.count({ where: { ingestState: 'live' } });
+  const showcaseCount = showcase ? await db.structure.count({ where: { worldId: showcase.id, hidden: false } }).catch(() => 0) : 0;
+  const worldCount = configured ? await db.world.count({ where: { ingestState: 'live' } }).catch(() => 0) : 0;
 
   return (
     <div className="min-h-screen">
       <Header user={user} />
       <main className="mx-auto max-w-6xl px-4">
+        {!configured && <SetupNotice problems={problems} dbProblem={dbProblem} />}
         {searchParams.auth_error && (
           <div className="mt-4 rounded-xl border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">Sign-in failed: {searchParams.auth_error}</div>
         )}

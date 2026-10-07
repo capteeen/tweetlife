@@ -196,9 +196,13 @@ model IngestRun {
   attempts     Int       @default(0)
   error        String?
   jobId        String?
+  /// Inline (worker-less) mode: earliest time the next attempt may run; set on retry backoff.
+  notBefore    DateTime?
+  /// Inline mode: last time a step touched this run; a stale heartbeat on a `running` row means the function died.
+  heartbeatAt  DateTime?
 
   @@index([worldId, startedAt])
-  @@index([status])
+  @@index([status, notBefore])
 }
 
 /// One row per outbound request to api.x.com. This is the budget ledger — monthly quota is SUM(1) here.

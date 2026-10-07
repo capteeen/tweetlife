@@ -36,7 +36,7 @@ export default async function Status() {
             <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <Stat label={`X calls this month (${snap.budget.month})`} value={`${fullNumber(snap.budget.used)} / ${fullNumber(snap.budget.budget)}`} sub={`${Math.round(snap.budget.fraction * 100)}% · tier: ${snap.tier}`} />
               <Stat
-                label="Ingest queue"
+                label={`Ingest queue (${snap.queues?.mode ?? 'unknown'} mode)`}
                 value={snap.queues ? `${snap.queues.ingest.waiting ?? 0} waiting · ${snap.queues.ingest.active ?? 0} active` : 'unavailable'}
                 sub={snap.queues ? `${snap.queues.ingest.delayed ?? 0} delayed · ${snap.queues.ingest.failed ?? 0} failed` : 'queue connection failed'}
               />

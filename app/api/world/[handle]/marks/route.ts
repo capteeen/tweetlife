@@ -5,6 +5,7 @@ import { resolveEntry } from '@/lib/world/entry';
 import { doesFollow } from '@/lib/x/relationship';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 30;
 
 // Guestbook stones. One per visitor per world; placing again moves it.
 // `bright` = the owner follows the visitor back, resolved on the owner's token and cached like the entry check.

@@ -14,7 +14,7 @@ export default async function Explore() {
     orderBy: { lastSyncAt: 'desc' },
     take: 100,
     include: { owner: { select: { name: true, avatarUrl: true } }, _count: { select: { structures: true, lanterns: true, marks: true } } },
-  });
+  }).catch(() => []);
   return (
     <div className="min-h-screen">
       <Header user={user} />

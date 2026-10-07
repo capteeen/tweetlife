@@ -1,0 +1,48 @@
+# Optional Render blueprint for the long-running processes (INGEST_MODE=worker) and the timelapse renderer.
+# Not needed when the web app runs on Vercel in inline mode — only the timelapse renderer is, and only if you
+# want timelapses. Set DATABASE_URL and REDIS_URL to the same values the web app uses.
+services:
+  - type: worker
+    name: tweetlife-ingest-worker
+    runtime: docker
+    dockerfilePath: ./Dockerfile.worker
+    dockerCommand: npm run worker
+    plan: starter
+    envVars:
+      - key: INGEST_MODE
+        value: worker
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: SESSION_SECRET
+        sync: false
+      - key: TOKEN_ENCRYPTION_KEY
+        sync: false
+      - key: X_CLIENT_ID
+        sync: false
+      - key: X_CLIENT_SECRET
+        sync: false
+      - key: NEXT_PUBLIC_APP_URL
+        sync: false
+  - type: worker
+    name: tweetlife-timelapse
+    runtime: docker
+    dockerfilePath: ./Dockerfile.worker
+    dockerCommand: npm run worker:timelapse
+    plan: starter
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: SESSION_SECRET
+        sync: false
+      - key: TOKEN_ENCRYPTION_KEY
+        sync: false
+      - key: X_CLIENT_ID
+        sync: false
+      - key: NEXT_PUBLIC_APP_URL
+        sync: false
+      - key: RENDER_DIR
+        value: /app/renders

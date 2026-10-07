@@ -1,6 +1,8 @@
 import Redis from 'ioredis';
 import { env } from './env';
 
+// Upstash/Vercel Redis URLs are rediss://; ioredis enables TLS from the scheme.
+
 const g = globalThis as unknown as { redis?: Redis };
 
 export function redis(): Redis {

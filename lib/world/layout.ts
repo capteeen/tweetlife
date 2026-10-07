@@ -94,7 +94,7 @@ export function billboardSpots(contentRadius: number, boundaryRadius: number): B
   const a = airportLayout(contentRadius, boundaryRadius);
   // one on each side of the airport road, facing traffic
   out.push({ x: a.road.x, z: -a.road.d / 2 - 4, rot: Math.PI / 2 });
-  out.push({ x: a.bridge.x + a.bridge.w / 2 + 14, z: 0, rot: -Math.PI / 2 });
+  out.push({ x: a.road.x + 8, z: a.road.d / 2 + 4, rot: -Math.PI / 2 });
   return out;
 }
 

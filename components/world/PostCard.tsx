@@ -56,10 +56,6 @@ export function PostCard({ handle, showMetrics, canAct }: { handle: string; show
           ✕
         </button>
       </div>
-      {s.mediaUrl && s.kind === 'monolith' && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={s.mediaUrl} alt="" className="mb-3 max-h-56 w-full rounded-xl object-cover" loading="lazy" />
-      )}
       <p className="whitespace-pre-wrap break-words leading-[22px]">{s.text}</p>
       {showMetrics && (
         <div className="num mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-white/60">

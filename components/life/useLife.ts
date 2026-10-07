@@ -127,7 +127,7 @@ export const lifeActions = {
   async activity(activityId: ActivityId) {
     const r = await j<{ ok: true; me: Pick<LifeMe, 'vibes' | 'clout' | 'gas' | 'mood'>; activity: Activity }>('/api/life/activity', { method: 'POST', body: JSON.stringify({ op: 'do', activityId }) });
     const s = useWorld.getState();
-    s.patchMe({ ...r.me, status: r.activity.line });
+    s.patchMe({ ...r.me, status: r.activity.line, statusUntil: new Date(Date.now() + r.activity.seconds * 1000).toISOString() });
     s.setDoing({ id: r.activity.id, until: Date.now() + r.activity.seconds * 1000 });
     return r;
   },

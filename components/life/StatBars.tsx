@@ -2,29 +2,28 @@
 import { useEffect, useState } from 'react';
 import { useWorld } from '@/components/world/store';
 import { ACTIVITIES, TIRED, type Activity } from '@/lib/life/activities';
+import { IDLE_STATUS, STATS, STAT_ORDER, statDelta, type StatKey } from '@/lib/life/statNames';
 import { lifeActions } from './useLife';
 
 // Bottom-left needs: Vibes / Clout / Gas, and the everyday moves (dance, stretch, rest, push-ups, selfie).
+// Each bar is named; tap one to see what it means. Each move shows what it does before you tap it.
 
-const NAMES = { gas: 'Energy', vibes: 'Fun', clout: 'Social' } as const;
-const effects = (a: Activity) =>
-  (Object.entries(a.me) as [keyof typeof NAMES, number][])
-    .filter(([, v]) => v)
-    .map(([k, v]) => `${v > 0 ? '+' : '−'}${Math.abs(v)} ${NAMES[k]}`)
-    .join(' ');
+const effects = (a: Activity) => statDelta(a.me, ' ');
 
-/** `inline` drops the fixed top-left placement, for screens that stack other panels under it. */
-export function StatBars({ inline = false }: { inline?: boolean }) {
+/** `inline` drops the fixed top-left placement, for screens that stack other panels under it. `atHome`: you are in
+ * your house, so you are not riding anything. */
+export function StatBars({ inline = false, atHome = false }: { inline?: boolean; atHome?: boolean }) {
   const me = useWorld((s) => s.life?.me ?? null);
-  const riding = useWorld((s) => s.riding);
+  const riding = useWorld((s) => (atHome ? null : s.riding));
+  const doing = useWorld((s) => s.doing);
+  const [open, setOpen] = useState<StatKey | null>(null);
   if (!me) return null;
-  const rows: { k: string; v: number; e: string; c: string }[] = [
-    { k: 'Vibes', v: me.vibes, e: '🎉', c: '#FF5D8F' },
-    { k: 'Clout', v: me.clout, e: '💬', c: '#1D9BF0' },
-    { k: 'Gas', v: me.gas, e: '⚡', c: me.gas < TIRED ? '#F97316' : '#FFD166' },
-  ];
+  // the line only says what you are doing while you are doing it
+  const live = !!me.statusUntil && Date.parse(me.statusUntil) > Date.now();
+  const move = doing && ACTIVITIES.find((a) => a.id === doing.id);
+  const status = riding ? `${riding.emoji} riding the ${riding.name}` : live ? me.status : move ? move.line : IDLE_STATUS;
   return (
-    <div className={`pointer-events-auto w-48 rounded-2xl chrome p-3 text-xs ${inline ? '' : 'absolute left-3 top-16 z-10'}`}>
+    <div className={`pointer-events-auto w-52 rounded-2xl chrome p-3 text-xs ${inline ? '' : 'absolute left-3 top-16 z-10'}`}>
       <div className="mb-2 flex items-center gap-2">
         {me.avatarUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -34,18 +33,31 @@ export function StatBars({ inline = false }: { inline?: boolean }) {
         )}
         <div className="min-w-0">
           <div className="truncate font-semibold">@{me.handle}</div>
-          <div className="truncate text-white/55">{riding ? `${riding.emoji} riding the ${riding.name}` : me.status}</div>
+          <div className="truncate text-white/55">{status}</div>
         </div>
       </div>
-      {rows.map((r) => (
-        <div key={r.k} className="mb-1.5 flex items-center gap-2">
-          <span className="w-4 text-center">{r.e}</span>
-          <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/10">
-            <div className="h-full rounded-full transition-all" style={{ width: `${r.v}%`, background: r.c }} />
-          </div>
-          <span className="num w-7 text-right text-white/70">{r.v}</span>
-        </div>
-      ))}
+      {STAT_ORDER.map((k) => {
+        const st = STATS[k];
+        const v = me[k];
+        const c = k === 'gas' && v < TIRED ? '#F97316' : st.color;
+        return (
+          <button
+            key={k}
+            className="mb-1.5 flex w-full items-center gap-1.5 rounded-lg text-left hover:bg-white/5"
+            onClick={() => setOpen(open === k ? null : k)}
+            aria-expanded={open === k}
+            title={st.what}
+          >
+            <span className="w-4 text-center">{st.emoji}</span>
+            <span className="w-9 font-semibold text-white/80">{st.name}</span>
+            <span className="h-2 flex-1 overflow-hidden rounded-full bg-white/10">
+              <span className="block h-full rounded-full transition-all" style={{ width: `${v}%`, background: c }} />
+            </span>
+            <span className="num w-6 text-right text-white/70">{v}</span>
+          </button>
+        );
+      })}
+      {open && <p className="mb-1.5 rounded-xl bg-white/5 px-2 py-1.5 leading-snug text-white/70">{STATS[open].what}</p>}
       {me.gas < TIRED && !riding && (
         <p className="mb-1 mt-1.5 rounded-xl bg-orange-500/15 px-2 py-1.5 leading-snug text-orange-200">
           {me.gas === 0 ? '😵 Out of gas. You can barely walk.' : '😮‍💨 Tired, so you walk slower.'} Sleep at home to get it back.
@@ -61,6 +73,7 @@ function Moves({ gas }: { gas: number }) {
   const setDoing = useWorld((s) => s.setDoing);
   const pushToast = useWorld((s) => s.pushToast);
   const [busy, setBusy] = useState(false);
+  const [hint, setHint] = useState<Activity | null>(null);
   const [, tick] = useState(0);
   useEffect(() => {
     if (!doing) return;
@@ -108,15 +121,23 @@ function Moves({ gas }: { gas: number }) {
               key={a.id}
               disabled={busy || tooTired}
               onClick={() => go(a)}
+              onPointerEnter={() => setHint(a)}
+              onPointerLeave={() => setHint(null)}
+              onFocus={() => setHint(a)}
+              onBlur={() => setHint(null)}
               title={`${a.label} · ${a.seconds}s · ${effects(a)}${tooTired ? ' · too tired' : ''}`}
-              aria-label={a.label}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-base leading-none transition hover:bg-white/20 disabled:opacity-40"
+              aria-label={`${a.label}: ${effects(a)}`}
+              className="flex flex-col items-center gap-0.5 rounded-xl px-0.5 py-1 leading-none transition hover:bg-white/10 disabled:opacity-40"
             >
-              {a.emoji}
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-base">{a.emoji}</span>
+              <span className="whitespace-nowrap text-[9px] text-white/55">{SHORT[a.id] ?? a.label}</span>
             </button>
           );
         })}
       </div>
+      <p className="mt-1 min-h-[1.25rem] text-[10px] leading-tight text-white/50">{hint ? `${hint.label}: ${effects(hint)}` : 'Tap a move to do it. Its effect pops up.'}</p>
     </div>
   );
 }
+
+const SHORT: Partial<Record<Activity['id'], string>> = { dance: 'Dance', stretch: 'Stretch', rest: 'Rest', pushups: 'Push-ups', selfie: 'Selfie' };

@@ -6,6 +6,7 @@ import { TravelPicker } from './TravelPicker';
 import { CoinCounter } from './CoinCounter';
 import { airportLayout, inRect } from '@/lib/world/layout';
 import type { PlacedVenue } from '@/lib/life/venues';
+import { statDelta } from '@/lib/life/statNames';
 
 /** Where a ride drops you for a venue: on its plaza, in front of the door (the terminal kerb for the airport). */
 export function venueDoor(v: PlacedVenue, contentRadius: number, boundaryRadius: number) {
@@ -31,6 +32,8 @@ export function VenueCard({ sendSocial }: { sendSocial: SocialSend }) {
   const [msg, setMsg] = useState<string | null>(null);
   const geometry = useWorld((s) => s.model?.geometry);
   const selectPeer = useWorld((s) => s.selectPeer);
+  const doing = useWorld((s) => s.doing);
+  const [peek, setPeek] = useState(false);
   if (!venue) return null;
 
   const gap = (p: { x: number; z: number }) => Math.hypot(Math.max(0, Math.abs(p.x - venue.x) - venue.w / 2), Math.max(0, Math.abs(p.z - venue.z) - venue.d / 2));
@@ -40,24 +43,41 @@ export function VenueCard({ sendSocial }: { sendSocial: SocialSend }) {
   const door = geometry ? venueDoor(venue, geometry.contentRadius, geometry.boundaryRadius) : null;
 
   const nearby = Object.values(peers).filter((p) => Math.hypot(p.x - playerPos.x, p.z - playerPos.z) < 16).map((p) => p.handle);
-  const fmt = (d: Partial<{ vibes: number; clout: number; gas: number }>) =>
-    Object.entries(d).filter(([, v]) => v).map(([k, v]) => `${(v as number) > 0 ? '+' : ''}${v} ${k[0].toUpperCase() + k.slice(1)}`).join(' · ');
+  const fmt = (d: Partial<{ vibes: number; clout: number; gas: number }>) => statDelta(d);
 
   const act = async (actionId: string) => {
     setBusy(actionId);
     setMsg(null);
     try {
       const r = await lifeActions.venue(venue.id, actionId, nearby, sendSocial);
+      setPeek(false);
       const a = venue.actions.find((x) => x.id === actionId)!;
       // play the move that goes with it (dancing at the club, push-ups at the gym...)
       if (a.act) useWorld.getState().setDoing({ id: a.act, until: Date.now() + (a.actSeconds ?? 8) * 1000 });
-      setMsg(`${a.emoji} Done. ${a.nearby ? `${r.lifted} ${r.lifted === 1 ? 'person' : 'people'} nearby felt it.` : ''}`);
+      setMsg(`${a.emoji} ${statDelta(a.me)}.${a.nearby ? ` ${r.lifted ? `${r.lifted} ${r.lifted === 1 ? 'person' : 'people'} nearby felt it too.` : 'Nobody else is here yet, so the room was all yours. Bring friends next time.'}` : ''}`);
     } catch (e) {
       setMsg((e as Error).message);
     } finally {
       setBusy(null);
     }
   };
+
+  // while a move plays (dancing at the club, lifting at the gym), shrink to a strip so you can watch yourself
+  const moving = !!doing && doing.until > Date.now() && !peek;
+  if (moving) {
+    return (
+      <div className="pointer-events-auto absolute bottom-20 left-1/2 z-30 flex w-[min(94vw,420px)] -translate-x-1/2 items-center gap-3 rounded-full chrome px-4 py-2 text-sm">
+        <span className="text-lg leading-none">{venue.emoji}</span>
+        <span className="min-w-0 flex-1 truncate">
+          <span className="font-semibold">{venue.name}</span>
+          {msg && <span className="text-white/60"> · {msg}</span>}
+        </span>
+        <button className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold hover:bg-white/20" onClick={() => setPeek(true)}>
+          Menu
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="pointer-events-auto absolute bottom-20 left-1/2 z-30 max-h-[calc(100vh-7rem)] w-[min(94vw,580px)] -translate-x-1/2 overflow-y-auto rounded-3xl chrome p-4 sm:p-5">

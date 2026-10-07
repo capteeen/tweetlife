@@ -116,7 +116,7 @@ export async function POST(req: NextRequest) {
 
   const next = applyDelta(r.player, action.me);
   await db.$transaction([
-    db.player.update({ where: { id: pid }, data: { bags: { decrement: action.bags }, status: action.line } }),
+    db.player.update({ where: { id: pid }, data: { bags: { decrement: action.bags }, status: action.line, statusUntil: new Date(Date.now() + action.seconds * 1000) } }),
     ...(action.bags ? [db.bagTx.create({ data: { playerId: pid, kind: 'buy', amount: -action.bags, note: `${item.emoji} ${item.name}: ${action.label}` } })] : []),
   ]);
   await setStats(pid, next);

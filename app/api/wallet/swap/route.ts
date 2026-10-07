@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { friendlySolanaError } from '@/lib/solana/errors';
 import { z } from 'zod';
 import { db } from '@/lib/db';
 import { redis } from '@/lib/redis';
@@ -52,7 +53,7 @@ export async function POST(req: NextRequest) {
     await redis().del(balloonKey(r.player.id)).catch(() => {});
     return NextResponse.json({ ok: true, signature: sig, url: explorerUrl(sig), outAmount: q.outAmount, priceImpactPct: q.priceImpactPct });
   } catch (e) {
-    return bad((e as Error).message.slice(0, 220), 502);
+    return bad(friendlySolanaError(e, 'The swap did not go through. Your SOL is still in your wallet.'), 502);
   } finally {
     await redis().del(`wallet:lock:${r.user.id}`).catch(() => {});
   }

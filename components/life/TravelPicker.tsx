@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { useWorld } from '@/components/world/store';
 import { pathLength, type Pt } from '@/lib/world/layout';
 import { tripSeconds } from '@/lib/life/transport';
+import { statDelta } from '@/lib/life/statNames';
 import { etaLabel, plannedRoute, rideOptions, travelTo } from './travel';
 
 // "How are you getting there?" A row of rides, each with its fare and time, then Go.
@@ -58,10 +59,7 @@ export function TravelPicker({ to, label }: { to: Pt; label: string }) {
       </div>
       <p className="mt-2 text-[11px] text-white/50">
         {ride.blurb}
-        {Object.entries(ride.me).length > 0 &&
-          ` (${Object.entries(ride.me)
-            .map(([k, v]) => `${(v as number) > 0 ? '+' : ''}${v} ${k[0].toUpperCase() + k.slice(1)}`)
-            .join(', ')})`}
+        {Object.entries(ride.me).length > 0 && ` (${statDelta(ride.me, ', ')})`}
       </p>
       <button
         className="mt-3 w-full rounded-2xl bg-emerald-500 py-3 text-base font-bold text-white shadow-lg transition hover:brightness-110 disabled:opacity-50"

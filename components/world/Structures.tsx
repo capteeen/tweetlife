@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
-import { useFrame, useLoader, type ThreeEvent } from '@react-three/fiber';
+import { useFrame, type ThreeEvent } from '@react-three/fiber';
 import { Text } from '@react-three/drei';
 
 import type { Placed, StructureKind } from '@/lib/world/geometry';
@@ -12,8 +12,8 @@ import { plain3d } from '@/lib/world/text3d';
 const FONT = '/fonts/inter-600.woff';
 
 // Buildings. One InstancedMesh for all building bodies, one for roofs, one for windows, plus lamps
-// (reposts), sheds (replies) and lazily loaded real post images on photo buildings.
-// Low-poly, flat-shaded; the only textures are real post images.
+// (reposts) and sheds (replies). Post photos are never drawn in the world.
+// Low-poly, flat-shaded; no textures.
 
 const WALL = ['#8A96A8', '#9AA6B8', '#A9B3C2', '#B8C0CC', '#D4C3A5', '#E8DCC8', '#C9CFD8'];
 const ROOF = ['#C0392B', '#E67E22', '#6B7280', '#8A96A8'];
@@ -34,7 +34,6 @@ function wallColor(s: Placed) {
 export function Structures({ structures, showMetrics, interactive }: { structures: Placed[]; showMetrics: boolean; interactive: boolean }) {
   const buildings = useMemo(() => structures.filter((s) => BUILDING_KINDS.includes(s.kind)), [structures]);
   const lamps = useMemo(() => structures.filter((s) => s.kind === 'lantern'), [structures]);
-  const photos = useMemo(() => structures.filter((s) => s.kind === 'monolith' && s.mediaUrl), [structures]);
   const screens = useMemo(() => structures.filter((s) => s.kind === 'obelisk'), [structures]);
   void showMetrics;
   return (
@@ -46,7 +45,6 @@ export function Structures({ structures, showMetrics, interactive }: { structure
       <Lamps items={lamps} interactive={interactive} />
       <LitLanterns structures={buildings} />
       <Landmark structures={structures} />
-      <NearbyImages structures={photos} />
     </group>
   );
 }
@@ -318,54 +316,6 @@ function Landmark({ structures }: { structures: Placed[] }) {
           {plain3d(lm.text) || '(no text)'}
         </Text>
       )}
-    </group>
-  );
-}
-
-/** Real post images as billboards on photo buildings, loaded only when near, at most 12 at a time. */
-function NearbyImages({ structures }: { structures: Placed[] }) {
-  const playerPos = useWorld((s) => s.playerPos);
-  const [near, setNear] = useState<Placed[]>([]);
-  const last = useRef(0);
-  useFrame(({ clock }) => {
-    if (clock.elapsedTime - last.current < 0.5) return;
-    last.current = clock.elapsedTime;
-    const n = structures
-      .map((s) => ({ s, d: Math.hypot(s.x - playerPos.x, s.z - playerPos.z) }))
-      .filter((e) => e.d < 60)
-      .sort((a, b) => a.d - b.d)
-      .slice(0, 12)
-      .map((e) => e.s);
-    if (n.length !== near.length || n.some((s, i) => s.id !== near[i]?.id)) setNear(n);
-  });
-  return (
-    <>
-      {near.map((s) => (
-        <ImagePlane key={s.id} s={s} />
-      ))}
-    </>
-  );
-}
-
-function ImagePlane({ s }: { s: Placed }) {
-  const tex = useLoader(THREE.TextureLoader, s.mediaUrl as string);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  const img = tex.image as { width?: number; height?: number } | undefined;
-  const aspect = img?.width && img?.height ? img.width / img.height : 1;
-  const w = s.width * 0.86;
-  const h = Math.min(s.height * 0.7, w / aspect);
-  const ww = Math.min(w, h * aspect);
-  const face = s.rot === 0 ? 1 : -1;
-  return (
-    <group position={[s.x, s.y + s.height * 0.55, s.z + face * (s.depth / 2 + 0.06)]} rotation={[0, face === 1 ? 0 : Math.PI, 0]}>
-      <mesh position={[0, 0, 0]}>
-        <planeGeometry args={[ww + 0.3, h + 0.3]} />
-        <meshStandardMaterial color="#F1E8D6" />
-      </mesh>
-      <mesh position={[0, 0, 0.03]}>
-        <planeGeometry args={[ww, h]} />
-        <meshBasicMaterial map={tex} toneMapped={false} />
-      </mesh>
     </group>
   );
 }

@@ -3,6 +3,7 @@ import { useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import type { Furniture } from '@/lib/life/home';
+import { ModernFurnitureMesh } from './ModernFurniture';
 
 // Low-poly furniture, one component per model. Each piece is modelled centred on the origin, standing on
 // y = 0, facing +z; the room places and rotates it. `lit` is false during an outage (powered pieces go dark).
@@ -213,6 +214,8 @@ export function FurnitureMesh({ item, lit }: { item: Furniture; lit: boolean }) 
           ))}
         </group>
       );
+    default:
+      return <ModernFurnitureMesh item={item} lit={lit} />;
   }
 }
 

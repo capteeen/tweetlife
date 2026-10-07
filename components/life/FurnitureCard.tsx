@@ -31,7 +31,7 @@ export function FurnitureCard({ onRefresh }: { onRefresh: () => Promise<void> })
 
   if (!item || !home) return null;
   const mine = home.mine;
-  const dark = item.needsPower && !hasPower(home.power) && item.id !== 'generator';
+  const dark = item.needsPower && !hasPower(home.power) && !item.powerSeconds;
   const left = acting ? Math.max(0, Math.ceil((acting.until - Date.now()) / 1000)) : 0;
 
   const act = async (actionId: string) => {
@@ -83,7 +83,7 @@ export function FurnitureCard({ onRefresh }: { onRefresh: () => Promise<void> })
       ) : !mine ? (
         <p className="mt-3 text-sm text-white/60">This is @{home.owner.handle}&apos;s {item.name.toLowerCase()}. Only they can use it.</p>
       ) : dark ? (
-        <p className="mt-3 rounded-2xl bg-white/5 px-3 py-2 text-sm text-amber-200">⚡ No light. NEPA has taken it — a fuelled generator keeps this working.</p>
+        <p className="mt-3 rounded-2xl bg-white/5 px-3 py-2 text-sm text-amber-200">⚡ No light. NEPA has taken it — a generator or a solar inverter keeps this working.</p>
       ) : (
         <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
           {item.actions.map((a) => {

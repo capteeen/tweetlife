@@ -14,7 +14,7 @@ import { SPRINT_MIN_GAS, SPRINT_MULT, paceFor, tiredness, walkCost } from '@/lib
 import { lifeActions } from '@/components/life/useLife';
 import type { FigureAct } from './figureMoves';
 import { airportLayout, airportSolids, along, onLand, type Airport } from '@/lib/world/layout';
-import { RideVehicle } from './RideVehicle';
+import { RideVehicle, rideCamera, rideRider } from './RideVehicle';
 import { worldWalls } from '@/lib/world/interiors';
 import { carItem } from '@/components/life/travel';
 
@@ -151,7 +151,7 @@ export function Player({ structures, blocks, grid, boundaryRadius, contentRadius
         while (dh < -Math.PI) dh += Math.PI * 2;
         facing.current += dh * Math.min(1, d * 8);
       }
-      speedRef.current = tr.mode === 'trek' ? 1 : 0;
+      speedRef.current = tr.mode === 'walk' ? 1 : 0;
     }
     if (!tr && !guestbookOpen && !chatOpen) {
       const k = keys.current;
@@ -236,7 +236,7 @@ export function Player({ structures, blocks, grid, boundaryRadius, contentRadius
       if (nearest !== useWorld.getState().nearVenue) setNearVenue(nearest);
     }
     // camera orbit, pulled in when it would sit inside a building
-    let dist = CAM_DIST * (tr && tr.mode !== 'trek' ? 1.6 : riding?.kind === 'plane' ? 2.2 : riding ? 1.3 : 1);
+    let dist = CAM_DIST * (tr && tr.mode !== 'walk' ? rideCamera(tr.mode) : riding?.kind === 'plane' ? 2.2 : riding ? 1.3 : 1);
     let cx = 0, cy = 0, cz = 0;
     for (; dist >= 2.5; dist -= 0.75) {
       cx = pos.current.x + Math.sin(yaw.current) * Math.cos(pitch.current) * dist;
@@ -255,12 +255,12 @@ export function Player({ structures, blocks, grid, boundaryRadius, contentRadius
 
   // on a ride, the ride replaces whatever you were driving
   const tripCar = trip?.mode === 'own' ? carItem(trip.itemId) : null;
-  const shown = trip ? (trip.mode === 'trek' ? null : tripCar) : riding;
-  const ro = trip && trip.mode !== 'trek' && !tripCar ? (trip.mode === 'okada' || trip.mode === 'keke' ? { y: 0.55, show: true, scale: 0.8 } : { y: 0.4, show: true, scale: 0.72 }) : riderOffset(shown);
+  const shown = trip ? (trip.mode === 'walk' ? null : tripCar) : riding;
+  const ro = trip && trip.mode !== 'walk' && !tripCar ? rideRider(trip.mode) : riderOffset(shown);
   return (
     <group ref={group}>
       {shown && <Vehicle item={shown} />}
-      {trip && trip.mode !== 'trek' && trip.mode !== 'own' && <RideVehicle mode={trip.mode} />}
+      {trip && trip.mode !== 'walk' && trip.mode !== 'own' && <RideVehicle mode={trip.mode} />}
       {ro.show && (
         <group position={[0, ro.y, 0]} scale={ro.scale}>
           <Figure seed={me?.handle ?? 'visitor'} look={me ? look : null} speedRef={speedRef} actRef={actRef} tiredRef={tiredRef} slumpRef={slumpRef} label={me ? `@${me.handle}` : undefined} labelColor="#BFE3FF" />

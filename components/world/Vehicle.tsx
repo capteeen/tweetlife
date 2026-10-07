@@ -1,8 +1,9 @@
 'use client';
-import { useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import type { Item } from '@/lib/life/market';
+import { CAR_PARTS, carMaterial, carParts, type CarModel } from './carModels';
 
 // Low-poly vehicles the player (or a peer) rides. Built facing +z like the figure.
 
@@ -12,35 +13,7 @@ export function Vehicle({ item }: { item: Item }) {
     if (spin.current) spin.current.rotation.z += dt * 30;
   });
   const m = (color: string, extra?: Record<string, unknown>) => <meshStandardMaterial color={color} flatShading roughness={0.5} metalness={0.2} {...extra} />;
-  if (item.kind === 'car') {
-    const long = item.id === 'lambo';
-    return (
-      <group>
-        <mesh position={[0, 0.5, 0]} castShadow>
-          <boxGeometry args={[item.id === 'keke' ? 1.3 : 1.8, item.id === 'keke' ? 0.9 : 0.6, long ? 4.4 : 3.4]} />
-          {m(item.color)}
-        </mesh>
-        <mesh position={[0, 1.05, item.id === 'keke' ? 0 : -0.2]} castShadow>
-          <boxGeometry args={[item.id === 'keke' ? 1.2 : 1.5, item.id === 'keke' ? 0.9 : 0.55, long ? 1.6 : 1.8]} />
-          {m('#1B2436', { roughness: 0.3 })}
-        </mesh>
-        {[-1, 1].flatMap((sx) =>
-          (item.id === 'keke' ? [1] : [-1, 1]).map((sz) => (
-            <mesh key={`${sx}${sz}`} position={[sx * 0.9, 0.3, sz * (long ? 1.5 : 1.1)]} rotation={[0, 0, Math.PI / 2]}>
-              <cylinderGeometry args={[0.3, 0.3, 0.3, 8]} />
-              {m('#111')}
-            </mesh>
-          )),
-        )}
-        {item.id === 'keke' && (
-          <mesh position={[0, 0.3, -1.3]} rotation={[0, 0, Math.PI / 2]}>
-            <cylinderGeometry args={[0.3, 0.3, 0.3, 8]} />
-            {m('#111')}
-          </mesh>
-        )}
-      </group>
-    );
-  }
+  if (item.kind === 'car') return <OwnedCar item={item} />;
   if (item.kind === 'boat') {
     const big = item.id === 'yacht';
     return (
@@ -86,6 +59,21 @@ export function Vehicle({ item }: { item: Item }) {
         <boxGeometry args={[2.2, 0.15, 0.05]} />
         {m('#333')}
       </mesh>
+    </group>
+  );
+}
+
+const OWNED_MODEL: Record<string, CarModel> = { keke: 'keke', sedan: 'sedan', lambo: 'sport' };
+
+/** A Market car: the same procedural model as traffic, open-topped so the rider shows. */
+function OwnedCar({ item }: { item: Item }) {
+  const model = OWNED_MODEL[item.id] ?? 'sedan';
+  const parts = carParts(model, model !== 'keke');
+  const mats = useMemo(() => CAR_PARTS.map((p) => carMaterial(p, item.color)), [item.color]);
+  useEffect(() => () => mats.forEach((m) => m.dispose()), [mats]);
+  return (
+    <group>
+      {CAR_PARTS.map((p, i) => parts[p] && <mesh key={p} geometry={parts[p]!} material={mats[i]} castShadow={p === 'paint'} />)}
     </group>
   );
 }

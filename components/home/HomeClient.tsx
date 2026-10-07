@@ -97,9 +97,9 @@ export function HomeClient({ handle }: { handle?: string }) {
     <div className="fixed inset-0 overflow-hidden bg-base">
       <HomeCanvas home={home} handle={home.mine ? me?.handle ?? null : home.owner.handle} onExit={exit} />
       <TopHUD online={null} handle={home.owner.handle} />
-      {home.mine && <StatBars />}
-      {/* top-left: whose house, and the light situation */}
-      <div className="pointer-events-auto absolute left-3 top-16 z-10 flex flex-col gap-2" style={{ marginTop: home.mine && me ? 150 : 0 }}>
+      {/* top-left: my stats and moves, whose house, and the light situation */}
+      <div className="pointer-events-auto absolute left-3 top-16 z-10 flex flex-col gap-2">
+        {home.mine && <StatBars inline />}
         <div className="rounded-2xl chrome px-3 py-2 text-xs">
           <div className="font-semibold">🏠 {home.mine ? 'Your house' : `@${home.owner.handle}'s house`}</div>
           <div className={power ? 'text-emerald-300' : 'text-amber-200'}>

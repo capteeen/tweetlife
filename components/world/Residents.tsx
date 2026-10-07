@@ -10,6 +10,7 @@ import { ITEMS } from '@/lib/life/market';
 import type { Peer as PeerT } from './store';
 import { residentLook } from '@/lib/life/look';
 import { useLookOf } from '@/components/life/useLook';
+import type { FigureAct } from './figureMoves';
 
 // Residents: ambient people whose count comes from followers_count, wandering on seeded loops.
 // Peers: the real visitors currently inside, from the presence room.
@@ -78,6 +79,7 @@ function Peer({ peer }: { peer: PeerT }) {
   const item = peer.ride ? ITEMS.find((i) => i.id === peer.ride) ?? null : null;
   const ro = riderOffset(item);
   const speed = useRef(0);
+  const act = useRef<FigureAct | null>(null);
   const look = useLookOf(peer.handle);
   const last = useRef({ x: peer.x, z: peer.z, t: performance.now() });
   useFrame(() => {
@@ -93,6 +95,7 @@ function Peer({ peer }: { peer: PeerT }) {
     const v = Math.hypot(peer.x - last.current.x, peer.z - last.current.z) / dt;
     last.current = { x: peer.x, z: peer.z, t: now };
     speed.current = Math.min(1, v / 6);
+    act.current = item ? null : peer.act ?? null;
   });
   return (
     <group
@@ -105,7 +108,7 @@ function Peer({ peer }: { peer: PeerT }) {
     >
       {item && <Vehicle item={item} />}
       <group position={[0, ro.y, 0]} scale={ro.scale}>
-        <Figure seed={peer.handle} look={look} speedRef={speed} label={`@${peer.handle}`} dim={!ro.show} />
+        <Figure seed={peer.handle} look={look} speedRef={speed} actRef={act} label={`@${peer.handle}`} dim={!ro.show} />
       </group>
     </group>
   );

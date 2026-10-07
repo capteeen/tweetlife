@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import PartySocket from 'partysocket';
-import { useWorld } from './store';
+import { useWorld, type Peer } from './store';
 import { refreshLife } from '@/components/life/useLife';
 
 // Presence client. Joins the world's PartyKit room with a signed ticket, sends position at 10Hz,
@@ -49,7 +49,7 @@ export function usePresence(handle: string, enabled: boolean) {
             setOnline(peers.size);
           } else if (m.t === 'pos') {
             const p = peers.get(m.id as string);
-            if (p) upsertPeer({ id: p.id, handle: p.handle, x: m.x as number, z: m.z as number, yaw: m.yaw as number, ride: (m.ride as string | null) ?? null, at: Date.now() });
+            if (p) upsertPeer({ id: p.id, handle: p.handle, x: m.x as number, z: m.z as number, yaw: m.yaw as number, ride: (m.ride as string | null) ?? null, act: (m.act as Peer['act']) ?? null, at: Date.now() });
           } else if (m.t === 'leave') {
             peers.delete(m.id as string);
             dropPeer(m.id as string);
@@ -68,7 +68,7 @@ export function usePresence(handle: string, enabled: boolean) {
         timer = setInterval(() => {
           const st = useWorld.getState();
           const { x, z, yaw } = st.playerPos;
-          if (sock?.readyState === 1) sock.send(JSON.stringify({ t: 'pos', x, z, yaw, ride: st.riding?.id ?? null }));
+          if (sock?.readyState === 1) sock.send(JSON.stringify({ t: 'pos', x, z, yaw, ride: st.riding?.id ?? null, act: st.doing?.id ?? null }));
         }, 100);
       };
       connect(res.room);

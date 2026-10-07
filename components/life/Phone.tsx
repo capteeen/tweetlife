@@ -1,10 +1,11 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useWorld, type PhoneApp } from '@/components/world/store';
+import { useWorld, type MarketKind, type PhoneApp } from '@/components/world/store';
 import { refreshWallet } from './useLife';
 import { compact, fullNumber, relativeTime } from '@/lib/format';
 import { ITEMS } from '@/lib/life/market';
+import { FURNITURE, SLOT_LABEL, furnitureById, resaleValue, type Slot } from '@/lib/life/home';
 import type { Token } from '@/lib/life/trenches';
 import { lifeActions, type SocialSend } from './useLife';
 import { MapApp } from './MapApp';
@@ -19,6 +20,7 @@ const APPS: { id: PhoneApp; label: string; emoji: string; bg: string }[] = [
   { id: 'hustle', label: 'Hustle', emoji: '💼', bg: 'linear-gradient(135deg,#8338EC,#3A86FF)' },
   { id: 'market', label: 'Market', emoji: '🛍️', bg: 'linear-gradient(135deg,#FF5D8F,#E63946)' },
   { id: 'garage', label: 'Garage', emoji: '🚗', bg: 'linear-gradient(135deg,#6B7280,#1B2436)' },
+  { id: 'house', label: 'House', emoji: '🏠', bg: 'linear-gradient(135deg,#F28C28,#C99A5B)' },
   { id: 'rich', label: 'Rich list', emoji: '👑', bg: 'linear-gradient(135deg,#FFD089,#B8A382)' },
   { id: 'gist', label: 'Gist', emoji: '💬', bg: 'linear-gradient(135deg,#1D9BF0,#2EC4B6)' },
   { id: 'map', label: 'Map', emoji: '🗺️', bg: 'linear-gradient(135deg,#7FB069,#2D6A4F)' },
@@ -87,6 +89,8 @@ export function Phone({ sendSocial, handle }: { sendSocial: SocialSend; handle: 
             <Market kind={phone.marketKind} />
           ) : phone.app === 'garage' ? (
             <Garage />
+          ) : phone.app === 'house' ? (
+            <House />
           ) : phone.app === 'rich' ? (
             <RichList />
           ) : phone.app === 'gist' ? (
@@ -442,12 +446,133 @@ function Hustle() {
   );
 }
 
-function Market({ kind }: { kind: 'car' | 'boat' | 'plane' | null }) {
+function Market({ kind }: { kind: MarketKind }) {
+  const openPhone = useWorld((s) => s.openPhone);
+  const tabs = (
+    <div className="mt-2 flex gap-1 rounded-full bg-white/5 p-1 text-xs">
+      <button className={`flex-1 rounded-full py-1 ${kind !== 'home' ? 'bg-white/15 font-semibold' : 'text-white/60'}`} onClick={() => openPhone('market', null)}>
+        🚗 Vehicles
+      </button>
+      <button className={`flex-1 rounded-full py-1 ${kind === 'home' ? 'bg-white/15 font-semibold' : 'text-white/60'}`} onClick={() => openPhone('market', 'home')}>
+        🏠 Home
+      </button>
+    </div>
+  );
+  if (kind === 'home') return <div>{tabs}<HomeShop /></div>;
+  return <div>{tabs}<Vehicles kind={kind} /></div>;
+}
+
+/** Market → Home: furniture, grouped by where it goes in the room. Buying puts it straight in the house. */
+function HomeShop() {
+  const life = useWorld((s) => s.life);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const owned = new Map((life?.furniture ?? []).map((a) => [a.itemId, a]));
+  const slots = Array.from(new Set(FURNITURE.filter((f) => f.price > 0).map((f) => f.slot))) as Slot[];
+  return (
+    <div>
+      <p className="mt-2 text-xs text-white/60">Everyone starts with the basics. Better furniture gives bigger boosts, and some of it needs light.</p>
+      {slots.map((slot) => (
+        <div key={slot} className="mt-3">
+          <h3 className="text-[11px] uppercase tracking-wide text-white/45">{SLOT_LABEL[slot]}</h3>
+          <ul className="mt-1.5 space-y-2">
+            {FURNITURE.filter((f) => f.slot === slot && f.price > 0).map((f) => {
+              const have = owned.get(f.id);
+              return (
+                <li key={f.id} className="flex items-center gap-3 rounded-xl bg-white/5 px-3 py-2">
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-2xl" style={{ background: f.color + '33' }}>
+                    {f.emoji}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-semibold">
+                      {f.name} {f.needsPower ? <span title="Needs light" className="text-[10px] text-white/45">⚡</span> : null}
+                    </span>
+                    <span className="block text-[11px] text-white/55">{f.blurb}</span>
+                    <span className="block text-[11px] text-white/45">{f.actions.map((a) => a.label).join(' · ')}</span>
+                  </span>
+                  {have ? (
+                    <span className="text-xs text-emerald-300">{have.stored ? 'stored' : 'in room'}</span>
+                  ) : (
+                    <button
+                      className="btn !px-3 !py-1.5 text-xs"
+                      disabled={busy !== null || !life?.me || life.me.bags < f.price}
+                      onClick={async () => { setBusy(f.id); setErr(null); try { await lifeActions.buyFurniture(f.id); } catch (e) { setErr((e as Error).message); } finally { setBusy(null); } }}
+                    >
+                      {fullNumber(f.price)}
+                    </button>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ))}
+      {err && <p className="mt-2 text-xs text-rose-300">{err}</p>}
+    </div>
+  );
+}
+
+/** Phone → House: go home, and manage what is in the room and in storage. */
+function House() {
+  const furniture = useWorld((s) => s.life?.furniture ?? []);
+  const openPhone = useWorld((s) => s.openPhone);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const run = async (id: string, fn: () => Promise<unknown>) => { setBusy(id); setErr(null); try { await fn(); } catch (e) { setErr((e as Error).message); } finally { setBusy(null); } };
+  const placed = furniture.filter((a) => !a.stored), stored = furniture.filter((a) => a.stored);
+  const row = (a: (typeof furniture)[number]) => {
+    const f = furnitureById(a.itemId);
+    if (!f) return null;
+    return (
+      <li key={a.itemId} className="flex items-center gap-3 rounded-xl bg-white/5 px-3 py-2">
+        <span className="text-xl">{f.emoji}</span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-semibold">{f.name}</span>
+          <span className="block text-[11px] text-white/50">{SLOT_LABEL[f.slot]}{a.paid ? ` · paid ${fullNumber(a.paid)}` : ' · starter kit'}</span>
+        </span>
+        {a.stored && (
+          <button className="btn-ghost !px-2 !py-1 text-xs" disabled={busy !== null} onClick={() => run(a.itemId, () => lifeActions.placeFurniture(a.itemId))}>
+            Place
+          </button>
+        )}
+        {a.paid > 0 && (
+          <button className="btn-ghost !px-2 !py-1 text-xs" disabled={busy !== null} onClick={() => run(a.itemId, () => lifeActions.sellFurniture(a.itemId))}>
+            Sell {fullNumber(resaleValue(a.paid))}
+          </button>
+        )}
+      </li>
+    );
+  };
+  return (
+    <div>
+      <Link href="/home" className="btn mt-3 w-full !rounded-2xl !py-3">
+        🏠 Go home
+      </Link>
+      <div className="mt-3 flex items-center justify-between">
+        <h3 className="text-[11px] uppercase tracking-wide text-white/45">In the room</h3>
+        <button className="text-xs text-[#BFE3FF] underline" onClick={() => openPhone('market', 'home')}>
+          Shop for more
+        </button>
+      </div>
+      <ul className="mt-1.5 space-y-2">{placed.map(row)}</ul>
+      {stored.length > 0 && (
+        <>
+          <h3 className="mt-3 text-[11px] uppercase tracking-wide text-white/45">In storage</h3>
+          <p className="text-[11px] text-white/45">Replaced by something better. Place it back, or sell it for half.</p>
+          <ul className="mt-1.5 space-y-2">{stored.map(row)}</ul>
+        </>
+      )}
+      {err && <p className="mt-2 text-xs text-rose-300">{err}</p>}
+    </div>
+  );
+}
+
+function Vehicles({ kind }: { kind: MarketKind }) {
   const life = useWorld((s) => s.life);
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const owned = new Set((life?.assets ?? []).map((a) => a.id));
-  const items = ITEMS.filter((i) => !kind || i.kind === kind);
+  const items = ITEMS.filter((i) => !kind || kind === 'home' || i.kind === kind);
   return (
     <div>
       <p className="mt-2 text-xs text-white/60">Vehicles change how you move. Cars are fast, boats can leave the shore, the jet flies over everything.</p>

@@ -211,6 +211,7 @@ never purchasable, never cashable. The Trenches shows **real** tokens and **real
 cached 60 s); trades there are real SOL from the Solana wallet (below). `/api/life/*` holds all of it;
 `lib/life/` has the rules (`stats.ts`, `venues.ts`, `market.ts`, `quests.ts`, `trenches.ts`); `lib/solana/` holds the wallet and swap code.
 
+<<<<<<< HEAD
 ## Real wallets (Solana)
 
 Every account also gets a **real Solana wallet** at sign-in, separate from the bank:
@@ -231,6 +232,18 @@ that is regulated activity (money transmission / VASP rules), and a compromised 
 database exposes every wallet. Use a dedicated RPC (`SOLANA_RPC_URL`), keep the encryption key out of the
 database host, rotate it with a re-encryption migration if it ever leaks, and get your own legal advice. The
 in-game bank (bags) is deliberately kept separate so the social game works with no real money involved.
+=======
+**The house.** Every player has one room (`/home`; `/home/[handle]` to visit) with a free starter kit: plastic chair,
+foam mattress, bucket & bowl, small table, one bulb. Everything else is bought in the Market's **Home** tab with bags
+and takes a fixed slot in the room (a better piece sends the old one to storage; the phone's House app places it back
+or sells it for half). Every piece has actions like a venue: a duration, a cost (free or bags), and what it does to
+Vibes / Clout / Gas. Public power follows a fixed timetable (30 min off every 2 h); a fuelled generator keeps the
+TV, fridge, AC and lights working through it. Rules in `lib/life/home.ts`, API in `/api/life/home`.
+
+A real-money variant (per-account Solana wallets, Jupiter swaps, SOL payments) is designed but **not built**: see
+"Real wallets" in this README's history / discuss before enabling — holding users' keys is regulated in many
+jurisdictions and needs its own security review.
+>>>>>>> a795b9b (Every player gets a house: starter kit, furniture shop, furniture actions)
 
 ## Must-haves checklist
 

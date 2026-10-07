@@ -2,6 +2,7 @@
 import { useEffect } from 'react';
 import { useWorld, type LifeData, type WalletData } from '@/components/world/store';
 import { ITEMS, type Item } from '@/lib/life/market';
+import type { Furniture, FurnitureAction, PowerState } from '@/lib/life/home';
 
 // Client side of the life layer: load the player's data, perform actions, keep the store in sync.
 
@@ -74,6 +75,28 @@ export const lifeActions = {
   async venue(venueId: string, actionId: string, nearby: string[], sendSocial: SocialSend) {
     const r = await j<{ ok: true; lifted: number; toast: { text: string; delta: unknown } | null }>('/api/life/venue', { method: 'POST', body: JSON.stringify({ venueId, actionId, nearby }) });
     if (r.toast) sendSocial({ kind: 'venue', text: r.toast.text, delta: r.toast.delta });
+    await refreshLife();
+    return r;
+  },
+  async buyFurniture(itemId: string) {
+    const r = await j<{ ok: true; item: Furniture }>('/api/life/home', { method: 'POST', body: JSON.stringify({ op: 'buy', itemId }) });
+    await refreshLife();
+    useWorld.getState().pushToast(`${r.item.emoji} ${r.item.name} is in your house.`, 'market');
+    return r;
+  },
+  async placeFurniture(itemId: string) {
+    const r = await j<{ ok: true; item: Furniture }>('/api/life/home', { method: 'POST', body: JSON.stringify({ op: 'place', itemId }) });
+    await refreshLife();
+    return r;
+  },
+  async sellFurniture(itemId: string) {
+    const r = await j<{ ok: true; item: Furniture; bags: number }>('/api/life/home', { method: 'POST', body: JSON.stringify({ op: 'sell', itemId }) });
+    await refreshLife();
+    useWorld.getState().pushToast(`Sold the ${r.item.name} for ${r.bags} bags`, 'market');
+    return r;
+  },
+  async furnitureAct(itemId: string, actionId: string) {
+    const r = await j<{ ok: true; power: PowerState; action: FurnitureAction }>('/api/life/home', { method: 'POST', body: JSON.stringify({ op: 'act', itemId, actionId }) });
     await refreshLife();
     return r;
   },

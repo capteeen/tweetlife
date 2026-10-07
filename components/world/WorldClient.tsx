@@ -9,6 +9,13 @@ import { PostCard } from './PostCard';
 import { HUD } from './HUD';
 import { TouchSticks } from './TouchSticks';
 import { SignInButton, XMark } from '@/components/ui/Chrome';
+import { TopHUD } from '@/components/life/TopHUD';
+import { StatBars } from '@/components/life/StatBars';
+import { Phone } from '@/components/life/Phone';
+import { PeerCard } from '@/components/life/PeerCard';
+import { VenueCard } from '@/components/life/VenueCard';
+import { useLife } from '@/components/life/useLife';
+import { placeVenues } from '@/lib/life/venues';
 
 const WorldCanvas = dynamic(() => import('./WorldCanvas').then((m) => m.WorldCanvas), { ssr: false });
 
@@ -79,7 +86,18 @@ export function WorldClient({ handle, spawnPostId, embed, backdrop }: { handle: 
   }, [building, handle, load, model?.structureCount, model?.ingestState]);
 
   const admitted = !!payload && 'admitted' in payload && payload.admitted;
-  const { online, sendChat, connected } = usePresence(handle, admitted);
+  const { online, sendChat, sendSocial, connected } = usePresence(handle, admitted);
+  useLife(admitted && !backdrop);
+  const nearVenue = useWorld((s) => s.nearVenue);
+  const selectVenue = useWorld((s) => s.selectVenue);
+  const selectedVenue = useWorld((s) => s.selectedVenue);
+  const toasts = useWorld((s) => s.toasts);
+  const dropToast = useWorld((s) => s.dropToast);
+  useEffect(() => {
+    if (!toasts.length) return;
+    const t = setTimeout(() => dropToast(toasts[0].id), 5000);
+    return () => clearTimeout(t);
+  }, [toasts, dropToast]);
   const me = useWorld((s) => s.me);
   const spawnAt = useWorld((s) => s.spawnAt);
 
@@ -130,7 +148,7 @@ export function WorldClient({ handle, spawnPostId, embed, backdrop }: { handle: 
 
       {/* Building / failed / empty are honest states layered on top of whatever exists so far. */}
       {building && (
-        <div className="pointer-events-none absolute left-1/2 top-3 z-10 -translate-x-1/2 rounded-full chrome px-4 py-1.5 text-sm">
+        <div className="pointer-events-none absolute left-1/2 top-16 z-10 -translate-x-1/2 rounded-full chrome px-4 py-1.5 text-sm">
           Building this world — <span className="num font-medium">{progress?.placed ?? model.structureCount}</span> posts placed
           {progress?.postCount ? <span className="num text-white/50"> of {compact(progress.postCount)} on the account</span> : null}
         </div>
@@ -148,14 +166,40 @@ export function WorldClient({ handle, spawnPostId, embed, backdrop }: { handle: 
         </div>
       )}
       {admitted && stale && !building && (
-        <div className="pointer-events-none absolute left-1/2 top-3 z-10 -translate-x-1/2 rounded-full chrome px-3 py-1 text-xs text-white/70">
+        <div className="pointer-events-none absolute left-1/2 top-16 z-10 -translate-x-1/2 rounded-full chrome px-3 py-1 text-xs text-white/70">
           Data may be stale — last synced {relativeTime(model.lastSyncAt)}
         </div>
       )}
 
       {admitted ? (
         <>
+          <TopHUD online={online} handle={model.handle} />
+          <StatBars />
           <PostCard handle={model.handle} showMetrics={model.showMetrics} canAct={!!me} />
+          <PeerCard worldId={model.id} sendSocial={sendSocial} />
+          <VenueCard sendSocial={sendSocial} />
+          <Phone sendSocial={sendSocial} handle={model.handle} />
+          {nearVenue && !selectedVenue && (
+            <button
+              className="pointer-events-auto absolute bottom-20 left-1/2 z-20 -translate-x-1/2 rounded-full chrome px-4 py-2 text-sm font-semibold hover:bg-white/10"
+              onClick={() => {
+                const v = placeVenues(g.contentRadius).find((x) => x.id === nearVenue);
+                if (v) selectVenue(v);
+              }}
+            >
+              {(() => {
+                const v = placeVenues(g.contentRadius).find((x) => x.id === nearVenue);
+                return v ? `${v.emoji} Enter ${v.name}` : 'Enter';
+              })()}
+            </button>
+          )}
+          <div className="pointer-events-none absolute right-3 top-16 z-30 flex w-[min(80vw,320px)] flex-col gap-2">
+            {toasts.map((t) => (
+              <div key={t.id} className="rounded-2xl chrome px-3 py-2 text-sm shadow-lg">
+                {t.text}
+              </div>
+            ))}
+          </div>
           <HUD model={model} online={online} canAct={!!me} sendChat={sendChat} chatAvailable={model.chatEnabled && connected} />
           <TouchSticks />
           {!embed && (

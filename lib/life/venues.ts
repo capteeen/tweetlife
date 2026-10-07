@@ -1,0 +1,90 @@
+import type { Stats } from './stats';
+
+// Venues: the city's services, on a ring just outside the post blocks so they are never mistaken for
+// posts. Same set in every world; placement is deterministic from the city size.
+
+export type VenueAction = {
+  id: string;
+  label: string;
+  emoji: string;
+  /** bags cost (negative = earn) */
+  bags: number;
+  me: Partial<Stats>;
+  /** applied to visitors within earshot (client reports who is near) */
+  nearby?: Partial<Stats>;
+  /** seconds before this action can be repeated */
+  cooldown: number;
+  line: string;
+};
+
+export type Venue = {
+  id: string;
+  name: string;
+  emoji: string;
+  color: string;
+  blurb: string;
+  actions: VenueAction[];
+  /** opens a phone app instead of (or as well as) actions */
+  app?: 'wallet' | 'market' | 'trenches';
+  marketKind?: 'car' | 'boat' | 'plane';
+};
+
+export const VENUES: Venue[] = [
+  {
+    id: 'bar', name: 'Degen Lounge', emoji: '🍸', color: '#8338EC', blurb: 'Drinks, gist, bad decisions.',
+    actions: [
+      { id: 'drink', label: 'Buy a drink', emoji: '🍹', bags: 200, me: { vibes: +8, gas: -2 }, cooldown: 60, line: 'is having a drink' },
+      { id: 'round', label: 'Buy a round for everyone here', emoji: '🥂', bags: 1000, me: { vibes: +6, clout: +8 }, nearby: { vibes: +10 }, cooldown: 300, line: 'bought a round 🥂' },
+    ],
+  },
+  {
+    id: 'suya', name: 'Suya Spot', emoji: '🍢', color: '#E63946', blurb: 'Pepper, smoke, gas.',
+    actions: [
+      { id: 'eat', label: 'Eat suya', emoji: '🍢', bags: 150, me: { gas: +15, vibes: +3 }, cooldown: 120, line: 'is eating suya' },
+      { id: 'feast', label: 'Order for the table', emoji: '🍽️', bags: 800, me: { gas: +15, clout: +5 }, nearby: { gas: +8 }, cooldown: 300, line: 'ordered for the table 🍽️' },
+    ],
+  },
+  {
+    id: 'gym', name: 'Iron Trenches Gym', emoji: '🏋️', color: '#2D6A4F', blurb: 'Lift. Get gas. Get clout.',
+    actions: [{ id: 'train', label: 'Train', emoji: '🏋️', bags: 0, me: { gas: +12, clout: +2, vibes: -2 }, cooldown: 600, line: 'is training' }],
+  },
+  {
+    id: 'barber', name: 'Fresh Cuts', emoji: '💈', color: '#1D9BF0', blurb: 'A cut that changes the timeline.',
+    actions: [{ id: 'cut', label: 'Fresh cut', emoji: '💈', bags: 500, me: { clout: +8, vibes: +4 }, cooldown: 1800, line: 'got a fresh cut 💈' }],
+  },
+  {
+    id: 'clinic', name: 'Clinic', emoji: '🏥', color: '#F4F1DE', blurb: 'Full recovery. Not cheap.',
+    actions: [{ id: 'recover', label: 'Full recovery', emoji: '💊', bags: 2000, me: { gas: +100, vibes: +5 }, cooldown: 600, line: 'is fully recovered' }],
+  },
+  {
+    id: 'hustle', name: 'Hustle Hub', emoji: '🏢', color: '#6B7280', blurb: 'Work a shift. Earn bags. Lose a little joy.',
+    actions: [{ id: 'shift', label: 'Work a shift (+500 bags)', emoji: '💼', bags: -500, me: { gas: -15, vibes: -5, clout: +1 }, cooldown: 1800, line: 'finished a shift 💼' }],
+  },
+  { id: 'bank', name: 'Bank', emoji: '🏦', color: '#D4C3A5', blurb: 'Your bags, your sends.', actions: [], app: 'wallet' },
+  {
+    id: 'club', name: 'Club Moon', emoji: '🎧', color: '#FF5D8F', blurb: 'Dance. Everyone sees.',
+    actions: [{ id: 'dance', label: 'Dance', emoji: '💃', bags: 300, me: { vibes: +12, gas: -8 }, nearby: { vibes: +3 }, cooldown: 120, line: 'is dancing 💃' }],
+  },
+  { id: 'dealership', name: 'Dealership', emoji: '🚗', color: '#FFD166', blurb: 'Keke to Lambo.', actions: [], app: 'market', marketKind: 'car' },
+  { id: 'marina', name: 'Marina', emoji: '⚓', color: '#6FA8C7', blurb: 'Boats. Leave the shore.', actions: [], app: 'market', marketKind: 'boat' },
+  { id: 'airport', name: 'Airstrip', emoji: '✈️', color: '#BFE3FF', blurb: 'Fly over everything.', actions: [], app: 'market', marketKind: 'plane' },
+  { id: 'exchange', name: 'The Trenches', emoji: '📈', color: '#06D6A0', blurb: 'Live memecoins. Ape with bags.', actions: [], app: 'trenches' },
+];
+
+export const venueById = (id: string) => VENUES.find((v) => v.id === id) ?? null;
+
+export type PlacedVenue = Venue & { x: number; z: number; rot: number; w: number; d: number; h: number };
+
+export const VENUE_W = 9;
+export const VENUE_D = 9;
+export const VENUE_H = 6;
+
+/** Venues on a ring just outside the city, evenly spaced, facing the centre. */
+export function placeVenues(contentRadius: number): PlacedVenue[] {
+  const r = contentRadius + 16;
+  return VENUES.map((v, i) => {
+    const a = (i / VENUES.length) * Math.PI * 2 + Math.PI / 2; // start at the south (closest to the default spawn's side)
+    const x = Math.cos(a) * r, z = Math.sin(a) * r;
+    return { ...v, x, z, rot: Math.atan2(-x, -z), w: VENUE_W, d: VENUE_D, h: VENUE_H };
+  });
+}

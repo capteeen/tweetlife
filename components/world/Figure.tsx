@@ -2,7 +2,7 @@
 import { useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
-import { Text } from '@react-three/drei';
+import { Billboard, Text } from '@react-three/drei';
 
 import { prng, hashString } from '@/lib/world/seed';
 // Self-hosted label font (Inter, SIL OFL) so no label ever fetches from a CDN.
@@ -174,9 +174,11 @@ export function Figure({ seed, speedRef, label, labelColor = '#FFFFFF', dim = fa
         </group>
       </group>
       {label && (
-        <Text font={FONT} position={[0, shoulderY + 0.62, 0]} fontSize={0.22} color={labelColor} outlineWidth={0.02} outlineColor="#0B0E14" anchorX="center" anchorY="bottom">
-          {label}
-        </Text>
+        <Billboard position={[0, shoulderY + 0.62, 0]} follow lockX lockZ>
+          <Text font={FONT} fontSize={0.22} color={labelColor} outlineWidth={0.02} outlineColor="#0B0E14" anchorX="center" anchorY="bottom">
+            {label}
+          </Text>
+        </Billboard>
       )}
     </group>
   );

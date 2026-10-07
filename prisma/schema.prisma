@@ -64,6 +64,7 @@ model User {
   marks              Mark[]
   lanterns           Lantern[]
   apiCalls           ApiCall[]
+  player             Player?
 }
 
 model World {
@@ -173,6 +174,7 @@ model VisitorSession {
   id            String   @id @default(cuid())
   worldId       String
   world         World    @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  visitorId     String?
   visitorHandle String
   x             Float    @default(0)
   z             Float    @default(0)
@@ -241,4 +243,96 @@ model Incident {
   body       String
   startedAt  DateTime  @default(now())
   resolvedAt DateTime?
+}
+
+// ---------------------------------------------------------------------------------------------
+// Life layer: an in-world economy and social stats. "Bags" are in-world points, never money.
+// Token prices in the Trenches are real (DexScreener); positions are paper positions in bags.
+// ---------------------------------------------------------------------------------------------
+
+model Player {
+  id         String   @id // = User.id
+  user       User     @relation(fields: [id], references: [id], onDelete: Cascade)
+  bags       Int      @default(10000)
+  vibes      Int      @default(70) // fun
+  clout      Int      @default(50) // social
+  gas        Int      @default(80) // energy
+  status     String   @default("Just arrived")
+  lastTickAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  holdings   Holding[]
+  txs        BagTx[]
+  questDays  QuestDay[]
+  sent       Interaction[] @relation("sent")
+  received   Interaction[] @relation("received")
+  assets     Asset[]
+}
+
+/// A paper position: qty of a real token bought with bags at real prices.
+model Holding {
+  id        String   @id @default(cuid())
+  playerId  String
+  player    Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  chain     String
+  address   String
+  symbol    String
+  name      String
+  qty       Float
+  /// bags spent, net of sells, for PnL
+  costBasis Float
+  updatedAt DateTime @updatedAt
+
+  @@unique([playerId, chain, address])
+}
+
+model BagTx {
+  id       String   @id @default(cuid())
+  playerId String
+  player   Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  kind     String   // buy | sell | tip_in | tip_out | quest | welcome
+  amount   Int      // signed
+  note     String
+  at       DateTime @default(now())
+
+  @@index([playerId, at])
+}
+
+model Interaction {
+  id         String   @id @default(cuid())
+  worldId    String?
+  fromUserId String
+  from       Player   @relation("sent", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUserId   String
+  to         Player   @relation("received", fields: [toUserId], references: [id], onDelete: Cascade)
+  kind       String
+  at         DateTime @default(now())
+
+  @@index([fromUserId, at])
+  @@index([toUserId, at])
+}
+
+/// Daily quest claims. Progress is computed from real activity; this stores what was claimed.
+model QuestDay {
+  id       String @id @default(cuid())
+  playerId String
+  player   Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  day      String // YYYY-MM-DD (UTC)
+  claimed  Json   @default("[]")
+
+  @@unique([playerId, day])
+}
+
+/// Something bought in the Market (a vehicle, for now). Counted in net worth at purchase price.
+model Asset {
+  id         String   @id @default(cuid())
+  playerId   String
+  player     Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  itemId     String
+  paid       Int
+  equipped   Boolean  @default(false)
+  acquiredAt DateTime @default(now())
+
+  @@unique([playerId, itemId])
 }

@@ -2,9 +2,30 @@
 import { create } from 'zustand';
 import type { WorldModel, MarkModel } from '@/lib/world/load';
 import type { Placed } from '@/lib/world/geometry';
+import type { PlacedVenue } from '@/lib/life/venues';
+import type { Item } from '@/lib/life/market';
 
-export type Peer = { id: string; handle: string; x: number; z: number; yaw: number; at: number };
+export type Peer = { id: string; handle: string; x: number; z: number; yaw: number; at: number; ride?: string | null };
 export type ChatLine = { id: string; from: string; text: string; at: number; x: number; z: number };
+export type Toast = { id: string; text: string; kind: string; at: number };
+export type PhoneApp = 'home' | 'trenches' | 'wallet' | 'hustle' | 'market' | 'garage' | 'rich' | 'gist' | 'map' | 'guestbook' | 'settings';
+
+export type LifeMe = {
+  id: string; handle: string; name: string; avatarUrl: string | null; bags: number; status: string;
+  vibes: number; clout: number; gas: number; mood: string; moodEmoji: string;
+};
+export type LifeData = {
+  me: LifeMe | null;
+  portfolio?: { holdings: HoldingView[]; value: number; priced: boolean };
+  assets?: (Item & { equipped: boolean; paid: number; acquiredAt: string })[];
+  netWorth?: number;
+  quests?: { day: string; quests: { id: string; title: string; emoji: string; target: number; reward: number; progress: number; done: boolean; claimed: boolean }[]; resetsAt: string };
+  txs?: { id: string; kind: string; amount: number; note: string; at: string }[];
+};
+export type HoldingView = {
+  chain: string; address: string; symbol: string; name: string; qty: number; costBasis: number; price: number | null; value: number | null;
+  pnl: number | null; change24h: number | null; icon: string | null; url: string | null;
+};
 
 type Me = { id: string; handle: string; isOwner: boolean } | null;
 
@@ -20,6 +41,16 @@ export type WorldState = {
   spawnAt: { x: number; z: number; rot: number; depth: number } | null;
   guestbookOpen: boolean;
   chatOpen: boolean;
+  // life layer
+  life: LifeData | null;
+  phone: { open: boolean; app: PhoneApp; marketKind: 'car' | 'boat' | 'plane' | null };
+  selectedPeer: Peer | null;
+  selectedVenue: PlacedVenue | null;
+  nearVenue: string | null;
+  riding: Item | null;
+  teleport: { x: number; z: number } | null;
+  toasts: Toast[];
+
   setModel: (m: WorldModel, skyline: boolean, me: Me) => void;
   select: (p: Placed | null) => void;
   setLit: (ids: string[]) => void;
@@ -33,6 +64,17 @@ export type WorldState = {
   clearMarks: (id?: string) => void;
   setGuestbookOpen: (v: boolean) => void;
   setChatOpen: (v: boolean) => void;
+  setLife: (l: LifeData | null) => void;
+  patchMe: (p: Partial<LifeMe>) => void;
+  openPhone: (app?: PhoneApp, marketKind?: 'car' | 'boat' | 'plane' | null) => void;
+  closePhone: () => void;
+  selectPeer: (p: Peer | null) => void;
+  selectVenue: (v: PlacedVenue | null) => void;
+  setNearVenue: (id: string | null) => void;
+  setRiding: (i: Item | null) => void;
+  setTeleport: (t: { x: number; z: number } | null) => void;
+  pushToast: (text: string, kind?: string) => void;
+  dropToast: (id: string) => void;
 };
 
 export const useWorld = create<WorldState>((set) => ({
@@ -47,8 +89,16 @@ export const useWorld = create<WorldState>((set) => ({
   spawnAt: null,
   guestbookOpen: false,
   chatOpen: false,
+  life: null,
+  phone: { open: false, app: 'home', marketKind: null },
+  selectedPeer: null,
+  selectedVenue: null,
+  nearVenue: null,
+  riding: null,
+  teleport: null,
+  toasts: [],
   setModel: (model, skyline, me) => set({ model, skyline, me }),
-  select: (selected) => set({ selected }),
+  select: (selected) => set({ selected, ...(selected ? { selectedPeer: null, selectedVenue: null } : {}) }),
   setLit: (ids) => set({ lit: new Set(ids) }),
   toggleLit: (id, lit, count) =>
     set((s) => {
@@ -56,31 +106,34 @@ export const useWorld = create<WorldState>((set) => ({
       if (lit) next.add(id);
       else next.delete(id);
       const model = s.model
-        ? {
-            ...s.model,
-            geometry: {
-              ...s.model.geometry,
-              structures: s.model.geometry.structures.map((p) => (p.id === id ? { ...p, lanternsLit: count } : p)),
-            },
-          }
+        ? { ...s.model, geometry: { ...s.model.geometry, structures: s.model.geometry.structures.map((p) => (p.id === id ? { ...p, lanternsLit: count } : p)) } }
         : s.model;
       const selected = s.selected && s.selected.id === id ? { ...s.selected, lanternsLit: count } : s.selected;
       return { lit: next, model, selected };
     }),
-  upsertPeer: (p) => set((s) => ({ peers: { ...s.peers, [p.id]: p } })),
+  upsertPeer: (p) => set((s) => ({ peers: { ...s.peers, [p.id]: { ...s.peers[p.id], ...p } } })),
   dropPeer: (id) =>
     set((s) => {
       const peers = { ...s.peers };
       delete peers[id];
-      return { peers };
+      return { peers, selectedPeer: s.selectedPeer?.id === id ? null : s.selectedPeer };
     }),
   pushChat: (c) => set((s) => ({ chat: [...s.chat.slice(-60), c] })),
   setPlayerPos: (playerPos) => set({ playerPos }),
   setSpawn: (spawnAt) => set({ spawnAt }),
-  addMark: (m) =>
-    set((s) => (s.model ? { model: { ...s.model, marks: [m, ...s.model.marks.filter((x) => x.byHandle !== m.byHandle)] } } : {})),
-  clearMarks: (id) =>
-    set((s) => (s.model ? { model: { ...s.model, marks: id ? s.model.marks.filter((m) => m.id !== id) : [] } } : {})),
+  addMark: (m) => set((s) => (s.model ? { model: { ...s.model, marks: [m, ...s.model.marks.filter((x) => x.byHandle !== m.byHandle)] } } : {})),
+  clearMarks: (id) => set((s) => (s.model ? { model: { ...s.model, marks: id ? s.model.marks.filter((m) => m.id !== id) : [] } } : {})),
   setGuestbookOpen: (guestbookOpen) => set({ guestbookOpen }),
   setChatOpen: (chatOpen) => set({ chatOpen }),
+  setLife: (life) => set({ life }),
+  patchMe: (p) => set((s) => (s.life?.me ? { life: { ...s.life, me: { ...s.life.me, ...p } } } : {})),
+  openPhone: (app = 'home', marketKind = null) => set({ phone: { open: true, app, marketKind }, selected: null, selectedPeer: null, selectedVenue: null, guestbookOpen: false }),
+  closePhone: () => set((s) => ({ phone: { ...s.phone, open: false } })),
+  selectPeer: (selectedPeer) => set({ selectedPeer, ...(selectedPeer ? { selected: null, selectedVenue: null } : {}) }),
+  selectVenue: (selectedVenue) => set({ selectedVenue, ...(selectedVenue ? { selected: null, selectedPeer: null } : {}) }),
+  setNearVenue: (nearVenue) => set({ nearVenue }),
+  setRiding: (riding) => set({ riding }),
+  setTeleport: (teleport) => set({ teleport }),
+  pushToast: (text, kind = 'info') => set((s) => ({ toasts: [...s.toasts.slice(-4), { id: Math.random().toString(36).slice(2), text, kind, at: Date.now() }] })),
+  dropToast: (id) => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
 }));

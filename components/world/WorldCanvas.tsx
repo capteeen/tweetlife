@@ -11,6 +11,7 @@ import { Sky } from './Sky';
 import { skyColors, sunFor } from '@/lib/world/sky';
 import { City } from './City';
 import { Cars } from './Cars';
+import { Venues } from './Venues';
 import { Structures } from './Structures';
 import { Player } from './Player';
 import { Marks } from './Marks';
@@ -102,6 +103,7 @@ function Scene(props: SceneProps) {
       />
       <City blocks={geometry.blocks} grid={geometry.grid} outside={geometry.outside} boundaryRadius={R} biome={biome} handle={handle} paths={paths} />
       <Cars count={geometry.cars} grid={geometry.grid} handle={handle} />
+      {geometry.structures.length > 0 && <Venues contentRadius={geometry.contentRadius} interactive={mode === 'walk'} />}
       <Structures structures={geometry.structures} showMetrics={showMetrics} interactive={mode === 'walk'} />
       {/* ambient-occlusion stand-in: one baked contact shadow pass under everything */}
       <ContactShadows frames={1} position={[0, 0.3, 0]} scale={geometry.contentRadius * 2.1 + 20} blur={2} opacity={0.4} far={14} resolution={1024} />
@@ -109,7 +111,7 @@ function Scene(props: SceneProps) {
       <Residents count={geometry.residents} radius={geometry.contentRadius + 20} handle={handle} />
       {mode === 'walk' && (
         <>
-          <Player structures={geometry.structures} boundaryRadius={R} spawn={spawn ?? null} />
+          <Player structures={geometry.structures} boundaryRadius={R} contentRadius={geometry.contentRadius} spawn={spawn ?? null} />
           <Peers />
         </>
       )}

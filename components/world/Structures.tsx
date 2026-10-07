@@ -7,6 +7,7 @@ import { Text } from '@react-three/drei';
 import type { Placed, StructureKind } from '@/lib/world/geometry';
 import { LANTERN } from '@/lib/world/biomes';
 import { useWorld } from './store';
+import { plain3d } from '@/lib/world/text3d';
 // Self-hosted label font (Inter, SIL OFL) so no label ever fetches from a CDN.
 const FONT = '/fonts/inter-600.woff';
 
@@ -314,7 +315,7 @@ function Landmark({ structures }: { structures: Placed[] }) {
           anchorY="bottom"
           textAlign="center"
         >
-          {lm.text}
+          {plain3d(lm.text) || '(no text)'}
         </Text>
       )}
     </group>

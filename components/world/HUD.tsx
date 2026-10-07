@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { compact, relativeTime } from '@/lib/format';
+void relativeTime;
 import type { WorldModel } from '@/lib/world/load';
 import { useWorld } from './store';
 
@@ -24,6 +25,7 @@ export function HUD({
   const setGuestbookOpen = useWorld((s) => s.setGuestbookOpen);
   const chatOpen = useWorld((s) => s.chatOpen);
   const setChatOpen = useWorld((s) => s.setChatOpen);
+  const openPhone = useWorld((s) => s.openPhone);
   const [shared, setShared] = useState(false);
 
   const share = async () => {
@@ -59,7 +61,10 @@ export function HUD({
         <span className="num text-white/60" title="Lanterns lit">
           <span style={{ color: '#FFD089' }}>✦</span> {compact(lanterns)}
         </span>
-        <button className="btn-ghost !px-3 !py-1.5" onClick={() => setGuestbookOpen(!guestbookOpen)}>
+        <button className="btn-ghost !px-3 !py-1.5" onClick={() => openPhone('home')} title="Phone">
+          📱 Phone
+        </button>
+        <button className="btn-ghost hidden !px-3 !py-1.5 sm:inline-flex" onClick={() => setGuestbookOpen(!guestbookOpen)}>
           Guestbook
         </button>
         {chatAvailable && (
@@ -73,11 +78,6 @@ export function HUD({
       </div>
       {guestbookOpen && <Guestbook model={model} canAct={canAct} />}
       {chatOpen && chatAvailable && <Chat sendChat={sendChat} />}
-      {model.lastSyncAt && Date.now() - Date.parse(model.lastSyncAt) > 24 * 3600 * 1000 && (
-        <div className="pointer-events-none absolute left-1/2 top-3 z-10 -translate-x-1/2 rounded-full chrome px-3 py-1 text-xs text-white/70">
-          Data may be stale — last synced {relativeTime(model.lastSyncAt)}
-        </div>
-      )}
     </>
   );
 }

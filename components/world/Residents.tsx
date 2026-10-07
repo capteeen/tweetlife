@@ -5,6 +5,9 @@ import { useFrame } from '@react-three/fiber';
 import { seededFor } from '@/lib/world/seed';
 import { useWorld } from './store';
 import { Figure } from './Figure';
+import { Vehicle, riderOffset } from './Vehicle';
+import { ITEMS } from '@/lib/life/market';
+import type { Peer as PeerT } from './store';
 
 // Residents: ambient people whose count comes from followers_count, wandering on seeded loops.
 // Peers: the real visitors currently inside, from the presence room.
@@ -66,8 +69,11 @@ export function Peers() {
   );
 }
 
-function Peer({ peer }: { peer: { id: string; handle: string; x: number; z: number; yaw: number } }) {
+function Peer({ peer }: { peer: PeerT }) {
   const ref = useRef<THREE.Group>(null);
+  const selectPeer = useWorld((s) => s.selectPeer);
+  const item = peer.ride ? ITEMS.find((i) => i.id === peer.ride) ?? null : null;
+  const ro = riderOffset(item);
   const speed = useRef(0);
   const last = useRef({ x: peer.x, z: peer.z, t: performance.now() });
   useFrame(() => {
@@ -76,6 +82,7 @@ function Peer({ peer }: { peer: { id: string; handle: string; x: number; z: numb
     // smooth toward the last reported position; derive walk speed from motion
     g.position.x += (peer.x - g.position.x) * 0.2;
     g.position.z += (peer.z - g.position.z) * 0.2;
+    g.position.y += ((item?.kind === 'plane' ? 16 : 0) - g.position.y) * 0.05;
     g.rotation.y = peer.yaw;
     const now = performance.now();
     const dt = Math.max(1, now - last.current.t) / 1000;
@@ -84,8 +91,18 @@ function Peer({ peer }: { peer: { id: string; handle: string; x: number; z: numb
     speed.current = Math.min(1, v / 6);
   });
   return (
-    <group ref={ref} position={[peer.x, 0, peer.z]}>
-      <Figure seed={peer.handle} speedRef={speed} label={`@${peer.handle}`} />
+    <group
+      ref={ref}
+      position={[peer.x, 0, peer.z]}
+      onClick={(e) => {
+        e.stopPropagation();
+        selectPeer(peer);
+      }}
+    >
+      {item && <Vehicle item={item} />}
+      <group position={[0, ro.y, 0]} scale={ro.scale}>
+        <Figure seed={peer.handle} speedRef={speed} label={`@${peer.handle}`} dim={!ro.show} />
+      </group>
     </group>
   );
 }

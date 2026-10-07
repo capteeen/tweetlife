@@ -202,6 +202,19 @@ npm run party:dev / party:deploy
 npm run typecheck / lint
 ```
 
+## Life layer
+
+On top of the world: a phone (Trenches, Wallet, Hustle, Market, Garage, Rich list, Gist, Map, Guestbook, Settings),
+venues on a ring outside the post blocks, social actions on other visitors, vehicles, and three stats
+(Vibes / Clout / Gas) whose average is your mood. Money in the game is **bags**: in-world points, never real money,
+never purchasable, never cashable. The Trenches shows **real** tokens and **real** prices (DexScreener's public API,
+cached 60 s) and lets you ape bags at those prices — paper positions marked to market. `/api/life/*` holds all of it;
+`lib/life/` has the rules (`stats.ts`, `venues.ts`, `market.ts`, `quests.ts`, `trenches.ts`).
+
+A real-money variant (per-account Solana wallets, Jupiter swaps, SOL payments) is designed but **not built**: see
+"Real wallets" in this README's history / discuss before enabling — holding users' keys is regulated in many
+jurisdictions and needs its own security review.
+
 ## Must-haves checklist
 
 - [x] No mock data anywhere; no seed scripts; first world is the operator's own

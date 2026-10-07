@@ -7,6 +7,7 @@ import { Text } from '@react-three/drei';
 import type { MarkModel } from '@/lib/world/load';
 import { LANTERN } from '@/lib/world/biomes';
 import { useWorld } from './store';
+import { plain3d } from '@/lib/world/text3d';
 // Self-hosted label font (Inter, SIL OFL) so no label ever fetches from a CDN.
 const FONT = '/fonts/inter-600.woff';
 
@@ -66,7 +67,7 @@ export function Marks({ marks }: { marks: MarkModel[] }) {
       {near && (
         <group position={[near.x, 1.1, near.z]} rotation={[0, Math.atan2(playerPos.x - near.x, playerPos.z - near.z), 0]}>
           <Text font={FONT} fontSize={0.22} color="#0B0E14" outlineWidth={0.02} outlineColor="#FFF4DC" anchorX="center" anchorY="bottom" maxWidth={4} textAlign="center">
-            {`@${near.byHandle}\n${near.text}`}
+            {`@${near.byHandle}\n${plain3d(near.text)}`}
           </Text>
         </group>
       )}

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { loadWorldModel, skylineOf } from '@/lib/world/load';
 import { resolveEntry } from '@/lib/world/entry';
 import { kickTick } from '@/lib/queue/queues';
+import { db } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
@@ -18,6 +19,12 @@ export async function GET(_: Request, { params }: { params: { handle: string } }
   if (model.ingestState === 'queued' || model.ingestState === 'building') await kickTick();
 
   const me = visitor ? { id: visitor.id, handle: visitor.handle, isOwner: visitor.id === world.xUserId } : null;
+  if (decision.admit && visitor) {
+    // one visit record per visitor per world per day (feeds the Hustle quests)
+    const since = new Date(new Date().toISOString().slice(0, 10));
+    const seen = await db.visitorSession.findFirst({ where: { worldId: world.id, visitorId: visitor.id, joinedAt: { gte: since } }, select: { id: true } });
+    if (!seen) await db.visitorSession.create({ data: { worldId: world.id, visitorId: visitor.id, visitorHandle: visitor.handle } }).catch(() => {});
+  }
   if (decision.admit) {
     return NextResponse.json({ admitted: true, reason: decision.reason, me, world: model }, { headers: { 'cache-control': 'private, no-store' } });
   }

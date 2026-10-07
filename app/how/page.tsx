@@ -58,6 +58,16 @@ export default async function How() {
           <Rule k="Visitors cannot build" v="a world is authored by the owner's posting only. That is what keeps it a profile instead of a sandbox." />
         </Section>
 
+        <Section title="Life in the city">
+          <Rule k="Bags" v="in-world points, never money. Everyone starts with 10,000. They cannot be bought or cashed out." />
+          <Rule k="The Trenches" v="a live memecoin board (DexScreener top boosts, real prices). You ape bags at the real price and your position is marked to market; the Rich List ranks liquid bags + coins at live prices + assets." />
+          <Rule k="Venues" v="a ring just outside the post blocks, never mixed with posts: Degen Lounge, Suya Spot, gym, barber, clinic, Hustle Hub (work a shift for bags), bank, club, dealership, marina, airstrip, the Trenches. Actions cost bags or gas, move your stats, and have cooldowns." />
+          <Rule k="Vibes · Clout · Gas" v="your three stats, 0–100. They drift down over time and move with what you do; their average is your mood: Rekt, Coping, Comfy, Mooning." />
+          <Rule k="People" v="tap any visitor: say GM, gist, shill your bag, ape together, send 100 bags, compliment their fit, dance. Both of you feel it; they get a toast if they are inside a world." />
+          <Rule k="Market" v="keke to private jet, priced in bags. Cars are faster, boats can leave the shore onto the water, the jet flies over everything." />
+          <Rule k="Hustle" v="daily quests paid in bags, counted from real activity (lanterns lit, stones left, worlds visited, GMs said, coins aped)." />
+        </Section>
+
         <Section title="Freshness">
           <Rule k="First build" v="walks the timeline to the API cap (3,200 posts), writing structures page by page so the world is walkable while it builds." />
           <Rule k="Then" v="an incremental sync every 6 hours fetches only new posts (since_id)." />

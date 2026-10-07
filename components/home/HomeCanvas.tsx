@@ -1,0 +1,269 @@
+'use client';
+import { useEffect, useMemo, useRef } from 'react';
+import * as THREE from 'three';
+import { Canvas, useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
+import { ContactShadows } from '@react-three/drei';
+import { Figure } from '@/components/world/Figure';
+import { sticks } from '@/components/world/TouchSticks';
+import { DOOR_X, FOOTPRINT, ROOM_D, ROOM_W, SLOTS, SPAWN, WALL_H, furnitureById, hasPower, type Furniture, type HomeView } from '@/lib/life/home';
+import { useHome } from './store';
+import { FurnitureMesh } from './Furniture';
+
+// The house, seen the way the reference shows it: a fixed three-quarter view of one room with two walls,
+// a door and a window. The avatar walks with WASD / the left stick; tap a piece of furniture to open it.
+
+const SPEED = 5;
+const PLAYER_R = 0.35;
+const CAM = new THREE.Vector3(-11, 13, 15);
+const LOOK = new THREE.Vector3(0.5, 0.6, -0.5);
+
+export function HomeCanvas({ home, handle, onExit }: { home: HomeView; handle: string | null; onExit: () => void }) {
+  return (
+    <Canvas
+      shadows="soft"
+      dpr={[1, 1.75]}
+      gl={{ antialias: true, powerPreference: 'high-performance' }}
+      camera={{ fov: 38, near: 0.3, far: 200, position: CAM.toArray() }}
+      onCreated={({ gl, camera }) => {
+        gl.toneMapping = THREE.ACESFilmicToneMapping;
+        gl.toneMappingExposure = 1.12;
+        camera.lookAt(LOOK);
+      }}
+      style={{ position: 'absolute', inset: 0 }}
+      onPointerMissed={() => useHome.getState().select(null)}
+    >
+      <color attach="background" args={['#101B30']} />
+      <Room home={home} handle={handle} onExit={onExit} />
+    </Canvas>
+  );
+}
+
+function Room({ home, handle, onExit }: { home: HomeView; handle: string | null; onExit: () => void }) {
+  const lit = hasPower(home.power);
+  const placed = useMemo(
+    () => home.placed.map((p) => furnitureById(p.itemId)).filter((f): f is Furniture => !!f),
+    [home.placed],
+  );
+  const hw = ROOM_W / 2, hd = ROOM_D / 2;
+  return (
+    <>
+      <hemisphereLight args={['#DCE8F5', '#4A4538', lit ? 0.9 : 0.35]} />
+      <ambientLight intensity={lit ? 0.35 : 0.12} />
+      <directionalLight position={[8, 14, 6]} intensity={lit ? 1.4 : 0.5} color="#FFF4E0" castShadow shadow-mapSize={[2048, 2048]} shadow-bias={-0.0008} shadow-normalBias={0.06} shadow-camera-left={-12} shadow-camera-right={12} shadow-camera-top={12} shadow-camera-bottom={-12} shadow-camera-near={1} shadow-camera-far={40} />
+      {/* ground outside */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.26, 0]} receiveShadow>
+        <circleGeometry args={[40, 48]} />
+        <meshStandardMaterial color="#6E7F3C" roughness={1} />
+      </mesh>
+      {/* plinth and floor */}
+      <mesh position={[0, -0.13, 0]} receiveShadow>
+        <boxGeometry args={[ROOM_W + 0.6, 0.26, ROOM_D + 0.6]} />
+        <meshStandardMaterial color="#4B5A6B" roughness={1} />
+      </mesh>
+      <Tiles />
+      {/* back wall (z = -hd) with a door, right wall (x = +hw) with a window */}
+      <Wall w={ROOM_W + 0.6} h={WALL_H} x={0} z={-hd - 0.15} rot={0} door={DOOR_X} />
+      <Wall w={ROOM_D + 0.6} h={WALL_H} x={hw + 0.15} z={0} rot={-Math.PI / 2} window />
+      {/* door: tap to go back to the city */}
+      <group position={[DOOR_X, 0, -hd + 0.05]}>
+        <mesh position={[0, 1.4, 0]} castShadow onClick={(e: ThreeEvent<MouseEvent>) => { e.stopPropagation(); onExit(); }}>
+          <boxGeometry args={[1.6, 2.8, 0.12]} />
+          <meshStandardMaterial color="#8B4A2B" roughness={0.8} />
+        </mesh>
+        <mesh position={[0.55, 1.35, 0.08]}>
+          <sphereGeometry args={[0.06, 8, 6]} />
+          <meshStandardMaterial color="#FFD089" metalness={0.6} roughness={0.3} />
+        </mesh>
+      </group>
+      {placed.map((f) => (
+        <Piece key={f.id} item={f} lit={lit} />
+      ))}
+      <ContactShadows frames={1} position={[0, 0.01, 0]} scale={ROOM_W + 4} blur={2.2} opacity={0.45} far={6} resolution={1024} />
+      <Walker placed={placed} handle={handle} />
+    </>
+  );
+}
+
+/** Checkerboard floor, two tile colours like the reference. */
+function Tiles() {
+  const tiles = useMemo(() => {
+    const out: { x: number; z: number; dark: boolean }[] = [];
+    const n = 2;
+    for (let i = 0; i < ROOM_W / n; i++) for (let j = 0; j < ROOM_D / n; j++) out.push({ x: -ROOM_W / 2 + n / 2 + i * n, z: -ROOM_D / 2 + n / 2 + j * n, dark: (i + j) % 2 === 0 });
+    return out;
+  }, []);
+  return (
+    <group>
+      {tiles.map((t, i) => (
+        <mesh key={i} position={[t.x, 0, t.z]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+          <planeGeometry args={[1.96, 1.96]} />
+          <meshStandardMaterial color={t.dark ? '#B98A5E' : '#D4AB7E'} roughness={1} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+function Wall({ w, h, x, z, rot, door, window }: { w: number; h: number; x: number; z: number; rot: number; door?: number; window?: boolean }) {
+  return (
+    <group position={[x, 0, z]} rotation={[0, rot, 0]}>
+      <mesh position={[0, h / 2, 0]} castShadow receiveShadow>
+        <boxGeometry args={[w, h, 0.3]} />
+        <meshStandardMaterial color="#5F8EA6" roughness={1} />
+      </mesh>
+      {/* skirting */}
+      <mesh position={[0, 0.15, 0.16]}>
+        <boxGeometry args={[w, 0.3, 0.04]} />
+        <meshStandardMaterial color="#3C5A6E" roughness={1} />
+      </mesh>
+      {door != null && (
+        <mesh position={[door, 1.45, 0.17]}>
+          <boxGeometry args={[1.8, 2.9, 0.06]} />
+          <meshStandardMaterial color="#3C5A6E" roughness={1} />
+        </mesh>
+      )}
+      {window && (
+        <group position={[1.5, 2.2, 0.17]}>
+          <mesh>
+            <boxGeometry args={[3.2, 1.8, 0.06]} />
+            <meshStandardMaterial color="#BFE3FF" emissive="#BFE3FF" emissiveIntensity={0.25} />
+          </mesh>
+          {[-1, -0.5, 0, 0.5, 1].map((o) => (
+            <mesh key={o} position={[o * 1.3, 0, 0.05]}>
+              <boxGeometry args={[0.06, 1.8, 0.04]} />
+              <meshStandardMaterial color="#1B2436" />
+            </mesh>
+          ))}
+          <mesh position={[0, -1.0, 0.1]}>
+            <boxGeometry args={[3.5, 0.12, 0.3]} />
+            <meshStandardMaterial color="#D4C3A5" />
+          </mesh>
+        </group>
+      )}
+    </group>
+  );
+}
+
+function Piece({ item, lit }: { item: Furniture; lit: boolean }) {
+  const spot = SLOTS[item.slot];
+  const select = useHome((s) => s.select);
+  const selected = useHome((s) => s.selected?.id === item.id);
+  const powered = lit || !item.needsPower;
+  const fp = FOOTPRINT[item.model];
+  return (
+    <group position={[spot.x, 0, spot.z]} rotation={[0, spot.rot, 0]}>
+      <FurnitureMesh item={item} lit={powered} />
+      {/* an invisible catcher so small pieces are easy to tap; ceiling and wall pieces get a tall one */}
+      <mesh
+        position={[0, fp ? 0.6 : 2.6, 0]}
+        onClick={(e: ThreeEvent<MouseEvent>) => { e.stopPropagation(); select(item); }}
+        onPointerOver={() => (document.body.style.cursor = 'pointer')}
+        onPointerOut={() => (document.body.style.cursor = '')}
+      >
+        <boxGeometry args={[fp ? Math.max(fp.w, 1) : 2.6, fp ? 1.4 : 2.0, fp ? Math.max(fp.d, 1) : 1.2]} />
+        <meshBasicMaterial transparent opacity={selected ? 0.12 : 0} color="#FFFFFF" depthWrite={false} />
+      </mesh>
+    </group>
+  );
+}
+
+
+/** The avatar in the room: walks, keeps out of furniture, and goes to a piece when an action starts. */
+function Walker({ placed, handle }: { placed: Furniture[]; handle: string | null }) {
+  const group = useRef<THREE.Group>(null);
+  const pos = useRef(new THREE.Vector3(SPAWN.x, 0, SPAWN.z));
+  const facing = useRef(Math.PI);
+  const speedRef = useRef(0);
+  const keys = useRef<Record<string, boolean>>({});
+  const acting = useHome((s) => s.acting);
+  const { camera } = useThree();
+
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if ((e.target as HTMLElement)?.tagName === 'INPUT' || (e.target as HTMLElement)?.tagName === 'TEXTAREA') return;
+      keys.current[e.code] = true;
+    };
+    const up = (e: KeyboardEvent) => (keys.current[e.code] = false);
+    window.addEventListener('keydown', down);
+    window.addEventListener('keyup', up);
+    return () => {
+      window.removeEventListener('keydown', down);
+      window.removeEventListener('keyup', up);
+    };
+  }, []);
+
+  // obstacles: the footprint of every placed piece, rotated into room space
+  const obstacles = useMemo(
+    () =>
+      placed
+        .map((f) => {
+          const fp = FOOTPRINT[f.model];
+          if (!fp) return null;
+          const s = SLOTS[f.slot];
+          const turned = Math.abs(Math.sin(s.rot)) > 0.5;
+          return { x: s.x, z: s.z, w: turned ? fp.d : fp.w, d: turned ? fp.w : fp.d };
+        })
+        .filter((o): o is { x: number; z: number; w: number; d: number } => !!o),
+    [placed],
+  );
+
+  // when an action starts, step to the piece's use point and face it
+  useEffect(() => {
+    if (!acting) return;
+    const s = SLOTS[acting.item.slot];
+    pos.current.set(s.use.x, 0, s.use.z);
+    facing.current = Math.atan2(s.x - s.use.x, s.z - s.use.z) || facing.current;
+  }, [acting]);
+
+  useFrame((_, dt) => {
+    const d = Math.min(dt, 0.05);
+    let mx = 0, mz = 0;
+    if (!acting) {
+      const k = keys.current;
+      if (k.KeyW || k.ArrowUp) mz -= 1;
+      if (k.KeyS || k.ArrowDown) mz += 1;
+      if (k.KeyA || k.ArrowLeft) mx -= 1;
+      if (k.KeyD || k.ArrowRight) mx += 1;
+      mx += sticks.left.x;
+      mz += sticks.left.y;
+    }
+    const len = Math.hypot(mx, mz);
+    speedRef.current = Math.min(1, len);
+    if (len > 0) {
+      // screen-relative: "up" walks away from the camera along the room's diagonal view
+      const yaw = Math.atan2(camera.position.x - LOOK.x, camera.position.z - LOOK.z);
+      const s = Math.sin(yaw), c = Math.cos(yaw);
+      const vx = (mx * c - mz * s) / Math.max(1, len), vz = (mx * s + mz * c) / Math.max(1, len);
+      const step = SPEED * d * Math.min(1, len);
+      const nx = pos.current.x + vx * step, nz = pos.current.z + vz * step;
+      if (!blocked(obstacles, nx, nz)) pos.current.set(nx, 0, nz);
+      else if (!blocked(obstacles, nx, pos.current.z)) pos.current.x = nx;
+      else if (!blocked(obstacles, pos.current.x, nz)) pos.current.z = nz;
+      facing.current = Math.atan2(vx, vz);
+    }
+    if (group.current) {
+      group.current.position.copy(pos.current);
+      group.current.rotation.set(0, facing.current, 0);
+      // poses: lying is the figure laid flat over the bed; sitting lowers it onto the seat
+      if (acting?.action.pose === 'lie') {
+        group.current.position.y = 0.75;
+        group.current.rotation.set(-Math.PI / 2, 0, facing.current);
+      } else if (acting?.action.pose === 'sit') {
+        group.current.position.y = -0.35;
+      }
+    }
+  });
+
+  return (
+    <group ref={group}>
+      <Figure seed={handle ?? 'visitor'} speedRef={speedRef} label={handle ? `@${handle}` : undefined} labelColor="#BFE3FF" />
+    </group>
+  );
+}
+
+function blocked(obstacles: { x: number; z: number; w: number; d: number }[], x: number, z: number) {
+  const hw = ROOM_W / 2 - PLAYER_R - 0.1, hd = ROOM_D / 2 - PLAYER_R - 0.1;
+  if (x < -hw || x > hw || z < -hd || z > hd) return true;
+  for (const o of obstacles) if (Math.abs(x - o.x) < o.w / 2 + PLAYER_R && Math.abs(z - o.z) < o.d / 2 + PLAYER_R) return true;
+  return false;
+}

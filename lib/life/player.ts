@@ -3,9 +3,11 @@ import { db } from '../db';
 import { applyDrift, moodOf, type Stats } from './stats';
 import { ensureWallet } from '../solana/wallet';
 import { parseLook } from './look';
+import { STARTER_KIT, furnitureById } from './home';
 
 // Player profiles for the life layer. Everyone who signs in gets one with a welcome of 10,000 bags —
-// in-world points, never money. A new player picks their look in the avatar creator before walking in.
+// in-world points, never money — and a house with the starter kit. A new player picks their look in the
+// avatar creator before walking in.
 
 export async function ensurePlayer(userId: string): Promise<Player> {
   const existing = await db.player.findUnique({ where: { id: userId } });
@@ -13,7 +15,18 @@ export async function ensurePlayer(userId: string): Promise<Player> {
   const p = await db.player.create({ data: { id: userId, lookPending: true, txs: { create: { kind: 'welcome', amount: 10000, note: 'Welcome to the trenches' } } } });
   // the real Solana wallet is created alongside (keys encrypted at rest)
   await ensureWallet(userId).catch((e) => console.error('[wallet] create failed', (e as Error).message));
+  await ensureStarterKit(userId);
   return p;
+}
+
+/** The starter furniture, for a new player or one from before houses existed. Free rows; never duplicated. */
+export async function ensureStarterKit(playerId: string) {
+  const owned = await db.asset.count({ where: { playerId, slot: { not: null } } });
+  if (owned > 0) return;
+  await db.asset.createMany({
+    data: STARTER_KIT.map((itemId) => ({ playerId, itemId, paid: 0, slot: furnitureById(itemId)!.slot })),
+    skipDuplicates: true,
+  });
 }
 
 /** Apply time drift to stats and persist, at most once a minute. */

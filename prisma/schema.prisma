@@ -320,6 +320,10 @@ model Asset {
   itemId     String
   paid       Int
   equipped   Boolean  @default(false)
+  /// furniture only: the room slot it belongs to (null for vehicles)
+  slot       String?
+  /// furniture only: owned but not in the room (replaced by a better piece)
+  stored     Boolean  @default(false)
   acquiredAt DateTime @default(now())
 
   @@unique([playerId, itemId])

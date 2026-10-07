@@ -210,6 +210,11 @@ export function WorldClient({ handle, spawnPostId, embed, backdrop }: { handle: 
               </div>
             ))}
           </div>
+          {me && (
+            <a href="/home" className="pointer-events-auto absolute bottom-20 right-3 z-20 rounded-full chrome px-4 py-2 text-sm font-semibold hover:bg-white/10">
+              🏠 Go home
+            </a>
+          )}
           <HUD model={model} online={online} canAct={!!me} sendChat={sendChat} chatAvailable={model.chatEnabled && connected} />
           <TouchSticks />
           {!embed && (

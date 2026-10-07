@@ -35,6 +35,12 @@ const schema = z.object({
   PRESENCE_SECRET: z.string().optional().default(''),
   OPERATOR_HANDLE: z.string().optional().default(''),
   ADMIN_HANDLES: z.string().optional().default(''),
+  // Named residents talk through DeepSeek (OpenAI-compatible). Without a key they answer from canned lines.
+  DEEPSEEK_API_KEY: z.string().optional().default(''),
+  DEEPSEEK_MODEL: z.string().default('deepseek-chat'),
+  DEEPSEEK_BASE_URL: z.string().default('https://api.deepseek.com'),
+  /** resident chat replies across the whole deployment per UTC day, to cap the bill */
+  RESIDENT_CHAT_DAILY_CAP: z.coerce.number().int().nonnegative().default(5000),
   RENDER_DIR: z.string().default('./renders'),
 });
 

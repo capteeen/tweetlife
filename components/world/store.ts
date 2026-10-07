@@ -16,6 +16,7 @@ export type Peer = { id: string; handle: string; x: number; z: number; yaw: numb
 export type Trip = { mode: string; emoji: string; label: string; path: { x: number; z: number }[]; startedAt: number; duration: number; itemId?: string | null };
 export type ChatLine = { id: string; from: string; text: string; at: number; x: number; z: number };
 export type Toast = { id: string; text: string; kind: string; at: number };
+export type ResidentMsg = { role: 'user' | 'assistant'; content: string };
 export type PhoneApp = 'home' | 'trenches' | 'wallet' | 'solana' | 'hustle' | 'market' | 'garage' | 'house' | 'rich' | 'gist' | 'map' | 'guestbook' | 'settings';
 export type MarketKind = 'car' | 'boat' | 'plane' | 'home' | null;
 
@@ -71,6 +72,12 @@ export type WorldState = {
   mapOpen: boolean;
   toasts: Toast[];
   doing: Doing;
+  /** the named resident you are talking to (lib/life/residents.ts) */
+  selectedResident: string | null;
+  /** speech bubbles over residents' heads */
+  residentSays: Record<string, { text: string; at: number }>;
+  /** your conversation with each resident this visit */
+  residentChats: Record<string, ResidentMsg[]>;
 
   setModel: (m: WorldModel, skyline: boolean, me: Me) => void;
   select: (p: Placed | null) => void;
@@ -100,6 +107,9 @@ export type WorldState = {
   pushToast: (text: string, kind?: string) => void;
   dropToast: (id: string) => void;
   setDoing: (d: Doing) => void;
+  selectResident: (id: string | null) => void;
+  residentSay: (id: string, text: string) => void;
+  pushResidentChat: (id: string, m: ResidentMsg) => void;
 };
 
 export const useWorld = create<WorldState>((set) => ({
@@ -126,8 +136,11 @@ export const useWorld = create<WorldState>((set) => ({
   mapOpen: false,
   toasts: [],
   doing: null,
+  selectedResident: null,
+  residentSays: {},
+  residentChats: {},
   setModel: (model, skyline, me) => set({ model, skyline, me }),
-  select: (selected) => set({ selected, ...(selected ? { selectedPeer: null, selectedVenue: null } : {}) }),
+  select: (selected) => set({ selected, ...(selected ? { selectedPeer: null, selectedVenue: null, selectedResident: null } : {}) }),
   setLit: (ids) => set({ lit: new Set(ids) }),
   toggleLit: (id, lit, count) =>
     set((s) => {
@@ -157,16 +170,20 @@ export const useWorld = create<WorldState>((set) => ({
   setLife: (life) => set({ life }),
   setWallet: (wallet) => set({ wallet }),
   patchMe: (p) => set((s) => (s.life?.me ? { life: { ...s.life, me: { ...s.life.me, ...p } } } : {})),
-  openPhone: (app = 'home', marketKind = null, to = null) => set({ phone: { open: true, app, marketKind, to }, selected: null, selectedPeer: null, selectedVenue: null, guestbookOpen: false }),
+  openPhone: (app = 'home', marketKind = null, to = null) => set({ phone: { open: true, app, marketKind, to }, selected: null, selectedPeer: null, selectedVenue: null, selectedResident: null, guestbookOpen: false }),
   closePhone: () => set((s) => ({ phone: { ...s.phone, open: false } })),
-  selectPeer: (selectedPeer) => set({ selectedPeer, ...(selectedPeer ? { selected: null, selectedVenue: null } : {}) }),
-  selectVenue: (selectedVenue) => set({ selectedVenue, ...(selectedVenue ? { selected: null, selectedPeer: null } : {}) }),
+  selectPeer: (selectedPeer) => set({ selectedPeer, ...(selectedPeer ? { selected: null, selectedVenue: null, selectedResident: null } : {}) }),
+  selectVenue: (selectedVenue) => set({ selectedVenue, ...(selectedVenue ? { selected: null, selectedPeer: null, selectedResident: null } : {}) }),
   setNearVenue: (nearVenue) => set({ nearVenue }),
   setRiding: (riding) => set({ riding }),
   setTeleport: (teleport) => set({ teleport }),
   setTrip: (trip) => set({ trip }),
-  setMapOpen: (mapOpen) => set({ mapOpen, ...(mapOpen ? { selected: null, selectedPeer: null, selectedVenue: null } : {}) }),
+  setMapOpen: (mapOpen) => set({ mapOpen, ...(mapOpen ? { selected: null, selectedPeer: null, selectedVenue: null, selectedResident: null } : {}) }),
   pushToast: (text, kind = 'info') => set((s) => ({ toasts: [...s.toasts.slice(-4), { id: Math.random().toString(36).slice(2), text, kind, at: Date.now() }] })),
   dropToast: (id) => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
   setDoing: (doing) => set({ doing }),
+  selectResident: (selectedResident) =>
+    set({ selectedResident, ...(selectedResident ? { selected: null, selectedPeer: null, selectedVenue: null } : {}) }),
+  residentSay: (id, text) => set((s) => ({ residentSays: { ...s.residentSays, [id]: { text, at: Date.now() } } })),
+  pushResidentChat: (id, m) => set((s) => ({ residentChats: { ...s.residentChats, [id]: [...(s.residentChats[id] ?? []).slice(-29), m] } })),
 }));

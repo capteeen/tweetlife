@@ -276,7 +276,8 @@ function build(s: Spec, model: CarModel, open: boolean, hollow: boolean): CarGeo
       for (const side of [-1, 1]) {
         for (const [a, b] of spans(-hl + 0.1, hl - 0.1, side < 0 ? busDoors : [])) box('glass', 0.05, gh, b - a, side * (hw - 0.03), gy, (a + b) / 2);
       }
-      if (!hollow) for (const [a, b] of busDoors) box('glass', 0.05, gy * 2 - floorY - 0.1, b - a, -(hw - 0.03), (gy * 2 + floorY) / 2 - 0.4, (a + b) / 2);
+      // traffic buses: the shut doors' glass, from the step to just under the roof like the door leaves
+      if (!hollow) for (const [a, b] of busDoors) box('glass', 0.05, roofY - 0.5, b - a, -(hw - 0.03), 0.3 + (roofY - 0.38) / 2, (a + b) / 2);
     } else {
       const c = new THREE.Shape(cab.map(([z, y]) => new THREE.Vector2(z, y)));
       add('glass', extrudeAcross(c, W - 0.22));

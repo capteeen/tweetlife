@@ -9,13 +9,13 @@ export type District = { id: string; name: string; color: string; /** ring slots
 export const RING_SLOTS = 16;
 
 export const DISTRICTS: District[] = [
-  { id: 'waterfront', name: 'Waterfront', color: '#6FA8C7', slots: [1, 2, 3], venues: ['marina', 'dealership', 'tech'] },
+  { id: 'waterfront', name: 'Waterfront', color: '#6FA8C7', slots: [1, 2], venues: ['marina', 'dealership'] },
   { id: 'wellness', name: 'Wellness Row', color: '#2D6A4F', slots: [4, 5, 6], venues: ['gym', 'barber', 'clinic'] },
   { id: 'strip', name: 'The Strip', color: '#FF5D8F', slots: [8, 9, 10], venues: ['club', 'bar', 'suya'] },
-  { id: 'trenches', name: 'Trenches Quarter', color: '#06D6A0', slots: [12, 13, 14], venues: ['exchange', 'bank', 'hustle'] },
+  { id: 'trenches', name: 'Trenches Quarter', color: '#06D6A0', slots: [11, 12, 13, 14], venues: ['tech', 'exchange', 'bank', 'hustle'] },
 ];
 /** Slots between districts. New venues that no district names land here, in this order. */
-export const SPARE_SLOTS = [7, 11, 15];
+export const SPARE_SLOTS = [3, 7, 15];
 
 export const districtOf = (venueId: string) => DISTRICTS.find((d) => d.venues.includes(venueId)) ?? null;
 export const slotAngle = (slot: number) => (slot / RING_SLOTS) * Math.PI * 2;

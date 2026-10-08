@@ -26,6 +26,24 @@ export const SHOE_STYLES = ['sneakers', 'boots', 'slides', 'heels'] as const;
 export const HATS = ['none', 'cap', 'beanie'] as const;
 export const EYEWEAR = ['none', 'glasses', 'shades'] as const;
 export const EXTRAS = ['chain', 'watch', 'backpack'] as const;
+/** Display names for every clothing style, so any screen (the creator, a wardrobe or shop) can list them. */
+export const STYLE_NAMES = {
+  top: { tee: 'T-shirt', hoodie: 'Hoodie', shirt: 'Button-up', blazer: 'Blazer', crop: 'Crop top', jersey: 'Jersey', tank: 'Tank top', dress: 'Dress' },
+  bottom: { pants: 'Trousers', jeans: 'Jeans', joggers: 'Joggers', cargo: 'Cargos', shorts: 'Shorts', skirt: 'Skirt' },
+  shoeStyle: { sneakers: 'Sneakers', boots: 'Boots', slides: 'Slides', heels: 'Heels' },
+  hat: { none: 'None', cap: 'Cap', beanie: 'Beanie' },
+  eyewear: { none: 'None', glasses: 'Glasses', shades: 'Shades' },
+  extras: { chain: 'Gold chain', watch: 'Watch', backpack: 'Backpack' },
+} as const satisfies {
+  top: Record<(typeof TOPS)[number], string>;
+  bottom: Record<(typeof BOTTOMS)[number], string>;
+  shoeStyle: Record<(typeof SHOE_STYLES)[number], string>;
+  hat: Record<(typeof HATS)[number], string>;
+  eyewear: Record<(typeof EYEWEAR)[number], string>;
+  extras: Record<(typeof EXTRAS)[number], string>;
+};
+/** What a top's second colour (shirtAlt) is called, for tops that have one. */
+export const ACCENT_NAMES: Partial<Record<(typeof TOPS)[number], string>> = { blazer: 'Shirt underneath', jersey: 'Trim and number', hoodie: 'Drawstrings', shirt: 'Buttons' };
 
 export type Look = {
   body: (typeof BODIES)[number];

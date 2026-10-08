@@ -1,7 +1,7 @@
 'use client';
 import { Suspense, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { ACCENT, BOTTOMS, EXTRAS, EYEWEAR, HAIR, HAIR_STYLES, HATS, PANTS, SHIRT, SHIRT_ALT, SHOE_STYLES, SHOES, SKIN, TOPS, randomLook, type Look } from '@/lib/life/look';
+import { ACCENT, BOTTOMS, EXTRAS, EYEWEAR, HAIR, HAIR_STYLES, HATS, PANTS, SHIRT, SHIRT_ALT, SHOE_STYLES, SHOES, SKIN, STYLE_NAMES, ACCENT_NAMES, TOPS, randomLook, type Look } from '@/lib/life/look';
 
 const Preview = dynamic(() => import('./Preview').then((m) => m.Preview), { ssr: false });
 
@@ -17,15 +17,6 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'shoes', label: 'Shoes' },
   { id: 'extras', label: 'Extras' },
 ];
-
-const TOP_NAMES: Record<Look['top'], string> = { tee: 'T-shirt', hoodie: 'Hoodie', shirt: 'Button-up', blazer: 'Blazer', crop: 'Crop top', jersey: 'Jersey', tank: 'Tank top', dress: 'Dress' };
-const BOTTOM_NAMES: Record<Look['bottom'], string> = { pants: 'Trousers', jeans: 'Jeans', joggers: 'Joggers', cargo: 'Cargos', shorts: 'Shorts', skirt: 'Skirt' };
-const SHOE_NAMES: Record<Look['shoeStyle'], string> = { sneakers: 'Sneakers', boots: 'Boots', slides: 'Slides', heels: 'Heels' };
-const HAT_NAMES: Record<Look['hat'], string> = { none: 'None', cap: 'Cap', beanie: 'Beanie' };
-const EYEWEAR_NAMES: Record<Look['eyewear'], string> = { none: 'None', glasses: 'Glasses', shades: 'Shades' };
-const EXTRA_NAMES: Record<Look['extras'][number], string> = { chain: 'Gold chain', watch: 'Watch', backpack: 'Backpack' };
-/** What the top's second colour is called, when the top has one. */
-const ACCENT_NAME: Partial<Record<Look['top'], string>> = { blazer: 'Shirt underneath', jersey: 'Trim and number', hoodie: 'Drawstrings', shirt: 'Buttons' };
 
 const HAIR_NAMES: Record<Look['hairStyle'], string> = {
   crop: 'Short',
@@ -142,7 +133,7 @@ export function AvatarCreator({ handle, initial, next, firstTime }: { handle: st
           {tab === 'top' && (
             <>
               <Group title="Style">
-                <Choices value={look.top} options={TOPS.map((v) => ({ v, label: TOP_NAMES[v] }))} onPick={(v) => set('top', v)} />
+                <Choices value={look.top} options={TOPS.map((v) => ({ v, label: STYLE_NAMES.top[v] }))} onPick={(v) => set('top', v)} />
               </Group>
               <Group title="Colour">
                 <Swatches colors={SHIRT} value={look.shirt} onPick={(v) => set('shirt', v)} />
@@ -174,8 +165,8 @@ export function AvatarCreator({ handle, initial, next, firstTime }: { handle: st
                   />
                 </Group>
               )}
-              {(look.pattern !== 'solid' || ACCENT_NAME[look.top]) && (
-                <Group title={look.pattern !== 'solid' && look.top !== 'blazer' ? 'Accent' : ACCENT_NAME[look.top]!}>
+              {(look.pattern !== 'solid' || ACCENT_NAMES[look.top]) && (
+                <Group title={look.pattern !== 'solid' && look.top !== 'blazer' ? 'Accent' : ACCENT_NAMES[look.top]!}>
                   <Swatches colors={SHIRT_ALT} value={look.shirtAlt} onPick={(v) => set('shirtAlt', v)} />
                 </Group>
               )}
@@ -189,7 +180,7 @@ export function AvatarCreator({ handle, initial, next, firstTime }: { handle: st
             ) : (
               <>
                 <Group title="Style">
-                  <Choices value={look.bottom} options={BOTTOMS.map((v) => ({ v, label: BOTTOM_NAMES[v] }))} onPick={(v) => set('bottom', v)} />
+                  <Choices value={look.bottom} options={BOTTOMS.map((v) => ({ v, label: STYLE_NAMES.bottom[v] }))} onPick={(v) => set('bottom', v)} />
                 </Group>
                 <Group title="Colour">
                   <Swatches colors={PANTS} value={look.pants} onPick={(v) => set('pants', v)} />
@@ -199,7 +190,7 @@ export function AvatarCreator({ handle, initial, next, firstTime }: { handle: st
           {tab === 'shoes' && (
             <>
               <Group title="Style">
-                <Choices value={look.shoeStyle} options={SHOE_STYLES.map((v) => ({ v, label: SHOE_NAMES[v] }))} onPick={(v) => set('shoeStyle', v)} wide />
+                <Choices value={look.shoeStyle} options={SHOE_STYLES.map((v) => ({ v, label: STYLE_NAMES.shoeStyle[v] }))} onPick={(v) => set('shoeStyle', v)} wide />
               </Group>
               <Group title="Colour">
                 <Swatches colors={SHOES} value={look.shoes} onPick={(v) => set('shoes', v)} />
@@ -209,15 +200,15 @@ export function AvatarCreator({ handle, initial, next, firstTime }: { handle: st
           {tab === 'extras' && (
             <>
               <Group title="Hat">
-                <Choices value={look.hat} options={HATS.map((v) => ({ v, label: HAT_NAMES[v] }))} onPick={(v) => set('hat', v)} wide />
+                <Choices value={look.hat} options={HATS.map((v) => ({ v, label: STYLE_NAMES.hat[v] }))} onPick={(v) => set('hat', v)} wide />
               </Group>
               <Group title="Eyewear">
-                <Choices value={look.eyewear} options={EYEWEAR.map((v) => ({ v, label: EYEWEAR_NAMES[v] }))} onPick={(v) => set('eyewear', v)} wide />
+                <Choices value={look.eyewear} options={EYEWEAR.map((v) => ({ v, label: STYLE_NAMES.eyewear[v] }))} onPick={(v) => set('eyewear', v)} wide />
               </Group>
               <Group title="Extras">
                 <Toggles
                   value={look.extras}
-                  options={EXTRAS.map((v) => ({ v, label: EXTRA_NAMES[v] }))}
+                  options={EXTRAS.map((v) => ({ v, label: STYLE_NAMES.extras[v] }))}
                   onChange={(v) => set('extras', v)}
                 />
               </Group>

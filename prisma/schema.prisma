@@ -438,6 +438,8 @@ model SocialRequest {
   @@index([toId, status])
   @@index([fromId, status])
   @@index([fromId, toId, kind])
+}
+
 /// A step of the guided first day the player finished. One row per step, so its reward is paid exactly once.
 model FirstDayStep {
   playerId String

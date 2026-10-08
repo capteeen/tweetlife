@@ -25,7 +25,7 @@ export function FootstepSounds({ map, floor }: { map?: SurfaceMap; floor?: Surfa
     if (phase.current < 1) return;
     phase.current -= 1;
     const surface = p.surface ?? floor ?? (map ? surfaceAt(map, p.x, p.z) : 'concrete');
-    sfx('footstep', { surface, v: (p.sprint ? 1.5 : 0.7 + 0.4 * s) * (1 - 0.25 * p.tired) });
+    sfx('footstep', { surface, v: (p.sprint ? 2 : 1 + 0.5 * s) * (1 - 0.25 * p.tired) });
   });
   return null;
 }

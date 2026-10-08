@@ -161,7 +161,7 @@ export function WorldSounds({ geometry }: { geometry: WorldGeometry }) {
     if (now - slow.current > 0.25) {
       slow.current = now;
       const busy = Math.min(1, centre * 1.2 + 0.2) * (night ? 0.6 : 1);
-      loops.city.set((onIsland ? 0.15 : 0.25 + centre * 0.45) * indoors, { busy });
+      loops.city.set((onIsland ? 0.12 : 0.2 + centre * 0.35) * indoors, { busy });
       loops.wind.set(Math.min(0.6, (onBridge ? 0.6 : 0) + (onIsland ? 0.4 : 0) + shore * 0.2) * indoors);
       loops.water.set(Math.min(0.7, shore * 0.6 + (onBridge ? 0.5 : 0)) * indoors);
       const green = district === 'wellness' ? 1 : district === 'waterfront' ? 0.5 : 0.6 - centre * 0.4;

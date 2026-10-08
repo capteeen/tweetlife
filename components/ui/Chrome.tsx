@@ -1,6 +1,10 @@
 import Link from 'next/link';
 import type { SessionUser } from '@/lib/session';
 
+/** The game's own X account. */
+export const X_ACCOUNT = 'gotweetlife';
+export const X_ACCOUNT_URL = `https://x.com/${X_ACCOUNT}`;
+
 export function XMark({ className = 'h-4 w-4' }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" aria-hidden className={className} fill="currentColor">
@@ -49,7 +53,10 @@ export function Footer() {
       <p>
         TweetLife is an unofficial fan project. It is not affiliated with, endorsed by, or sponsored by X Corp. Worlds are built only
         from data the signed-in account authorises us to read. <Link className="underline" href="/how">How a world grows</Link> ·{' '}
-        <Link className="underline" href="/status">Status</Link>
+        <Link className="underline" href="/status">Status</Link> ·{' '}
+        <a className="underline" href={X_ACCOUNT_URL} target="_blank" rel="noopener noreferrer">
+          Follow @{X_ACCOUNT} on X
+        </a>
       </p>
     </footer>
   );

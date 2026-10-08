@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { XMark } from '@/components/ui/Chrome';
+import { X_ACCOUNT, X_ACCOUNT_URL, XMark } from '@/components/ui/Chrome';
 import { installAudioUnlock, whenUnlocked } from '@/lib/audio/engine';
 import { COUNTRY_LIST } from '@/lib/world/countries';
 import { startTheme, stopTheme, ui, type UiSound } from './titleSound';
@@ -212,6 +212,17 @@ function Hero({
         </Link>
         <div className="flex items-center gap-2">
           <NowPlaying />
+          <a
+            href={X_ACCOUNT_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => ui('tap')}
+            aria-label={`Follow @${X_ACCOUNT} on X`}
+            className="flex h-10 min-w-10 items-center justify-center gap-2 rounded-full bg-[#0F2747] px-3 text-sm font-semibold text-white shadow-[0_6px_20px_rgba(15,39,71,0.25)] transition hover:bg-black sm:px-4"
+          >
+            <XMark className="h-4 w-4" />
+            <span className="hidden sm:inline">Follow @{X_ACCOUNT}</span>
+          </a>
         </div>
       </header>
 
@@ -473,6 +484,9 @@ function Footer({ backdropHandle, liveWorlds }: { backdropHandle: string | null;
           <Link href="/how" className="hover:text-[#1D9BF0]">How a world grows</Link>
           <Link href="/explore" className="hover:text-[#1D9BF0]">Explore</Link>
           <Link href="/status" className="hover:text-[#1D9BF0]">Status</Link>
+          <a href={X_ACCOUNT_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 hover:text-[#1D9BF0]">
+            <XMark className="h-3.5 w-3.5" /> @{X_ACCOUNT}
+          </a>
           {backdropHandle && (
             <a href={`/w/${encodeURIComponent(backdropHandle)}`} className="hover:text-[#1D9BF0]">
               Showcase: @{backdropHandle}

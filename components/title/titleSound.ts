@@ -1,10 +1,9 @@
 'use client';
 import { audio, audioRaw } from '@/lib/audio/engine';
-import { useSoundSettings } from '@/lib/audio/settings';
 import { STEP, bell, makeRig, playStep, tweet, type Rig } from './themeMusic';
 
 // The welcome page's sound: the theme on the music bus, small UI sounds on the sfx bus. Built on the shared
-// engine in lib/audio, so the mute switch and volumes are the same ones the game uses.
+// engine in lib/audio, so the levels are the same ones the game uses (sound is always on).
 
 type FullRig = ReturnType<typeof makeRig>;
 let rig: FullRig | null = null;
@@ -148,4 +147,3 @@ export function ui(kind: UiSound) {
   }
 }
 
-export { useSoundSettings };

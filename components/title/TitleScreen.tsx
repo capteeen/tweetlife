@@ -3,8 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { XMark } from '@/components/ui/Chrome';
-import { installAudioUnlock, isAudioUnlocked, unlockAudio, whenUnlocked } from '@/lib/audio/engine';
-import { useSoundSettings } from '@/lib/audio/settings';
+import { installAudioUnlock, whenUnlocked } from '@/lib/audio/engine';
 import { COUNTRY_LIST } from '@/lib/world/countries';
 import { startTheme, stopTheme, ui, type UiSound } from './titleSound';
 import { Filmstrip, Gallery, ShotViewer } from './Gallery';
@@ -14,8 +13,9 @@ const CountriesScene = dynamic(() => import('./CountriesScene').then((m) => m.Co
 
 // The welcome page. Up top, a little 3D city on a speech-bubble island (the brand: white bubble-buildings with
 // yellow windows on sky blue) behind the headline and the two ways in. Below, how a world grows, the three
-// countries as 3D islands with a plane flying between them, and what there is to do inside, with real screenshots. A sunny theme tune starts on the first tap (browsers block sound before
-// that); the speaker button mutes it, and the choice is kept for the game too.
+// countries as 3D islands with a plane flying between them, and a gallery of real screenshots of what there is
+// to do (Gallery.tsx). A sunny theme tune starts on the first tap anywhere (browsers block sound before that).
+// Sound is always on: there is no mute, here or in the game.
 
 type Props = {
   /** The operator's public world, linked as a live showcase. Null = none yet. */
@@ -83,55 +83,31 @@ export function TitleScreen({ backdropHandle, signedInHandle, authError, liveWor
   );
 }
 
-/** Start the theme on the first tap (unless muted), and follow the mute switch after that. */
+/** Sound is always on: the theme starts with the first tap, click or key press anywhere on the page
+ *  (browsers block audio until then). */
 function useThemeMusic() {
-  const muted = useSoundSettings((s) => s.muted);
   useEffect(() => {
     installAudioUnlock();
-    const off = whenUnlocked(() => {
-      if (!useSoundSettings.getState().muted) startTheme();
-    });
+    const off = whenUnlocked(() => startTheme());
     return () => {
       off();
       stopTheme();
     };
   }, []);
-  useEffect(() => {
-    if (!isAudioUnlocked()) return;
-    if (muted) stopTheme();
-    else startTheme();
-  }, [muted]);
 }
 
-function SoundToggle() {
-  const saved = useSoundSettings((s) => s.muted);
-  const [unlocked, setUnlocked] = useState(false);
-  // the saved choice lives in localStorage, which the server can't see: show it only once mounted
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-  useEffect(() => whenUnlocked(() => setUnlocked(true)), []);
-  const muted = mounted && saved;
-  const toggle = () => {
-    unlockAudio();
-    const next = !useSoundSettings.getState().muted;
-    useSoundSettings.getState().setMuted(next);
-    if (!next) setTimeout(() => ui('on'), 30);
-  };
-  const live = unlocked && !muted;
+/** "Now playing" once the theme has started. Not a button: there is no mute. */
+function NowPlaying() {
+  const [on, setOn] = useState(false);
+  useEffect(() => whenUnlocked(() => setOn(true)), []);
   return (
-    <button
-      onClick={toggle}
-      aria-pressed={!muted}
-      aria-label={muted ? 'Turn sound on' : 'Turn sound off'}
-      className={`group flex h-10 items-center gap-2 rounded-full bg-white/90 pl-2.5 pr-3.5 text-sm font-semibold text-[#0F2747] shadow-[0_6px_20px_rgba(15,39,71,0.18)] backdrop-blur transition hover:bg-white ${mounted ? '' : 'opacity-0'}`}
+    <div
+      aria-hidden
+      className={`flex h-10 items-center gap-2 rounded-full bg-white/90 px-3.5 text-sm font-semibold text-[#0F2747] shadow-[0_6px_20px_rgba(15,39,71,0.18)] backdrop-blur transition-opacity duration-500 ${on ? 'opacity-100' : 'opacity-0'}`}
     >
-      <span className="relative flex h-6 w-6 items-center justify-center">
-        {muted ? <SpeakerOff /> : <SpeakerOn />}
-        {!muted && !unlocked && <span className="absolute inset-0 animate-ping rounded-full bg-[#3BA9F5]/40" />}
-      </span>
-      <span className="hidden sm:inline">{muted ? 'Sound off' : live ? 'Sound on' : 'Tap for sound'}</span>
-      {live && <Bars />}
-    </button>
+      <Bars />
+      <span className="hidden sm:inline">Sunny Block</span>
+    </div>
   );
 }
 
@@ -144,19 +120,6 @@ function Bars() {
     </span>
   );
 }
-
-const SpeakerOn = () => (
-  <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-    <path d="M11 5 6 9H3v6h3l5 4V5Z" fill="currentColor" />
-    <path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13" />
-  </svg>
-);
-const SpeakerOff = () => (
-  <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-    <path d="M11 5 6 9H3v6h3l5 4V5Z" fill="currentColor" />
-    <path d="m16 9 5 6M21 9l-5 6" />
-  </svg>
-);
 
 /** The logo: a speech bubble that is a building (white, yellow windows, a little door), on sky blue. */
 export function BubbleLogo({ className = 'h-10 w-10' }: { className?: string }) {
@@ -248,7 +211,7 @@ function Hero({
           <span className="text-xl font-black tracking-tight text-white drop-shadow-[0_2px_0_rgba(15,60,120,0.35)]">tweetlife</span>
         </Link>
         <div className="flex items-center gap-2">
-          <SoundToggle />
+          <NowPlaying />
         </div>
       </header>
 

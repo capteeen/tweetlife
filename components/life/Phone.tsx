@@ -14,7 +14,6 @@ import { JobsApp } from './JobsApp';
 import { showWelcomeAgain } from './Welcome';
 import { IdCard } from '@/components/citizen/IdCard';
 import { countryOf } from '@/lib/world/countries';
-import { SoundSettings } from '@/components/audio/SoundSettings';
 import { RelationshipsApp } from './RelationshipsApp';
 import { useLove } from './loveClient';
 import { firstDayActions } from './firstDay';
@@ -788,7 +787,6 @@ function SettingsApp({ handle }: { handle: string }) {
   const signedIn = useWorld((s) => !!s.life?.me);
   return (
     <div className="mt-3 space-y-2 text-sm">
-      <SoundSettings />
       {me && (
         <a className="btn w-full" href={`/create?wardrobe=1&next=${encodeURIComponent(`/w/${handle}`)}`}>
           👕 Change my look

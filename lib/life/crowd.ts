@@ -5,12 +5,12 @@ import { getFollowers, getUserTweets } from '../x/api';
 import { budgetStatus } from '../x/budget';
 import { accessTokenFor } from '../x/oauth';
 import { structureRows } from '../x/ingest';
-import { applyDelta } from './stats';
 
 // Post on X and your followers pull up. When a player's new post lands (found by a quick check from the game or by
 // the regular sync), their newest X followers appear around them in the world as a crowd: real names and handles,
 // cheering and reacting to the post, for CROWD_MINUTES. Followers who play Tweetlife themselves are not puppeted;
-// they get a notice with a way to join instead.
+// they get a notice with a way to join instead. Posting earns nothing (no bags, no stats): X's developer terms bar
+// apps from rewarding people for posting, and the game depends on X API access.
 //
 // X budget: the follower list is one call, cached for a day (and kept for a month as a fallback when X refuses or
 // the monthly budget runs low). Checking for a new post is one call, at most once per CHECK_GAP_S per player.
@@ -21,9 +21,6 @@ const FRESH_HOURS = 24;
 const FOLLOWERS_FRESH_S = 24 * 3600;
 const FOLLOWERS_KEEP_S = 30 * 24 * 3600;
 export const CHECK_GAP_S = 120;
-/** Clout for a crowd, for at most CLOUT_PER_DAY crowds a day. */
-const CROWD_CLOUT = 2;
-const CLOUT_PER_DAY = 3;
 const NOTICE_KEEP = 10;
 
 export type CrowdFollower = { id: string; handle: string; name: string; avatar: string | null; followers: number | null };
@@ -134,18 +131,6 @@ export async function summonCrowd(owner: User, post: { postId: string; text: str
     await redis().multi().lpush(kNotices(p.id), JSON.stringify(notice)).ltrim(kNotices(p.id), 0, NOTICE_KEEP - 1).expire(kNotices(p.id), 3 * 3600).exec().catch(() => {});
   }
 
-  // a little clout for posting, a few times a day
-  const day = new Date().toISOString().slice(0, 10);
-  const kClout = `crowd:clout:${owner.id}:${day}`;
-  const times = await redis().incr(kClout).catch(() => CLOUT_PER_DAY + 1);
-  if (times === 1) await redis().expire(kClout, 90000).catch(() => {});
-  if (times <= CLOUT_PER_DAY) {
-    const p = await db.player.findUnique({ where: { id: owner.id } });
-    if (p) {
-      const s = applyDelta(p, { clout: CROWD_CLOUT });
-      await db.player.update({ where: { id: p.id }, data: { clout: s.clout } });
-    }
-  }
   return crowd;
 }
 

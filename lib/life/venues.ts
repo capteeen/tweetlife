@@ -75,7 +75,7 @@ export const VENUES: Venue[] = [
   {
     id: 'hustle', name: 'Hustle Hub', emoji: '🏢', color: '#8338EC', blurb: 'The job centre. Find a real job on the board, or grab a day of casual work.',
     // casual work for anyone without a job; a real job (lib/life/jobs.ts) always pays more
-    actions: [{ id: 'shift', label: 'Casual day work (+250 bags)', emoji: '💼', bags: -250, me: { gas: -15, vibes: -5, clout: +1 }, cooldown: 1800, line: 'finished a shift 💼' }],
+    actions: [{ id: 'shift', label: 'Work a shift (+250 bags)', emoji: '💼', bags: -250, me: { gas: -15, vibes: -5, clout: +1 }, cooldown: 1800, line: 'finished a shift 💼' }],
   },
   {
     id: 'tech', name: 'Devnet Labs', emoji: '💻', color: '#3A86FF', blurb: 'The tech office. Standing desks, free coffee, hiring programmers.',

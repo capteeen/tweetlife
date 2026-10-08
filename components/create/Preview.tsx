@@ -53,13 +53,28 @@ function Rig({ focus }: { focus: keyof typeof SHOTS }) {
   );
 }
 
+/** A soft warm light from just above the camera, so faces on darker skin tones read from every turntable angle. */
+function CameraFill() {
+  const light = useRef<THREE.DirectionalLight>(null);
+  useFrame(({ camera }) => {
+    const l = light.current;
+    if (!l) return;
+    l.position.copy(camera.position).add(FILL_LIFT);
+    l.target.position.set(0, 1.2, 0);
+    l.target.updateMatrixWorld();
+  });
+  return <directionalLight ref={light} intensity={1.6} color="#FFF1E2" />;
+}
+const FILL_LIFT = new THREE.Vector3(0, 0.6, 0);
+
 export function Preview({ look, focus }: { look: Look; focus: 'body' | 'head' }) {
   const speed = useRef(0);
   return (
     <Canvas shadows camera={{ position: SHOTS.body.pos.toArray(), fov: 35 }} dpr={[1, 2]} gl={{ antialias: true, alpha: true, preserveDrawingBuffer: true }}>
-      <hemisphereLight args={['#dfe9ff', '#3a2f2a', 0.9]} />
+      <hemisphereLight args={['#dfe9ff', '#3a2f2a', 1.05]} />
       <directionalLight position={[2.5, 4, 3]} intensity={1.6} castShadow shadow-mapSize={[1024, 1024]} />
       <directionalLight position={[-3, 2, -2]} intensity={0.5} color="#9fc4ff" />
+      <CameraFill />
       <Figure seed="preview" look={look} speedRef={speed} />
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.001, 0]} receiveShadow>
         <circleGeometry args={[0.9, 48]} />

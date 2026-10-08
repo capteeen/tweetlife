@@ -9,6 +9,7 @@ import { prng, hashString } from '@/lib/world/seed';
 import {
   DISTRICTS, RING_ROAD_W, RING_SLOTS, airportLayout, billboardSpots, ringRoadRadius, slotAngle, venueRingRadius, type Airport, type Rect,
 } from '@/lib/world/layout';
+import { useWorld } from './store';
 
 // Everything around the post city that makes it a city: the ring road and its traffic, spur roads,
 // district names on the ground, billboards, palms, and the airport island with its bridge.
@@ -20,9 +21,9 @@ const DASH = '#E9EDF2';
 const tmp = new THREE.Object3D();
 const tmpColor = new THREE.Color();
 
-type Props = { contentRadius: number; boundaryRadius: number; grid: CityGrid; hasCity: boolean; biome: string; handle: string; structures: Placed[] };
+type Props = { contentRadius: number; boundaryRadius: number; grid: CityGrid; hasCity: boolean; biome: string; handle: string; structures: Placed[]; player?: boolean };
 
-export function CityExtras({ contentRadius, boundaryRadius, grid, hasCity, biome, handle, structures }: Props) {
+export function CityExtras({ contentRadius, boundaryRadius, grid, hasCity, biome, handle, structures, player = false }: Props) {
   const pal = PALETTES[(biome as Biome) in PALETTES ? (biome as Biome) : 'meadow'];
   const rr = ringRoadRadius(contentRadius);
   const ap = useMemo(() => airportLayout(contentRadius, boundaryRadius), [contentRadius, boundaryRadius]);
@@ -121,7 +122,7 @@ export function CityExtras({ contentRadius, boundaryRadius, grid, hasCity, biome
       {hasCity && <AirportScene ap={ap} grass={pal.lush} />}
       {hasCity && spots.map((s, i) => <BillboardSign key={i} {...s} ad={ads[i % ads.length]} />)}
       {hasCity && <Palms items={palms} />}
-      {hasCity && <RingTraffic r={rr} handle={handle} />}
+      {hasCity && <RingTraffic r={rr} handle={handle} player={player} />}
     </group>
   );
 }
@@ -163,7 +164,7 @@ function RingRoad({ r }: { r: number }) {
 }
 
 /** Buses, vans, yellow cabs and cars going round the ring road, both ways. */
-function RingTraffic({ r, handle }: { r: number; handle: string }) {
+function RingTraffic({ r, handle, player }: { r: number; handle: string; player: boolean }) {
   const body = useRef<THREE.InstancedMesh>(null);
   const top = useRef<THREE.InstancedMesh>(null);
   const cars = useMemo(() => {
@@ -175,7 +176,10 @@ function RingTraffic({ r, handle }: { r: number; handle: string }) {
       { s: [1.7, 0.6, 3.6], c: '#E63946', topH: 0.55 },
       { s: [1.7, 0.6, 3.6], c: '#F4F1DE', topH: 0.55 },
     ];
-    return Array.from({ length: 12 }, (_, i) => ({ ...kinds[i % kinds.length], dir: i % 2 ? 1 : -1, off: rnd() * Math.PI * 2, speed: (5 + rnd() * 4) / r }));
+    return Array.from({ length: 12 }, (_, i) => {
+      const cruise = (5 + rnd() * 4) / r;
+      return { ...kinds[i % kinds.length], dir: i % 2 ? 1 : -1, a: rnd() * Math.PI * 2, cruise, speed: cruise };
+    });
   }, [r, handle]);
   const geo = useMemo(() => new THREE.BoxGeometry(1, 1, 1), []);
   useEffect(() => {
@@ -184,12 +188,25 @@ function RingTraffic({ r, handle }: { r: number; handle: string }) {
     cars.forEach((c, i) => b.setColorAt(i, tmpColor.set(c.c)));
     if (b.instanceColor) b.instanceColor.needsUpdate = true;
   }, [cars]);
-  useFrame(({ clock }) => {
+  useFrame((_, delta) => {
     const b = body.current, t = top.current;
     if (!b || !t) return;
+    const dt = Math.min(delta, 0.1);
+    // brake for the player standing in the lane ahead (same rule as the grid traffic in Cars.tsx)
+    const me = player ? useWorld.getState().playerPos : null;
+    const meR = me ? Math.hypot(me.x, me.z) : 0, meA = me ? Math.atan2(me.z, me.x) : 0;
     cars.forEach((c, i) => {
-      const a = c.off + clock.elapsedTime * c.speed * c.dir;
       const lane = r + c.dir * 1.5;
+      let target = c.cruise;
+      if (me && Math.abs(meR - lane) < 1.4) {
+        let da = (meA - c.a) * c.dir;
+        da -= Math.PI * 2 * Math.floor(da / (Math.PI * 2));
+        const gap = da * lane - c.s[2] / 2 - 1;
+        if (gap < 10) target = gap < 0.5 ? 0 : Math.min(target, (gap / 10) * c.cruise);
+      }
+      c.speed += (target - c.speed) * Math.min(1, dt * 4);
+      c.a += c.speed * c.dir * dt;
+      const a = c.a;
       const x = Math.cos(a) * lane, z = Math.sin(a) * lane;
       const rot = -a + (c.dir > 0 ? 0 : Math.PI);
       tmp.position.set(x, 0.3 + c.s[1] / 2, z);

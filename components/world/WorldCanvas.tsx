@@ -40,6 +40,9 @@ export type SceneProps = {
   onReady?: () => void;
 };
 
+// Touch-first devices get a lower pixel-ratio cap and a smaller shadow map: phones fill far fewer pixels per frame.
+const PHONE = typeof window !== 'undefined' && !!window.matchMedia?.('(any-pointer: coarse)').matches;
+
 export function WorldCanvas(props: SceneProps) {
   const { geometry, biome } = props;
   const pal = PALETTES[(biome as Biome) in PALETTES ? (biome as Biome) : 'meadow'];
@@ -49,7 +52,7 @@ export function WorldCanvas(props: SceneProps) {
   return (
     <Canvas
       shadows="soft"
-      dpr={[1, 1.75]}
+      dpr={[1, PHONE ? 1.5 : 1.75]}
       gl={{ antialias: true, powerPreference: 'high-performance', preserveDrawingBuffer: props.mode === 'still' }}
       camera={{ fov: 50, near: 0.3, far: R * 6 + 400, position: [R * 0.9, R * 0.35, R * 0.9] }}
       onCreated={({ gl }) => {
@@ -95,7 +98,7 @@ function Scene(props: SceneProps) {
         intensity={sun.intensity}
         color={sun.color}
         castShadow
-        shadow-mapSize={[2048, 2048]}
+        shadow-mapSize={PHONE ? [1024, 1024] : [2048, 2048]}
         shadow-bias={-0.0004}
         shadow-camera-left={-R}
         shadow-camera-right={R}
@@ -113,8 +116,9 @@ function Scene(props: SceneProps) {
         biome={biome}
         handle={handle}
         structures={geometry.structures}
+        player={mode === 'walk'}
       />
-      <Cars count={geometry.cars} grid={geometry.grid} handle={handle} />
+      <Cars count={geometry.cars} grid={geometry.grid} handle={handle} player={mode === 'walk'} />
       {geometry.structures.length > 0 && <Venues contentRadius={geometry.contentRadius} boundaryRadius={R} interactive={mode === 'walk'} />}
       <Structures structures={geometry.structures} showMetrics={showMetrics} interactive={mode === 'walk'} />
       {/* ambient-occlusion stand-in: one baked contact shadow pass under everything */}

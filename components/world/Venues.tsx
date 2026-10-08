@@ -2,7 +2,7 @@
 import { useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
-import { Billboard, Html, Text } from '@react-three/drei';
+import { Html, Text } from '@react-three/drei';
 import type { ThreeEvent } from '@react-three/fiber';
 import { placeVenues, type PlacedVenue } from '@/lib/life/venues';
 import { useWorld } from './store';
@@ -101,11 +101,11 @@ function VenueMesh({ v, interactive }: { v: PlacedVenue; interactive: boolean })
       ))}
       {v.id === 'suya' && <SuyaGrill z={v.d / 2 + 2.6} />}
       {v.id === 'barber' && <BarberPole x={2.2} z={v.d / 2 + 0.3} />}
-      <Billboard position={[0, v.h + 2.4, 0]} follow lockX lockZ>
+      <FaceCamera position={[0, v.h + 2.4, 0]}>
         <Text font={FONT} fontSize={1.1} color="#FFFFFF" outlineWidth={0.06} outlineColor="#0B0E14" anchorX="center" anchorY="bottom">
           {v.name}
         </Text>
-      </Billboard>
+      </FaceCamera>
       <group position={[0, v.h + 5.4, 0]}>{pin}</group>
     </group>
   );
@@ -197,3 +197,29 @@ function BarberPole({ x, z }: { x: number; z: number }) {
     </group>
   );
 }
+
+/**
+ * Turns its children about the vertical axis to face the camera, so a sign stays upright and readable from any side.
+ * (drei's Billboard with lockX/lockZ zeroes the other two Euler angles of a full billboard rotation, which flips the
+ * sign 180 degrees whenever the camera looks down from behind it.)
+ */
+function FaceCamera({ position, children }: { position: [number, number, number]; children: React.ReactNode }) {
+  const g = useRef<THREE.Group>(null);
+  useFrame(({ camera }) => {
+    const o = g.current;
+    if (!o?.parent) return;
+    o.parent.getWorldPosition(tmpA);
+    o.parent.getWorldQuaternion(tmpQ);
+    // camera direction in world space, as a yaw, minus the parent's own yaw
+    const parentYaw = tmpE.setFromQuaternion(tmpQ, 'YXZ').y;
+    o.rotation.y = Math.atan2(camera.position.x - tmpA.x, camera.position.z - tmpA.z) - parentYaw;
+  });
+  return (
+    <group ref={g} position={position}>
+      {children}
+    </group>
+  );
+}
+const tmpA = new THREE.Vector3();
+const tmpQ = new THREE.Quaternion();
+const tmpE = new THREE.Euler();

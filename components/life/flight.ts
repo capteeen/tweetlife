@@ -2,6 +2,7 @@
 import { useWorld, type BoardingPass } from '@/components/world/store';
 import { airportLayout, pathLength, type Airport, type Pt } from '@/lib/world/layout';
 import { terminalLayout } from '@/lib/world/terminal';
+import { arrivalStand, privateStand } from '@/lib/world/aircraft';
 import { tripSeconds } from '@/lib/life/transport';
 import { FLIGHT, cabinById, type CabinId } from '@/lib/life/flights';
 import { COUNTRIES, type CountryId } from '@/lib/world/countries';
@@ -14,9 +15,9 @@ import { refreshLife } from './useLife';
 // into the arrivals hall to passport control. Your own plane skips the desks: walk up to it and go.
 
 /** The stand on the apron, south of the gates: where the plane you board (or your own jet) waits. */
-export const standOf = (ap: Airport): Pt => ({ x: ap.apron.x + 2, z: -34 });
+export const standOf = privateStand;
 /** Where arriving planes stop, north of the gates. */
-export const arrivalStandOf = (ap: Airport): Pt => ({ x: ap.apron.x + 2, z: 40 });
+export const arrivalStandOf = arrivalStand;
 
 /** Out of the stand, along the taxiway to the north end, down the runway and up over the water. */
 export function takeoffPath(ap: Airport): Pt[] {

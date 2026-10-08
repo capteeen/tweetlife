@@ -25,6 +25,8 @@ const ISLAND_TOP = 0.05;
 const ISLAND_PAVED_TOP = 0.11; // island road, apron, car park
 const TAXIWAY_TOP = 0.12;
 const RUNWAY_TOP = 0.14;
+/** the hangar's concrete floor (Airport.tsx) */
+export const HANGAR_FLOOR = 0.12;
 
 /** Everything the ground depends on, derived once per world. */
 export type Terrain = {
@@ -130,6 +132,7 @@ export const taxiLinks = (ap: Airport): Rect[] =>
 export function airportGroundAt(ap: Airport, x: number, z: number): number | null {
   if (inRect(ap.island, x, z)) {
     if (inRect(ap.terminal, x, z)) return TERMINAL_FLOOR;
+    if (inRect(ap.hangar, x, z)) return HANGAR_FLOOR;
     if (inRect(ap.runway, x, z)) return RUNWAY_TOP;
     if (inRect(ap.taxiway, x, z) || taxiLinks(ap).some((l) => inRect(l, x, z))) return TAXIWAY_TOP;
     if (inRect(ap.apron, x, z) || inRect(ap.islandRoad, x, z) || inRect(ap.carPark, x, z)) return ISLAND_PAVED_TOP;

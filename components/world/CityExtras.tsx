@@ -10,13 +10,14 @@ import { COUNTRIES } from '@/lib/world/countries';
 import { districtName, themeOf, themedPalette, type CityTheme } from '@/lib/world/cityThemes';
 import { useWorld } from './store';
 import { Landmark, WelcomeArch, logoImage } from './Landmarks';
+import { AirportScene } from './Airport';
 import { placementSite } from '@/lib/world/placement';
 import { palmSpots } from '@/lib/world/scatter';
 import { spurRoads } from '@/lib/world/ground';
 import {
-  DISTRICTS, RING_ROAD_W, RING_SLOTS, airportLayout, billboardSpots, ringRoadRadius, slotAngle, venueRingRadius, type Airport, type Rect,
+  DISTRICTS, RING_ROAD_W, RING_SLOTS, airportLayout, billboardSpots, ringRoadRadius, slotAngle, venueRingRadius, type Rect,
 } from '@/lib/world/layout';
-import { planeSound, traffic, type TrafficCar } from '@/lib/audio/state';
+import { traffic, type TrafficCar } from '@/lib/audio/state';
 import { TreeField, type TreeItem } from './Trees';
 import { withDetail } from './groundDetail';
 
@@ -25,7 +26,6 @@ import { withDetail } from './groundDetail';
 
 const FONT = '/fonts/inter-600.woff';
 const ASPHALT = '#3E434C';
-const CONCRETE = '#C9CCD1';
 const YELLOW = '#E8B923';
 const PALM_TINTS = ['#FFFFFF', '#F2FBE4', '#E4F2D8', '#FFF6DC'];
 const tmp = new THREE.Object3D();
@@ -300,217 +300,6 @@ function BillboardSign({ x, z, rot, ad }: { x: number; z: number; rot: number; a
         <planeGeometry args={[10, 5]} />
         <meshStandardMaterial map={tex} roughness={0.6} emissive="#FFFFFF" emissiveMap={tex} emissiveIntensity={0.25} toneMapped={false} />
       </mesh>
-    </group>
-  );
-}
-
-// ---------------------------------------------------------------- airport
-
-function Slab({ r, y, h, color, rough = 1 }: { r: Rect; y: number; h: number; color: string; rough?: number }) {
-  return (
-    <mesh position={[r.x, y + h / 2, r.z]} receiveShadow>
-      <boxGeometry args={[r.w, h, r.d]} />
-      <meshStandardMaterial color={color} roughness={rough} />
-    </mesh>
-  );
-}
-
-function AirportScene({ ap, grass, theme }: { ap: Airport; grass: string; theme: CityTheme }) {
-  const rw = ap.runway;
-  const flag = COUNTRIES[theme.country].theme;
-  const marks = useMemo(() => {
-    const out: { x: number; z: number; w: number; d: number }[] = [];
-    for (let z = -rw.d / 2 + 16; z < rw.d / 2 - 16; z += 7) out.push({ x: rw.x, z, w: 0.35, d: 3.5 }); // centreline
-    for (const end of [-1, 1]) for (let k = -3; k <= 3; k++) if (k) out.push({ x: rw.x + k * 1.2, z: end * (rw.d / 2 - 3.5), w: 0.6, d: 4.5 }); // thresholds
-    for (const end of [-1, 1]) for (const sx of [-1, 1]) out.push({ x: rw.x + sx * 2.4, z: end * (rw.d / 2 - 22), w: 1.4, d: 6 }); // aiming points
-    out.push({ x: rw.x - rw.w / 2 + 0.4, z: 0, w: 0.25, d: rw.d - 2 }, { x: rw.x + rw.w / 2 - 0.4, z: 0, w: 0.25, d: rw.d - 2 }); // edges
-    return out;
-  }, [rw]);
-  const lights = useMemo(() => {
-    const out: { x: number; z: number }[] = [];
-    for (let z = -rw.d / 2 + 2; z <= rw.d / 2 - 2; z += 6) out.push({ x: rw.x - rw.w / 2 - 0.5, z }, { x: rw.x + rw.w / 2 + 0.5, z });
-    return out;
-  }, [rw]);
-  const parked = useMemo(() => {
-    const rnd = prng(7);
-    const out: { x: number; z: number; c: string }[] = [];
-    const cols = ['#E63946', '#1D9BF0', '#F4F1DE', '#2D2D2D', '#FFD166', '#8A96A8'];
-    for (let row = 0; row < 3; row++)
-      for (let k = 0; k < 8; k++) if (rnd() < 0.75) out.push({ x: ap.carPark.x - 3 + row * 3, z: ap.carPark.z - 10 + k * 2.8, c: cols[Math.floor(rnd() * cols.length)] });
-    return out;
-  }, [ap]);
-
-  return (
-    <group>
-      {/* bridge over the lagoon */}
-      <Slab r={ap.bridge} y={-0.2} h={0.32} color="#9AA0A8" />
-      <Slab r={{ ...ap.bridge, d: ap.bridge.d - 2 }} y={0.1} h={0.04} color={ASPHALT} />
-      {[-1, 1].map((s) => (
-        <Slab key={s} r={{ x: ap.bridge.x, z: s * (ap.bridge.d / 2 - 0.2), w: ap.bridge.w, d: 0.3 }} y={0.1} h={0.9} color="#E8DCC8" />
-      ))}
-      {Array.from({ length: Math.max(1, Math.floor(ap.bridge.w / 8)) }, (_, i) => (
-        <mesh key={i} position={[ap.bridge.x - ap.bridge.w / 2 + 4 + i * 8, -1.2, 0]}>
-          <boxGeometry args={[1.2, 2.2, ap.bridge.d - 1]} />
-          <meshStandardMaterial color="#8A8F96" roughness={1} />
-        </mesh>
-      ))}
-      {/* mainland road to the bridge */}
-      <Slab r={ap.road} y={-0.01} h={0.07} color={ASPHALT} rough={0.95} />
-      {/* the island */}
-      <Slab r={ap.island} y={-1.2} h={1.25} color={grass} />
-      <Slab r={{ ...ap.island, w: ap.island.w + 1.2, d: ap.island.d + 1.2 }} y={-1.4} h={1.1} color="#D9C9A3" />
-      <Slab r={ap.islandRoad} y={0.05} h={0.06} color={ASPHALT} rough={0.95} />
-      <Slab r={ap.apron} y={0.05} h={0.06} color={CONCRETE} />
-      <Slab r={ap.taxiway} y={0.05} h={0.07} color="#555B63" rough={0.95} />
-      <Slab r={{ x: ap.taxiway.x, z: 0, w: 0.25, d: ap.taxiway.d - 2 }} y={0.12} h={0.02} color="#F4C430" />
-      {[-1, 1].map((e) => (
-        <Slab key={e} r={{ x: (ap.taxiway.x + rw.x) / 2, z: e * (rw.d / 2 - 8), w: rw.x - ap.taxiway.x, d: 5 }} y={0.05} h={0.07} color="#555B63" />
-      ))}
-      <Slab r={rw} y={0.06} h={0.08} color="#2F3338" rough={0.95} />
-      <Instanced items={marks.map((m) => ({ ...m, y: 0.15, h: 0.02 }))} color="#F2F4F7" />
-      <Instanced items={lights.map((l) => ({ ...l, w: 0.3, d: 0.3, y: 0.15, h: 0.3 }))} color="#FFFFFF" emissive="#FFE8A3" />
-      {[-1, 1].map((e) => (
-        <Text key={e} font={FONT} position={[rw.x, 0.17, e * (rw.d / 2 - 12)]} rotation={[-Math.PI / 2, 0, e > 0 ? 0 : Math.PI]} fontSize={3.2} color="#F2F4F7" anchorX="center" anchorY="middle">
-          {e > 0 ? '36' : '18'}
-        </Text>
-      ))}
-      {/* the terminal is its own walk-through hall (Terminal.tsx) */}
-      {/* jet bridges to the gates */}
-      {ap.gates.map((g, i) => (
-        <mesh key={i} position={[(ap.terminal.x + ap.terminal.w / 2 + g.x - 4) / 2, 3.4, g.z + 2.2]} castShadow>
-          <boxGeometry args={[g.x - 4 - ap.terminal.x - ap.terminal.w / 2, 1.6, 1.6]} />
-          <meshStandardMaterial color="#D8DCE1" roughness={0.6} />
-        </mesh>
-      ))}
-      {ap.gates.map((g, i) => (
-        <Airliner key={i} position={[g.x, 0, g.z]} rotation={-Math.PI / 2} tail={[flag.primary, flag.secondary, flag.accent][i % 3]} />
-      ))}
-      {/* car park */}
-      <Slab r={ap.carPark} y={0.05} h={0.06} color="#4A4F57" />
-      <Instanced items={parked.map((p) => ({ x: p.x, z: p.z, w: 1.6, d: 2.6, y: 0.1, h: 0.9, c: p.c }))} />
-      {/* hangar */}
-      <mesh position={[ap.hangar.x, 0.05, ap.hangar.z]} rotation={[Math.PI / 2, 0, 0]} castShadow receiveShadow>
-        <cylinderGeometry args={[ap.hangar.w / 2, ap.hangar.w / 2, ap.hangar.d, 18, 1, false, Math.PI / 2, Math.PI]} />
-        <meshStandardMaterial color="#B7BEC7" metalness={0.4} roughness={0.5} side={THREE.DoubleSide} />
-      </mesh>
-      <mesh position={[ap.hangar.x + ap.hangar.w / 2 + 0.01, 2, ap.hangar.z]} rotation={[0, Math.PI / 2, 0]}>
-        <planeGeometry args={[ap.hangar.d - 3, 3.6]} />
-        <meshStandardMaterial color="#1B2436" />
-      </mesh>
-      {/* control tower */}
-      <mesh position={[ap.tower.x, ap.tower.h / 2, ap.tower.z]} castShadow>
-        <cylinderGeometry args={[ap.tower.r * 0.6, ap.tower.r, ap.tower.h, 10]} />
-        <meshStandardMaterial color="#E8E4DC" roughness={0.8} />
-      </mesh>
-      <mesh position={[ap.tower.x, ap.tower.h + 1.2, ap.tower.z]} castShadow>
-        <cylinderGeometry args={[ap.tower.r * 1.7, ap.tower.r * 1.3, 2.4, 10]} />
-        <meshStandardMaterial color={flag.primary} roughness={0.1} metalness={0.5} emissive={flag.primary} emissiveIntensity={0.25} />
-      </mesh>
-      <mesh position={[ap.tower.x, ap.tower.h + 2.8, ap.tower.z]}>
-        <cylinderGeometry args={[ap.tower.r * 1.9, ap.tower.r * 1.9, 0.5, 10]} />
-        <meshStandardMaterial color="#F4F6F8" />
-      </mesh>
-      <mesh position={[ap.tower.x, ap.tower.h + 4, ap.tower.z]}>
-        <cylinderGeometry args={[0.08, 0.08, 2, 4]} />
-        <meshStandardMaterial color="#E63946" emissive="#E63946" emissiveIntensity={1.4} />
-      </mesh>
-      <TakeOff ap={ap} tail={flag.primary} />
-    </group>
-  );
-}
-
-function Instanced({ items, color, emissive }: { items: { x: number; z: number; w: number; d: number; y: number; h: number; c?: string }[]; color?: string; emissive?: string }) {
-  const ref = useRef<THREE.InstancedMesh>(null);
-  const geo = useMemo(() => new THREE.BoxGeometry(1, 1, 1), []);
-  useEffect(() => {
-    const m = ref.current;
-    if (!m) return;
-    items.forEach((it, i) => {
-      tmp.position.set(it.x, it.y + it.h / 2, it.z);
-      tmp.rotation.set(0, 0, 0);
-      tmp.scale.set(it.w, it.h, it.d);
-      tmp.updateMatrix();
-      m.setMatrixAt(i, tmp.matrix);
-      if (it.c) m.setColorAt(i, tmpColor.set(it.c));
-    });
-    m.instanceMatrix.needsUpdate = true;
-    if (m.instanceColor) m.instanceColor.needsUpdate = true;
-  }, [items]);
-  if (!items.length) return null;
-  return (
-    <instancedMesh ref={ref} args={[geo, undefined, items.length]} frustumCulled={false}>
-      <meshStandardMaterial color={color ?? '#FFFFFF'} roughness={0.8} emissive={emissive ?? '#000000'} emissiveIntensity={emissive ? 1.2 : 0} />
-    </instancedMesh>
-  );
-}
-
-/** A low-poly airliner, nose towards +z before `rotation`. */
-export function Airliner({ position, rotation, tail, scale = 1 }: { position: [number, number, number]; rotation: number; tail: string; scale?: number }) {
-  const white = <meshStandardMaterial color="#F4F6F8" flatShading roughness={0.5} />;
-  return (
-    <group position={position} rotation={[0, rotation, 0]} scale={scale}>
-      <mesh position={[0, 1.6, 0]} rotation={[Math.PI / 2, 0, 0]} castShadow>
-        <cylinderGeometry args={[0.9, 0.8, 11, 10]} />
-        {white}
-      </mesh>
-      <mesh position={[0, 1.6, 6]} rotation={[Math.PI / 2, 0, 0]} castShadow>
-        <coneGeometry args={[0.9, 1.6, 10]} />
-        {white}
-      </mesh>
-      <mesh position={[0, 1.2, 0.4]} castShadow>
-        <boxGeometry args={[12, 0.18, 2.4]} />
-        {white}
-      </mesh>
-      {[-1, 1].map((s) => (
-        <mesh key={s} position={[s * 2.6, 0.8, 1]} rotation={[Math.PI / 2, 0, 0]} castShadow>
-          <cylinderGeometry args={[0.38, 0.38, 1.6, 8]} />
-          <meshStandardMaterial color="#9AA3AD" flatShading />
-        </mesh>
-      ))}
-      <mesh position={[0, 3.1, -4.8]} castShadow>
-        <boxGeometry args={[0.2, 2.6, 1.8]} />
-        <meshStandardMaterial color={tail} flatShading />
-      </mesh>
-      <mesh position={[0, 1.9, -5]} castShadow>
-        <boxGeometry args={[4.4, 0.14, 1.2]} />
-        {white}
-      </mesh>
-    </group>
-  );
-}
-
-/** Every 40s a plane rolls down the runway and climbs out over the water. */
-function TakeOff({ ap, tail }: { ap: Airport; tail: string }) {
-  const ref = useRef<THREE.Group>(null);
-  const rw = ap.runway;
-  useFrame(({ clock }) => {
-    const g = ref.current;
-    if (!g) return;
-    const t = clock.elapsedTime % 40;
-    if (t > 26) {
-      g.visible = false;
-      planeSound.active = false;
-      return;
-    }
-    g.visible = true;
-    const z0 = -rw.d / 2 + 8;
-    let z = z0, y = 0, pitch = 0;
-    if (t > 6) {
-      const s = t - 6;
-      z = z0 + 1.2 * s * s; // accelerate
-      const liftAt = z0 + rw.d * 0.6;
-      if (z > liftAt) {
-        y = (z - liftAt) * 0.22;
-        pitch = -0.18;
-      }
-    }
-    g.position.set(rw.x, y, z);
-    g.rotation.set(pitch, 0, 0);
-    Object.assign(planeSound, { x: rw.x, y, z, active: true, thrust: t < 6 ? 0.25 : Math.min(1, 0.6 + (t - 6) * 0.05) });
-  });
-  return (
-    <group ref={ref}>
-      <Airliner position={[0, 0, 0]} rotation={0} tail={tail} />
     </group>
   );
 }

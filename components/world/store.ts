@@ -21,7 +21,7 @@ export type PhoneApp = 'home' | 'trenches' | 'wallet' | 'solana' | 'hustle' | 'm
 export type MarketKind = 'car' | 'boat' | 'plane' | 'home' | null;
 
 export type LifeMe = {
-  id: string; handle: string; name: string; avatarUrl: string | null; bags: number; status: string;
+  id: string; handle: string; name: string; avatarUrl: string | null; bags: number; status: string; statusUntil: string | null;
   vibes: number; clout: number; gas: number; mood: string; moodEmoji: string; look: Look | null; lookPending: boolean;
 };
 export type WalletData = {

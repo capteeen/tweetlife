@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
   if (ttl > 0) return bad(`Not yet — ${ttl}s to go.`, 429);
 
   const next = applyDelta(r.player, a.me);
-  await db.player.update({ where: { id: pid }, data: { status: a.line } });
+  await db.player.update({ where: { id: pid }, data: { status: a.line, statusUntil: new Date(Date.now() + a.seconds * 1000) } });
   await setStats(pid, next);
   await redis().set(key, '1', 'EX', a.cooldown).catch(() => {});
   return NextResponse.json({ ok: true, me: { ...next, mood: moodOf(next).mood }, activity: a });

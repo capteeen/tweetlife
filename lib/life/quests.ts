@@ -8,7 +8,8 @@ export const QUESTS: Quest[] = [
   { id: 'gm3', title: 'Say GM to 3 people', emoji: '👋', target: 3, reward: 300, progress: (u, s) => db.interaction.count({ where: { fromUserId: u, kind: 'gm', at: { gte: s } } }) },
   { id: 'lantern3', title: 'Light 3 lanterns', emoji: '✦', target: 3, reward: 300, progress: (u, s) => db.lantern.count({ where: { byUserId: u, at: { gte: s } } }) },
   { id: 'stone1', title: 'Leave a guestbook stone', emoji: '🪨', target: 1, reward: 200, progress: (u, s) => db.mark.count({ where: { byUserId: u, at: { gte: s } } }) },
-  { id: 'ape1', title: 'Ape into a coin (real SOL)', emoji: '🦍', target: 1, reward: 250, progress: (u, s) => db.walletTx.count({ where: { playerId: u, kind: 'swap_buy', at: { gte: s } } }) },
+  // paper coins bought with bags at the Coin Shop (lib/life/coins.ts); never real money
+  { id: 'ape1', title: 'Buy a coin at the Coin Shop', emoji: '🪙', target: 1, reward: 250, progress: (u, s) => db.bagTx.count({ where: { playerId: u, kind: 'buy', note: { startsWith: '🪙 Bought' }, at: { gte: s } } }) },
   { id: 'worlds2', title: 'Visit 2 worlds', emoji: '🌆', target: 2, reward: 400, progress: async (u, s) => (await db.visitorSession.groupBy({ by: ['worldId'], where: { visitorId: u, joinedAt: { gte: s } } })).length },
   { id: 'social5', title: '5 social interactions', emoji: '💬', target: 5, reward: 350, progress: (u, s) => db.interaction.count({ where: { fromUserId: u, at: { gte: s } } }) },
 ];

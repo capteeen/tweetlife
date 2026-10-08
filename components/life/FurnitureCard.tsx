@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { STATS, type StatKey } from '@/lib/life/statNames';
 import { useWorld } from '@/components/world/store';
 import { useHome } from '@/components/home/store';
 import { hasPower } from '@/lib/life/home';
@@ -53,8 +54,7 @@ export function FurnitureCard({ onRefresh }: { onRefresh: () => Promise<void> })
     Object.entries(d)
       .filter(([, v]) => v)
       .map(([k, v]) => {
-        const label = k === 'gas' ? 'Energy' : k === 'vibes' ? 'Fun' : 'Social';
-        const color = k === 'gas' ? '#1D9BF0' : k === 'vibes' ? '#F28C28' : '#FF5D8F';
+        const { name: label, color } = STATS[k as StatKey];
         return (
           <span key={k} className="rounded-full px-2 py-0.5 text-[11px] font-semibold" style={{ background: color + '22', color }}>
             {(v as number) > 0 ? '+' : ''}{v} {label}

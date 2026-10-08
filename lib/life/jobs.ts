@@ -56,7 +56,7 @@ export const JOBS: Job[] = [
   {
     id: 'driver', title: 'Bus driver', emoji: '🚌', venueId: 'hustle', pay: 450, minClout: 0, minShifts: 0,
     levels: ['Trainee driver', 'Bus driver', 'Senior driver', 'Route captain', 'Depot chief'],
-    blurb: 'Drive the city loop from the Hustle Hub bus bay. Mind the gap.', act: null, ride: 'bus', uniform: '#1F4E79',
+    blurb: 'Drive the city loop from the job centre bus bay. Mind the gap.', act: null, ride: 'bus', uniform: '#1F4E79',
     tasks: ['Check the mirrors', 'Take fares', 'Call the next stop'], line: 'is driving the city bus',
   },
   {
@@ -74,13 +74,13 @@ export const JOBS: Job[] = [
   {
     id: 'dev', title: 'Programmer', emoji: '💻', venueId: 'tech', pay: 700, minClout: 50, minShifts: 4,
     levels: ['Junior dev', 'Developer', 'Senior dev', 'Staff engineer', 'CTO'],
-    blurb: 'Ship code at Devnet Labs. Tests pass on the second try.', act: 'type', uniform: '#3A86FF',
+    blurb: 'Ship code at the tech office. Tests pass on the second try.', act: 'type', uniform: '#3A86FF',
     tasks: ['Fix a bug', 'Review a PR', 'Ship it'], line: 'is shipping code',
   },
   {
     id: 'doctor', title: 'Doctor', emoji: '🩺', venueId: 'clinic', pay: 900, minClout: 60, minShifts: 8,
     levels: ['Junior doctor', 'Resident', 'Doctor', 'Specialist', 'Consultant'],
-    blurb: 'See patients at the Clinic. Best pay in town, hardest to get.', act: 'examine', uniform: '#5FB3B3',
+    blurb: 'See patients at the clinic. Best pay in town, hardest to get.', act: 'examine', uniform: '#5FB3B3',
     tasks: ['See a patient', 'Write a prescription', 'Do your rounds'], line: 'is seeing patients',
   },
 ];

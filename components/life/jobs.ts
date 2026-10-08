@@ -45,7 +45,7 @@ const shiftOf = (job: Job, startedAt: number, tasks: number): Shift => ({
 export function workplaceOf(job: Job): PlacedVenue | null {
   const g = useWorld.getState().model?.geometry;
   if (!g) return null;
-  return placeVenues(g.contentRadius, g.boundaryRadius).find((v) => v.id === job.venueId) ?? null;
+  return placeVenues(g.contentRadius, g.boundaryRadius, useWorld.getState().country).find((v) => v.id === job.venueId) ?? null;
 }
 
 /** Are you at this venue (close enough to use it)? Same rule as the venue sheet. */

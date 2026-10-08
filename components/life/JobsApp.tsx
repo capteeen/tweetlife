@@ -4,6 +4,7 @@ import { useWorld } from '@/components/world/store';
 import { relativeTime } from '@/lib/format';
 import { APPLY_ANSWERS, APPLY_QUESTION, MAX_LEVEL, SHIFTS_PER_DAY, SHIFTS_PER_LEVEL, SHIFT_COST, SHIFT_SECONDS, TASKS, jobById, levelOf, toNextLevel, wageFor, type Job, type JobId } from '@/lib/life/jobs';
 import { venueById } from '@/lib/life/venues';
+import { themeOf } from '@/lib/world/cityThemes';
 import { ConfirmButton } from '@/components/ui/ConfirmButton';
 import { statDelta } from '@/lib/life/statNames';
 import { jobActions, refreshJobs, workplaceOf } from './jobs';
@@ -11,7 +12,8 @@ import { jobActions, refreshJobs, workplaceOf } from './jobs';
 // The Jobs app (and the board at the Hustle Hub): your job and level, today's shifts, and every job in town with
 // its pay and what it takes to get hired. Tap one to apply.
 
-const placeOf = (job: Job) => venueById(job.venueId)?.name ?? job.venueId;
+// the workplace's name in the country you're in (the Clinic is the SAFU Clinic in BNB City)
+const placeOf = (job: Job) => themeOf(useWorld.getState().country).venues[job.venueId]?.name ?? venueById(job.venueId)?.name ?? job.venueId;
 const needs = (job: Job) =>
   job.minClout || job.minShifts ? [job.minClout ? `${job.minClout} clout` : null, job.minShifts ? `${job.minShifts} shifts worked` : null].filter(Boolean).join(' · ') : 'Open to everyone';
 

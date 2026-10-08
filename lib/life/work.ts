@@ -42,7 +42,7 @@ export async function jobBoard(p: Player): Promise<JobBoard> {
 
 async function activeRecord(playerId: string) {
   const r = await db.jobRecord.findFirst({ where: { playerId, active: true } });
-  if (!r) throw new WorkError('You don’t have a job yet. Apply at the Hustle Hub or in the Jobs app.');
+  if (!r) throw new WorkError('You don’t have a job yet. Apply at the job centre or in the Jobs app.');
   return r;
 }
 

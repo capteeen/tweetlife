@@ -7,7 +7,7 @@ import type { Rect } from './layout';
 /** The president's desk: an executive pedestal desk with a kneehole on the president's (-z) side. */
 export const DESK = { x: 0, z: -4.2, w: 3.3, d: 1.2, h: 0.78 };
 /** The president's chair behind it; `seat` is the top of the cushion. */
-export const DESK_CHAIR = { x: 0, z: -5.25, seat: 0.55 };
+export const DESK_CHAIR = { x: 0, z: -5.0, seat: 0.55 };
 export const PODIUM = { x: -4.6, z: -2.5, rot: 0.25, w: 1.0, d: 0.7, h: 1.12 };
 export const FLAGS = [
   { x: -1.9, z: -5.7, dir: -1 as const },

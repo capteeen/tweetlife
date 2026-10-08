@@ -1,15 +1,16 @@
 'use client';
-import { DEFAULT_COUNTRY, type CountryId } from '@/lib/world/countries';
+import type { CountryId } from '@/lib/world/countries';
+import { useWorld } from './store';
 
-// The country whose city this world is showing. Every country-aware piece (the government house, its
-// residents, national rules sent with venue actions and coin sales) reads it from here, so it can follow the
-// cities' own "current country" in one place once that lands. Until then every city is Solana City.
+// The country whose capital this world is showing (the store's `country`, set from a ?country link, your
+// nationality or a flight). Every country-aware piece of the government (the house, its residents, national
+// rules sent with venue actions and coin sales) reads it through here.
 
 export function currentCountryId(): CountryId {
-  return DEFAULT_COUNTRY;
+  return useWorld.getState().country;
 }
 
 /** Hook form, for components. */
 export function useCountry(): CountryId {
-  return currentCountryId();
+  return useWorld((s) => s.country);
 }

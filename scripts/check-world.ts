@@ -5,7 +5,7 @@
 import { buildWorld, type StructureRow, type StructureKind } from '../lib/world/geometry';
 import { terrainOf, groundAt, venueFloorAt, toVenueFrame } from '../lib/world/ground';
 import { placementSite, placementConflict, zoneAt, type Site } from '../lib/world/placement';
-import { cityTrees, palmSpots, TREE_R } from '../lib/world/scatter';
+import { cityTrees, palmSpots, streetFurniture, PROP_R, TREE_R } from '../lib/world/scatter';
 import { DANCE_FLOOR, FLOOR_Y, WALK_IN } from '../lib/world/interiors';
 import { TERMINAL_FLOOR } from '../lib/world/terminal';
 import { RING_ROAD_W, billboardSpots, inRect } from '../lib/world/layout';
@@ -66,6 +66,22 @@ function check(c: Case) {
       const kind = z === 'sidewalk' ? 'streetTree' : 'tree';
       const why = placementConflict(site, kind, tr.x, tr.z, kind === 'streetTree' ? TREE_R.street : TREE_R.lot);
       if (why) fail(w, `${kind} at ${fmt(tr.x, tr.z)} is on ${why}`);
+    }
+  }
+  // street furniture and street lights, on sidewalks and clear of crossings, doors and lanes
+  {
+    const trees = cityTrees(site, { blocks: g.blocks, grid: g.grid, outside: 'lush', boundaryRadius: R, handle: c.handle });
+    const f = streetFurniture(site, { blocks: g.blocks, grid: g.grid, trees, handle: c.handle });
+    for (const p of f.props) {
+      if (p.kind === 'pit') continue; // the grate round a street tree, checked with the tree
+      placed++;
+      const why = placementConflict(site, 'bench', p.x, p.z, PROP_R[p.kind]);
+      if (why) fail(w, `${p.kind} at ${fmt(p.x, p.z)} is on ${why}`);
+    }
+    for (const l of f.lights) {
+      placed++;
+      const why = placementConflict(site, 'lamp', l.x, l.z, 0.3);
+      if (why) fail(w, `street light at ${fmt(l.x, l.z)} is on ${why}`);
     }
   }
   if (g.structures.length > 0) {

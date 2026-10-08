@@ -17,6 +17,8 @@ import {
   DISTRICTS, RING_ROAD_W, RING_SLOTS, airportLayout, billboardSpots, ringRoadRadius, slotAngle, venueRingRadius, type Airport, type Rect,
 } from '@/lib/world/layout';
 import { planeSound, traffic, type TrafficCar } from '@/lib/audio/state';
+import { TreeField, type TreeItem } from './Trees';
+import { withDetail } from './groundDetail';
 
 // Everything around the post city that makes it a city: the ring road and its traffic, spur roads,
 // district names on the ground, billboards, palms, and the airport island with its bridge.
@@ -24,7 +26,8 @@ import { planeSound, traffic, type TrafficCar } from '@/lib/audio/state';
 const FONT = '/fonts/inter-600.woff';
 const ASPHALT = '#3E434C';
 const CONCRETE = '#C9CCD1';
-const DASH = '#E9EDF2';
+const YELLOW = '#E8B923';
+const PALM_TINTS = ['#FFFFFF', '#F2FBE4', '#E4F2D8', '#FFF6DC'];
 const tmp = new THREE.Object3D();
 const tmpColor = new THREE.Color();
 
@@ -43,7 +46,10 @@ export function CityExtras({ contentRadius, boundaryRadius, blocks, grid, hasCit
   // spur roads from the grid's edges out to the ring road
   const spurs = useMemo<Rect[]>(() => (hasCity ? spurRoads(grid, contentRadius) : []), [hasCity, grid, contentRadius]);
   const site = useMemo(() => placementSite({ blocks, grid, boundaryRadius, structures }), [blocks, grid, boundaryRadius, structures]);
-  const palms = useMemo(() => palmSpots(site, { contentRadius, boundaryRadius, handle }), [site, contentRadius, boundaryRadius, handle]);
+  const palms = useMemo<TreeItem[]>(
+    () => palmSpots(site, { contentRadius, boundaryRadius, handle }).map((p, i) => ({ species: 'palm', x: p.x, y: p.y, z: p.z, s: p.s * 0.85, yaw: p.yaw, tint: PALM_TINTS[i % PALM_TINTS.length] })),
+    [site, contentRadius, boundaryRadius, handle],
+  );
 
   const ads = useMemo(() => {
     const top = structures.find((s) => s.isLandmark && s.text) ?? null;
@@ -67,16 +73,14 @@ export function CityExtras({ contentRadius, boundaryRadius, blocks, grid, hasCit
           const color = new THREE.Color(pal.lush).lerp(new THREE.Color(d.color), 0.35);
           // ringGeometry runs counter-clockwise in its own plane; laid flat, angle a maps to -a in world z
           return (
-            <mesh key={d.id} position={[0, 0.0, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+            <mesh key={d.id} position={[0, 0.0, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow material={groundMaterial(color)}>
               <ringGeometry args={[rr + RING_ROAD_W / 2 + 0.6, R - 0.6, 48, 1, -a1, a1 - a0]} />
-              <meshStandardMaterial color={color} roughness={1} />
             </mesh>
           );
         })}
       {spurs.map((s, i) => (
-        <mesh key={i} position={[s.x, 0.02, s.z]} receiveShadow>
+        <mesh key={i} position={[s.x, 0.02, s.z]} receiveShadow material={asphalt}>
           <boxGeometry args={[s.w, 0.06, s.d]} />
-          <meshStandardMaterial color={ASPHALT} roughness={0.95} />
         </mesh>
       ))}
       {hasCity &&
@@ -98,10 +102,20 @@ export function CityExtras({ contentRadius, boundaryRadius, blocks, grid, hasCit
       {hasCity && <WelcomeArch ap={ap} country={country} />}
       <Landmark boundaryRadius={R} country={country} sand={pal.sand} grass={pal.lush} />
       {hasCity && spots.map((s, i) => <BillboardSign key={i} {...s} ad={ads[i % ads.length]} />)}
-      {hasCity && <Palms items={palms} />}
+      {hasCity && <TreeField items={palms} player={player} />}
       {hasCity && <RingTraffic r={rr} handle={handle} player={player} colors={theme.traffic} />}
     </group>
   );
+}
+
+const asphalt = typeof document === 'undefined' ? undefined : withDetail(new THREE.MeshStandardMaterial({ color: ASPHALT, roughness: 0.95 }), 'asphalt');
+const curb = typeof document === 'undefined' ? undefined : withDetail(new THREE.MeshStandardMaterial({ color: '#B9BCC2', roughness: 1 }), 'paving');
+const grounds = new Map<string, THREE.MeshStandardMaterial>();
+function groundMaterial(color: THREE.Color) {
+  const k = color.getHexString();
+  let m = grounds.get(k);
+  if (!m) grounds.set(k, (m = withDetail(new THREE.MeshStandardMaterial({ color, roughness: 1 }), 'grass')));
+  return m;
 }
 
 function RingRoad({ r }: { r: number }) {
@@ -125,16 +139,15 @@ function RingRoad({ r }: { r: number }) {
   }, [dashes, r]);
   return (
     <group>
-      <mesh position={[0, 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+      <mesh position={[0, 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow material={curb}>
         <ringGeometry args={[r - RING_ROAD_W / 2 - 0.6, r + RING_ROAD_W / 2 + 0.6, 128, 1]} />
-        <meshStandardMaterial color="#B9BCC2" roughness={1} />
       </mesh>
-      <mesh position={[0, 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+      <mesh position={[0, 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow material={asphalt}>
         <ringGeometry args={[r - RING_ROAD_W / 2, r + RING_ROAD_W / 2, 128, 1]} />
-        <meshStandardMaterial color={ASPHALT} roughness={0.95} />
       </mesh>
+      {/* two-way road: a yellow centre line, broken, as on the grid's streets */}
       <instancedMesh ref={ref} args={[geo, undefined, dashes.length]} frustumCulled={false}>
-        <meshStandardMaterial color={DASH} roughness={0.9} />
+        <meshStandardMaterial color={YELLOW} roughness={0.9} />
       </instancedMesh>
     </group>
   );
@@ -287,49 +300,6 @@ function BillboardSign({ x, z, rot, ad }: { x: number; z: number; rot: number; a
         <planeGeometry args={[10, 5]} />
         <meshStandardMaterial map={tex} roughness={0.6} emissive="#FFFFFF" emissiveMap={tex} emissiveIntensity={0.25} toneMapped={false} />
       </mesh>
-    </group>
-  );
-}
-
-function Palms({ items }: { items: { x: number; z: number; s: number; lean: number; yaw: number }[] }) {
-  const trunk = useRef<THREE.InstancedMesh>(null);
-  const leaf = useRef<THREE.InstancedMesh>(null);
-  const trunkGeo = useMemo(() => new THREE.CylinderGeometry(0.14, 0.22, 1, 6), []);
-  const leafGeo = useMemo(() => {
-    const g = new THREE.BoxGeometry(0.7, 0.06, 2.4);
-    g.translate(0, 0, 1.2);
-    return g;
-  }, []);
-  useEffect(() => {
-    const t = trunk.current, l = leaf.current;
-    if (!t || !l) return;
-    items.forEach((p, i) => {
-      const h = 4.2 * p.s;
-      const lx = Math.sin(p.yaw) * p.lean * h, lz = Math.cos(p.yaw) * p.lean * h;
-      tmp.position.set(p.x + lx / 2, h / 2, p.z + lz / 2);
-      tmp.rotation.set(Math.cos(p.yaw) * p.lean, 0, -Math.sin(p.yaw) * p.lean);
-      tmp.scale.set(p.s, h, p.s);
-      tmp.updateMatrix();
-      t.setMatrixAt(i, tmp.matrix);
-      for (let k = 0; k < 6; k++) {
-        tmp.position.set(p.x + lx, h, p.z + lz);
-        tmp.rotation.set(0.45, p.yaw + (k / 6) * Math.PI * 2, 0, 'YXZ');
-        tmp.scale.set(p.s, p.s, p.s);
-        tmp.updateMatrix();
-        l.setMatrixAt(i * 6 + k, tmp.matrix);
-      }
-    });
-    t.instanceMatrix.needsUpdate = l.instanceMatrix.needsUpdate = true;
-  }, [items]);
-  if (!items.length) return null;
-  return (
-    <group>
-      <instancedMesh ref={trunk} args={[trunkGeo, undefined, items.length]} castShadow frustumCulled={false}>
-        <meshStandardMaterial color="#8B6B4A" flatShading roughness={1} />
-      </instancedMesh>
-      <instancedMesh ref={leaf} args={[leafGeo, undefined, items.length * 6]} castShadow frustumCulled={false}>
-        <meshStandardMaterial color="#3E9B4F" flatShading roughness={0.9} side={THREE.DoubleSide} />
-      </instancedMesh>
     </group>
   );
 }

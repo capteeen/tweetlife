@@ -21,14 +21,14 @@ const tmp = new THREE.Object3D();
 
 const BUILDING_KINDS: StructureKind[] = ['pillar', 'spire', 'monolith', 'obelisk', 'outbuilding'];
 
-export function Structures({ structures, showMetrics, interactive }: { structures: Placed[]; showMetrics: boolean; interactive: boolean }) {
+export function Structures({ structures, showMetrics, interactive, night = false }: { structures: Placed[]; showMetrics: boolean; interactive: boolean; night?: boolean }) {
   const buildings = useMemo(() => structures.filter((s) => BUILDING_KINDS.includes(s.kind)), [structures]);
   const lamps = useMemo(() => structures.filter((s) => s.kind === 'lantern'), [structures]);
   const screens = useMemo(() => structures.filter((s) => s.kind === 'obelisk'), [structures]);
   void showMetrics;
   return (
     <group>
-      <Buildings items={buildings} interactive={interactive} />
+      <Buildings items={buildings} interactive={interactive} night={night} />
       <Screens items={screens} />
       <Lamps items={lamps} interactive={interactive} />
       <LitLanterns structures={buildings} />

@@ -431,7 +431,8 @@ const tmpD = new THREE.Vector3();
 function gatherBlockers(scene: THREE.Scene, self: THREE.Object3D | null) {
   const out: THREE.Mesh[] = [];
   const walk = (o: THREE.Object3D) => {
-    if (!o.visible || o === self) return;
+    // trees dissolve where they stand between the camera and the player (Trees.tsx), so they never pull the camera in
+    if (!o.visible || o === self || o.userData.seeThrough) return;
     const m = o as THREE.Mesh;
     if (m.isMesh && m.geometry) {
       const mat = m.material as THREE.Material | THREE.Material[];

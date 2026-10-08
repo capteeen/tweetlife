@@ -7,6 +7,7 @@ import { installAudioUnlock, isAudioUnlocked, unlockAudio, whenUnlocked } from '
 import { useSoundSettings } from '@/lib/audio/settings';
 import { COUNTRY_LIST } from '@/lib/world/countries';
 import { startTheme, stopTheme, ui, type UiSound } from './titleSound';
+import { Filmstrip, Gallery, ShotViewer } from './Gallery';
 
 const WelcomeScene = dynamic(() => import('./WelcomeScene').then((m) => m.WelcomeScene), { ssr: false });
 const CountriesScene = dynamic(() => import('./CountriesScene').then((m) => m.CountriesScene), { ssr: false });
@@ -65,10 +66,11 @@ export function TitleScreen({ backdropHandle, signedInHandle, authError, liveWor
       />
       <HowItWorks />
       <Countries />
-      <Features />
+      <Gallery />
       <Stats />
       <FinalCta signedInHandle={signedInHandle} onPrimary={primary} onEnter={() => open('enter')} />
       <Footer backdropHandle={backdropHandle} liveWorlds={liveWorlds} />
+      <ShotViewer />
 
       {modal && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#0F2747]/35 p-3 backdrop-blur-sm sm:items-center" onClick={close}>
@@ -374,6 +376,7 @@ function HowItWorks() {
           </li>
         ))}
       </ol>
+      <Filmstrip />
     </section>
   );
 }
@@ -437,34 +440,6 @@ function Countries() {
             <p className="mt-1 text-sm text-[#4A5B73]">President {c.president}</p>
             <span className="mt-3 inline-block text-sm font-bold text-[#1D9BF0] group-hover:underline">Visit {c.capital} →</span>
           </a>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function Features() {
-  const items = [
-    { img: 'city', title: 'A skyline from your timeline', body: 'Towers for your biggest posts, a landmark for your best one, and traffic in the streets.' },
-    { img: 'look', title: 'Make your look', body: 'Pick hair, skin and outfit. That person is you, walking your own streets.' },
-    { img: 'home', title: 'A home to furnish', body: 'Start in a starter flat and fill it with 50+ pieces from the furniture market.' },
-    { img: 'club', title: 'Nights out', body: 'Dance at Club Moon, lift at the gym, and chat with residents who talk back.' },
-    { img: 'coins', title: 'Coins on a string', body: 'Every coin you hold floats over your head. Pump and it turns gold. Rug and it pops.' },
-    { img: 'rides', title: 'Get around', body: 'Walk, bike, scooter, bus, rideshare or a yellow cab, anywhere on the city map.' },
-  ];
-  return (
-    <section className="bg-[#F6FAFE] px-5 py-16 sm:px-8 md:py-20">
-      <SectionTitle kicker="What's inside" title="A whole life in your city" sub="Tweetlife is a little life game. You start with 10,000 bags and a starter flat. What you do next is up to you." />
-      <div className="mx-auto mt-10 grid max-w-6xl gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {items.map((f) => (
-          <article key={f.img} className="overflow-hidden rounded-3xl bg-white shadow-[0_8px_30px_rgba(15,39,71,0.08)] ring-1 ring-[#0F2747]/5">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={`/welcome/${f.img}.webp`} alt={f.title} loading="lazy" decoding="async" width={720} height={540} className="aspect-[4/3] w-full bg-[#DCEBFA] object-cover" />
-            <div className="p-5">
-              <h3 className="text-lg font-extrabold">{f.title}</h3>
-              <p className="mt-1 text-[15px] leading-6 text-[#4A5B73]">{f.body}</p>
-            </div>
-          </article>
         ))}
       </div>
     </section>

@@ -1,7 +1,7 @@
 import type { PlacedVenue } from '@/lib/life/venues';
 import type { Resident, ResidentDoing, ResidentStop } from '@/lib/life/residents';
-import { WALK_IN } from '@/lib/world/interiors';
-import { venueRingRadius } from '@/lib/world/layout';
+import { FLOOR_Y, WALK_IN } from '@/lib/world/interiors';
+import { RING_ROAD_W, ringRoadRadius } from '@/lib/world/layout';
 import type { FigureAct } from './figureMoves';
 import type { HomePose } from './figurePoses';
 
@@ -10,8 +10,6 @@ import type { HomePose } from './figurePoses';
 // road to the next venue, in through its door to the next spot. Spots are in the venue's own frame (door at +z).
 
 const WALK_SPEED = 2.2;
-const FLOOR_Y = 0.22; // walk-in venue floors (components/world/Interiors.tsx)
-const PLAZA_Y = 0.2;
 
 type Spot = { x: number; z: number; rot: number; act: FigureAct | HomePose | null; seat?: number; walk?: boolean; via?: [number, number] };
 
@@ -139,7 +137,8 @@ export function buildRoutes(cast: Resident[], venues: PlacedVenue[], contentRadi
 }
 
 function buildRoute(r: Resident, index: number, venues: PlacedVenue[], contentRadius: number, pick: (v: PlacedVenue, s: ResidentStop) => Spot): Route | null {
-  const ring = venueRingRadius(contentRadius) - 8.8;
+  // the sidewalk just outside the ring road's curb
+  const ring = ringRoadRadius(contentRadius) + RING_ROAD_W / 2 + 1.2;
   const stops = r.route
     .map((s) => ({ s, v: venues.find((v) => v.id === s.venue) }))
     .filter((x): x is { s: ResidentStop; v: PlacedVenue } => !!x.v);
@@ -150,7 +149,7 @@ function buildRoute(r: Resident, index: number, venues: PlacedVenue[], contentRa
     const sp = spots[i];
     const at = toWorld(v, sp.x, sp.z);
     const inside = !!WALK_IN[v.id];
-    legs.push({ kind: 'stay', dur: s.seconds, x: at.x, z: at.z, y: inside ? FLOOR_Y + (sp.walk ? sp.seat ?? 0 : 0) : null, rot: v.rot + sp.rot, act: sp.act, walk: !!sp.walk, stop: s, venue: v });
+    legs.push({ kind: 'stay', dur: s.seconds, x: at.x, z: at.z, y: inside && sp.walk ? FLOOR_Y + (sp.seat ?? 0) : null, rot: v.rot + sp.rot, act: sp.act, walk: !!sp.walk, stop: s, venue: v });
     const j = (i + 1) % stops.length;
     const nv = stops[j].v, nsp = spots[j];
     const to = toWorld(nv, nsp.x, nsp.z);
@@ -175,7 +174,7 @@ function buildRoute(r: Resident, index: number, venues: PlacedVenue[], contentRa
 export type ResidentPose = {
   x: number;
   z: number;
-  /** a fixed height (inside a venue, on a plaza) or null to take the ground under x, z */
+  /** a fixed height (on a treadmill belt) or null to stand on the ground under x, z (lib/world/ground.ts) */
   y: number | null;
   rot: number;
   moving: boolean;
@@ -205,20 +204,4 @@ export function poseAt(route: Route, nowSec: number): ResidentPose {
   return l.kind === 'stay'
     ? { x: l.x, z: l.z, y: l.y, rot: l.rot, moving: l.walk, act: l.act, stop: l.stop, venue: l.venue }
     : { x: l.pts[0].x, z: l.pts[0].z, y: null, rot: 0, moving: true, act: null, stop: null, venue: null };
-}
-
-/** Height of the floor at x, z: inside a walk-in venue, on a venue's plaza, or null for the city ground. */
-export function venueFloorAt(venues: PlacedVenue[], x: number, z: number): number | null {
-  for (const v of venues) {
-    if (v.custom) continue;
-    const c = Math.cos(v.rot), s = Math.sin(v.rot);
-    const dx = x - v.x, dz = z - v.z;
-    const lx = dx * c - dz * s, lz = dx * s + dz * c;
-    const k = WALK_IN[v.id];
-    if (k) {
-      if (Math.abs(lx) < k.w / 2 && Math.abs(lz) < k.d / 2) return FLOOR_Y;
-      if (Math.abs(lx) < (k.w + 3) / 2 && lz > -k.d / 2 - 1.5 && lz < k.d / 2 + 4.5) return PLAZA_Y;
-    } else if (Math.abs(lx) < (v.w + 6) / 2 && Math.abs(lz) < (v.d + 6) / 2) return PLAZA_Y;
-  }
-  return null;
 }

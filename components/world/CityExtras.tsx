@@ -3,13 +3,16 @@ import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { Text } from '@react-three/drei';
-import type { CityGrid, Placed } from '@/lib/world/geometry';
+import type { Block, CityGrid, Placed } from '@/lib/world/geometry';
 import { PALETTES, type Biome } from '@/lib/world/biomes';
 import { prng, hashString } from '@/lib/world/seed';
 import { COUNTRIES } from '@/lib/world/countries';
 import { districtName, themeOf, themedPalette, type CityTheme } from '@/lib/world/cityThemes';
 import { useWorld } from './store';
 import { Landmark, WelcomeArch, logoImage } from './Landmarks';
+import { placementSite } from '@/lib/world/placement';
+import { palmSpots } from '@/lib/world/scatter';
+import { spurRoads } from '@/lib/world/ground';
 import {
   DISTRICTS, RING_ROAD_W, RING_SLOTS, airportLayout, billboardSpots, ringRoadRadius, slotAngle, venueRingRadius, type Airport, type Rect,
 } from '@/lib/world/layout';
@@ -25,9 +28,9 @@ const DASH = '#E9EDF2';
 const tmp = new THREE.Object3D();
 const tmpColor = new THREE.Color();
 
-type Props = { contentRadius: number; boundaryRadius: number; grid: CityGrid; hasCity: boolean; biome: string; handle: string; structures: Placed[]; player?: boolean };
+type Props = { contentRadius: number; boundaryRadius: number; blocks: Block[]; grid: CityGrid; hasCity: boolean; biome: string; handle: string; structures: Placed[]; player?: boolean };
 
-export function CityExtras({ contentRadius, boundaryRadius, grid, hasCity, biome, handle, structures, player = false }: Props) {
+export function CityExtras({ contentRadius, boundaryRadius, blocks, grid, hasCity, biome, handle, structures, player = false }: Props) {
   const country = useWorld((s) => s.country);
   const theme = themeOf(country);
   const pal = themedPalette(PALETTES[(biome as Biome) in PALETTES ? (biome as Biome) : 'meadow'], country);
@@ -38,38 +41,9 @@ export function CityExtras({ contentRadius, boundaryRadius, grid, hasCity, biome
   const halfW = ((2 * K + 1) * pitchX + road) / 2, halfD = ((2 * K + 1) * pitchZ + road) / 2;
 
   // spur roads from the grid's edges out to the ring road
-  const spurs = useMemo<Rect[]>(() => {
-    if (!hasCity) return [];
-    const inner = rr - RING_ROAD_W / 2 + 0.5;
-    const xr = 0.5 * pitchX, zr = 0.5 * pitchZ;
-    return [
-      { x: xr, z: -(halfD + inner) / 2, w: road, d: inner - halfD },
-      { x: -xr, z: (halfD + inner) / 2, w: road, d: inner - halfD },
-      { x: -(halfW + inner) / 2, z: -zr, w: inner - halfW, d: road },
-      { x: (halfW + inner) / 2, z: zr, w: inner - halfW, d: road },
-    ].filter((r) => r.w > 0 && r.d > 0);
-  }, [hasCity, rr, halfW, halfD, pitchX, pitchZ, road]);
-
-  const palms = useMemo(() => {
-    const rnd = prng(hashString(handle + '|palms'));
-    const out: { x: number; z: number; s: number; lean: number; yaw: number }[] = [];
-    // along the airport road and the island's kerb
-    for (let x = ap.road.x - ap.road.w / 2 + 3; x < ap.road.x + ap.road.w / 2; x += 6) {
-      out.push({ x, z: ap.road.d / 2 + 2, s: 0.9 + rnd() * 0.3, lean: rnd() * 0.2, yaw: rnd() * 6.28 });
-      out.push({ x, z: -ap.road.d / 2 - 2, s: 0.9 + rnd() * 0.3, lean: rnd() * 0.2, yaw: rnd() * 6.28 });
-    }
-    for (let z = -ap.island.d / 2 + 6; z < ap.island.d / 2 - 4; z += 7) {
-      if (Math.abs(z) < 6) continue;
-      out.push({ x: ap.island.x - ap.island.w / 2 + 1.6, z, s: 0.9 + rnd() * 0.4, lean: rnd() * 0.25, yaw: rnd() * 6.28 });
-    }
-    // a few between districts
-    for (const s of [3, 7, 11, 15]) {
-      const a = slotAngle(s) + 0.09;
-      const r = rr + RING_ROAD_W / 2 + 3;
-      for (let k = 0; k < 3; k++) out.push({ x: Math.cos(a) * (r + k * 3), z: Math.sin(a) * (r + k * 3), s: 0.8 + rnd() * 0.4, lean: rnd() * 0.25, yaw: rnd() * 6.28 });
-    }
-    return out;
-  }, [ap, rr, handle]);
+  const spurs = useMemo<Rect[]>(() => (hasCity ? spurRoads(grid, contentRadius) : []), [hasCity, grid, contentRadius]);
+  const site = useMemo(() => placementSite({ blocks, grid, boundaryRadius, structures }), [blocks, grid, boundaryRadius, structures]);
+  const palms = useMemo(() => palmSpots(site, { contentRadius, boundaryRadius, handle }), [site, contentRadius, boundaryRadius, handle]);
 
   const ads = useMemo(() => {
     const top = structures.find((s) => s.isLandmark && s.text) ?? null;

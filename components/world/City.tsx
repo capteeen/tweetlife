@@ -2,11 +2,12 @@
 import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { Line } from '@react-three/drei';
-import type { Block, CityGrid, TerrainClass } from '@/lib/world/geometry';
+import type { Block, CityGrid, Placed, TerrainClass } from '@/lib/world/geometry';
 import { PALETTES, type Biome } from '@/lib/world/biomes';
-import { prng, hashString } from '@/lib/world/seed';
 import { themeOf, themedPalette } from '@/lib/world/cityThemes';
 import { useWorld } from './store';
+import { placementSite } from '@/lib/world/placement';
+import { cityTrees } from '@/lib/world/scatter';
 
 // The ground of the city: countryside disc, asphalt grid, sidewalks, block slabs coloured by posting
 // cadence (lush / dry / sand), vacant lots, lane dashes, crosswalks, trees, and water past the boundary.
@@ -31,13 +32,14 @@ type Props = {
   biome: string;
   handle: string;
   paths: { x: number; z: number }[][];
+  structures: Placed[];
 };
 
 function clsColor(pal: (typeof PALETTES)[Biome], cls: TerrainClass) {
   return cls === 'lush' ? pal.lush : cls === 'dry' ? pal.dry : pal.sand;
 }
 
-export function City({ blocks, grid, outside, boundaryRadius, biome, handle, paths }: Props) {
+export function City({ blocks, grid, outside, boundaryRadius, biome, handle, paths, structures }: Props) {
   const country = useWorld((s) => s.country);
   const theme = themeOf(country);
   const pal = themedPalette(PALETTES[(biome as Biome) in PALETTES ? (biome as Biome) : 'meadow'], country);
@@ -80,37 +82,11 @@ export function City({ blocks, grid, outside, boundaryRadius, biome, handle, pat
     return out;
   }, [K, pitchX, pitchZ, road, blockW, blockD, sidewalk]);
 
-  // Trees: sidewalk trees on lush blocks, a few on dry, none on sand; vacant lush lots get a cluster;
-  // the countryside beyond the city gets scattered trees by its own class.
-  const trees = useMemo(() => {
-    const rnd = prng(hashString(handle + '|trees'));
-    const out: { x: number; z: number; s: number; dry: boolean }[] = [];
-    for (const b of blocks) {
-      const n = b.cls === 'lush' ? 10 : b.cls === 'dry' ? 3 : 0;
-      for (let k = 0; k < n; k++) {
-        // along the long sidewalks (north/south), skipping the middle so doors stay clear
-        const side = rnd() < 0.5 ? -1 : 1;
-        const x = b.x - blockW / 2 + rnd() * blockW;
-        const z = b.z + side * (blockD / 2 + sidewalk * 0.55);
-        out.push({ x, z, s: 0.8 + rnd() * 0.5, dry: b.cls === 'dry' });
-      }
-      for (const v of b.vacant) {
-        const m = v.cls === 'lush' ? 3 : v.cls === 'dry' ? 1 : 0;
-        for (let k = 0; k < m; k++) out.push({ x: v.x + (rnd() - 0.5) * (v.w - 2), z: v.z + (rnd() - 0.5) * (v.d - 2), s: 0.7 + rnd() * 0.6, dry: v.cls === 'dry' });
-      }
-    }
-    // countries change how wooded the countryside is (Robinhood City sits in Sherwood Forest)
-    const density = (outside === 'lush' ? 1 / 220 : outside === 'dry' ? 1 / 900 : theme.trees > 1 ? 1 / 600 : 0) * theme.trees;
-    const area = Math.PI * R * R - cityW * cityD;
-    const nOut = Math.min(900 * Math.max(1, theme.trees), Math.floor(Math.max(0, area) * density));
-    for (let k = 0; k < nOut; k++) {
-      const a = rnd() * Math.PI * 2, r = Math.sqrt(rnd()) * (R - 4);
-      const x = Math.cos(a) * r, z = Math.sin(a) * r;
-      if (blocks.length > 0 && Math.abs(x) < cityW / 2 + 3 && Math.abs(z) < cityD / 2 + 3) continue;
-      out.push({ x, z, s: 0.9 + rnd() * 0.8, dry: outside === 'dry' });
-    }
-    return out;
-  }, [blocks, outside, R, cityW, cityD, blockW, blockD, sidewalk, handle, theme.trees]);
+  // Trees: street trees on lush blocks, a few on dry, none on sand; vacant lush lots get a cluster; the countryside
+  // beyond the city gets scattered trees by its own class
+  // and the country (Robinhood City sits in Sherwood Forest). Never on a road, a crossing, a doorway or a plaza.
+  const site = useMemo(() => placementSite({ blocks, grid, boundaryRadius: R, structures }), [blocks, grid, R, structures]);
+  const trees = useMemo(() => cityTrees(site, { blocks, grid, outside, boundaryRadius: R, handle, wooded: theme.trees }), [site, blocks, grid, outside, R, handle, theme.trees]);
 
   return (
     <group>

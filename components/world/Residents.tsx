@@ -11,49 +11,52 @@ import { ITEMS } from '@/lib/life/market';
 import type { Peer as PeerT } from './store';
 import { residentLook } from '@/lib/life/look';
 import { useLookOf } from '@/components/life/useLook';
-import { groundHeightAt, surfaceY, type Block, type CityGrid } from '@/lib/world/geometry';
+import type { Block, CityGrid } from '@/lib/world/geometry';
+import { surfaceY } from '@/lib/world/ground';
+import { aroundRect, sidewalkLoop, type RectLoop } from '@/lib/world/sidewalks';
 import type { FigureAct } from './figureMoves';
 
-// Residents: ambient people whose count comes from followers_count, wandering on seeded loops.
-// Peers: the real visitors currently inside, from the presence room.
+// Residents: ambient people whose count comes from followers_count, strolling round the blocks on the sidewalks
+// (never through buildings, venues or traffic). Peers: the real visitors currently inside, from the presence room.
 
-export function Residents({ count, radius, handle, blocks, grid }: { count: number; radius: number; handle: string; blocks: Block[]; grid: CityGrid }) {
-  const loops = useMemo(() => {
+type Loop = RectLoop & { seed: string; speed: number; phase: number; dir: number };
+
+export function Residents({ count, radius, handle, blocks, grid, boundaryRadius }: { count: number; radius: number; handle: string; blocks: Block[]; grid: CityGrid; boundaryRadius: number }) {
+  const loops = useMemo<Loop[]>(() => {
     const rnd = seededFor(handle, 'residents');
-    return Array.from({ length: count }, (_, i) => ({
-      seed: `${handle}#resident${i}`,
-      cx: (rnd() - 0.5) * radius * 1.4,
-      cz: (rnd() - 0.5) * radius * 1.4,
-      r: 3 + rnd() * 10,
-      speed: 0.08 + rnd() * 0.1,
-      phase: rnd() * Math.PI * 2,
-      dir: rnd() < 0.5 ? 1 : -1,
-    }));
-  }, [count, radius, handle]);
+    // round a block on its sidewalk; a world with no blocks yet gets a loop round the centre
+    return Array.from({ length: count }, (_, i) => {
+      const b = blocks.length ? blocks[Math.floor(rnd() * blocks.length)] : null;
+      const r = Math.min(12, radius / 3);
+      return {
+        seed: `${handle}#resident${i}`,
+        ...(b ? sidewalkLoop(b, grid) : { cx: 0, cz: 0, hw: r, hd: r }),
+        speed: 0.9 + rnd() * 0.5,
+        phase: rnd(),
+        dir: rnd() < 0.5 ? 1 : -1,
+      };
+    });
+  }, [count, radius, handle, blocks, grid]);
   if (count === 0) return null;
   return (
     <>
       {loops.map((l) => (
-        <Resident key={l.seed} loop={l} radius={radius} blocks={blocks} grid={grid} />
+        <Resident key={l.seed} loop={l} blocks={blocks} grid={grid} boundaryRadius={boundaryRadius} />
       ))}
     </>
   );
 }
 
-function Resident({ loop: l, radius, blocks, grid }: { loop: { seed: string; cx: number; cz: number; r: number; speed: number; phase: number; dir: number }; radius: number; blocks: Block[]; grid: CityGrid }) {
+function Resident({ loop: l, blocks, grid, boundaryRadius }: { loop: Loop; blocks: Block[]; grid: CityGrid; boundaryRadius: number }) {
   const ref = useRef<THREE.Group>(null);
   const look = useMemo(() => residentLook(l.seed), [l.seed]);
+  const per = 4 * (l.hw + l.hd);
   useFrame(({ clock }) => {
     const g = ref.current;
     if (!g) return;
-    const a = l.phase + clock.elapsedTime * l.speed * l.dir;
-    const x = l.cx + Math.cos(a) * l.r, z = l.cz + Math.sin(a) * l.r;
-    const rr = Math.hypot(x, z);
-    const k = rr > radius - 2 ? (radius - 2) / rr : 1;
-    g.position.set(x * k, groundHeightAt(blocks, grid, x * k, z * k), z * k);
-    // face the direction of travel (tangent of the circle)
-    const tx = -Math.sin(a) * l.dir, tz = Math.cos(a) * l.dir;
-    g.rotation.y = Math.atan2(tx, tz);
+    const p = aroundRect(l, l.phase + (clock.elapsedTime * l.speed * l.dir) / per);
+    g.position.set(p.x, surfaceY(blocks, grid, p.x, p.z, boundaryRadius), p.z);
+    g.rotation.y = l.dir > 0 ? p.heading : p.heading + Math.PI;
   });
   return (
     <group ref={ref}>

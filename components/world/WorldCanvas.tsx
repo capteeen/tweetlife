@@ -115,10 +115,11 @@ function Scene(props: SceneProps) {
         shadow-camera-near={1}
         shadow-camera-far={R * 4}
       />
-      <City blocks={geometry.blocks} grid={geometry.grid} outside={geometry.outside} boundaryRadius={R} biome={biome} handle={handle} paths={paths} />
+      <City blocks={geometry.blocks} grid={geometry.grid} outside={geometry.outside} boundaryRadius={R} biome={biome} handle={handle} paths={paths} structures={geometry.structures} />
       <CityExtras
         contentRadius={geometry.contentRadius}
         boundaryRadius={R}
+        blocks={geometry.blocks}
         grid={geometry.grid}
         hasCity={geometry.structures.length > 0}
         biome={biome}
@@ -133,7 +134,7 @@ function Scene(props: SceneProps) {
       {/* ambient-occlusion stand-in: one baked contact shadow pass under everything */}
       <ContactShadows frames={1} position={[0, 0.3, 0]} scale={geometry.contentRadius * 2.1 + 20} blur={2} opacity={0.4} far={14} resolution={1024} />
       <Marks marks={marks} />
-      <Residents count={geometry.residents} radius={geometry.contentRadius + 20} handle={handle} blocks={geometry.blocks} grid={geometry.grid} />
+      <Residents count={geometry.residents} radius={geometry.contentRadius + 20} handle={handle} blocks={geometry.blocks} grid={geometry.grid} boundaryRadius={R} />
       {geometry.structures.length > 0 && (
         <CityResidents contentRadius={geometry.contentRadius} boundaryRadius={R} blocks={geometry.blocks} grid={geometry.grid} interactive={mode === 'walk'} />
       )}

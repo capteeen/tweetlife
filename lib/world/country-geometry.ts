@@ -1,6 +1,5 @@
 import { BLOCK_D, BLOCK_W, LOTS_PER_BLOCK, PITCH_X, PITCH_Z, ROAD, SIDEWALK, boundaryRadiusFor, buildWorld, type Block, type CityGrid, type Placed, type StructureRow, type TerrainClass, type WorldGeometry } from './geometry';
 import { CAPITAL_SLOT, PLOT_BLOCKS, plotBlocks, plotCell } from './country-map';
-import { isFiller } from './filler';
 
 // A country's map as one WorldGeometry (pure, so scripts/check-world.ts can check it): every player's plot
 // (their posts laid out in their own 3 x 3 city blocks), Capital Square as a park, and the plots nobody has
@@ -36,7 +35,7 @@ export function composeCountryGeometry(plots: PlotInput[], now?: Date): { geomet
       blocks.push(b);
       taken.add(`${b.i},${b.j}`);
     }
-    shown.set(p.slot, g.structures.filter((s) => !isFiller(s.postId)).length);
+    shown.set(p.slot, g.structures.length);
     followers += p.followersCount;
   }
 

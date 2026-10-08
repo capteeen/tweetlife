@@ -6,7 +6,6 @@ import { useFrame, type ThreeEvent } from '@react-three/fiber';
 import type { Placed } from '@/lib/world/geometry';
 import { planBuilding, type Part, type PartGeo, type PartMat, type PlanInput } from '@/lib/world/buildings';
 import { useWorld } from './store';
-import { isFiller } from '@/lib/world/filler';
 import { facadeRecolor } from '@/lib/world/cityThemes';
 
 // Post buildings, drawn from lib/world/buildings.ts plans. Every part of every building goes into one
@@ -191,9 +190,7 @@ export function Buildings({ items, interactive, detailRadius = 120, night = fals
     e.stopPropagation();
     const g = groups.get(k);
     if (e.instanceId == null || !g) return;
-    const s = items[g.owners[e.instanceId]];
-    // plain filler buildings have no post behind them
-    if (s && !isFiller(s.postId)) select(s);
+    select(items[g.owners[e.instanceId]] ?? null);
   };
 
   // owners (instance -> building) survive ref churn; only the mesh handle is swapped

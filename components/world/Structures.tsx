@@ -7,7 +7,6 @@ import { Text } from '@react-three/drei';
 import type { Placed, StructureKind } from '@/lib/world/geometry';
 import { LANTERN } from '@/lib/world/biomes';
 import { useWorld } from './store';
-import { isFiller } from '@/lib/world/filler';
 import { plain3d } from '@/lib/world/text3d';
 import { Buildings } from './Buildings';
 // Self-hosted label font (Inter, SIL OFL) so no label ever fetches from a CDN.
@@ -91,8 +90,7 @@ function Lamps({ items, interactive }: { items: Placed[]; interactive: boolean }
   const onClick = (e: ThreeEvent<MouseEvent>) => {
     if (!interactive) return;
     e.stopPropagation();
-    // plain filler buildings have no post behind them
-    if (e.instanceId != null && items[e.instanceId] && !isFiller(items[e.instanceId].postId)) select(items[e.instanceId]);
+    if (e.instanceId != null) select(items[e.instanceId] ?? null);
   };
   if (items.length === 0) return null;
   return (

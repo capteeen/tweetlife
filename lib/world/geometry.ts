@@ -1,5 +1,4 @@
 import { seededFor } from './seed';
-import { isFiller } from './filler';
 import { VENUE_BACK_MARGIN, venueRingRadius } from './layout';
 
 // Pure world geometry: the account's real posts laid out as a city.
@@ -221,7 +220,7 @@ export function buildWorld(rowsIn: StructureRow[], opts: BuildOptions): WorldGeo
   else {
     let best = -1;
     for (const r of rows) {
-      if (r.kind === 'lantern' || r.kind === 'outbuilding' || isFiller(r.postId)) continue;
+      if (r.kind === 'lantern' || r.kind === 'outbuilding') continue;
       const s = engagementScore(r);
       if (s > best) {
         best = s;

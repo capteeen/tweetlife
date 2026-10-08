@@ -1,8 +1,6 @@
 import { unstable_cache } from 'next/cache';
 import { db } from '../db';
 import { buildWorld, type StructureRow, type WorldGeometry } from './geometry';
-import { withFillers } from './filler';
-import { PLOT_LOTS } from './country-map';
 import { readProgress } from '../x/ingest';
 
 // Everything the renderer needs for one world, read from Postgres only.
@@ -57,7 +55,7 @@ export async function loadWorldModel(handle: string): Promise<WorldModel | null>
     world.ingestState === 'building' ? readProgress(world.id) : Promise.resolve(null),
   ]);
   const structureRows: StructureRow[] = rows.map((r) => ({ ...r, postedAt: r.postedAt.toISOString() }));
-  const geometry = buildWorld(withFillers(structureRows, world.handle, PLOT_LOTS), {
+  const geometry = buildWorld(structureRows, {
     handle: world.handle,
     accountCreatedAt: world.accountCreatedAt,
     followersCount: world.followersCount,

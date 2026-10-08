@@ -4,7 +4,6 @@ import { db } from '../db';
 import type { StructureRow, WorldGeometry } from './geometry';
 import { CAPITAL_SLOT, PLOT_LOTS, plotRect, type PlotRect } from './country-map';
 import { composeCountryGeometry } from './country-geometry';
-import { withFillers } from './filler';
 import { countryOf, type CountryId } from './countries';
 import type { MarkModel } from './load';
 
@@ -134,11 +133,7 @@ async function buildCountry(country: CountryId): Promise<CountryModel> {
     plots.map((p) => ({
       slot: p.slot,
       handle: p.world.handle,
-      rows: withFillers(
-        (byWorld.get(p.worldId) ?? []).map((r) => ({ ...r, text: '', mediaUrl: null, hidden: false }) as StructureRow),
-        p.world.handle,
-        PLOT_LOTS,
-      ),
+      rows: (byWorld.get(p.worldId) ?? []).map((r) => ({ ...r, text: '', mediaUrl: null, hidden: false }) as StructureRow),
       accountCreatedAt: p.world.accountCreatedAt,
       followersCount: p.world.followersCount,
       landmarkPostId: p.world.landmarkPostId,

@@ -21,7 +21,7 @@ export type TweetPage = { tweets: XTweet[]; media: Map<string, XMedia>; nextToke
 export async function getUserTweets(
   ctx: Ctx,
   xUserId: string,
-  opts: { paginationToken?: string; sinceId?: string; untilId?: string; maxResults?: number; exclude?: 'retweets,replies' } = {},
+  opts: { paginationToken?: string; sinceId?: string; untilId?: string; maxResults?: number } = {},
 ): Promise<TweetPage> {
   const r = await xFetch<XPage<XTweet>>({
     path: `/2/users/${xUserId}/tweets`,
@@ -33,7 +33,6 @@ export async function getUserTweets(
       pagination_token: opts.paginationToken,
       since_id: opts.sinceId,
       until_id: opts.untilId,
-      exclude: opts.exclude,
     },
     ...ctx,
   });

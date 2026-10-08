@@ -11,6 +11,8 @@ import { lifeActions, type SocialSend } from './useLife';
 import { ConfirmButton } from '@/components/ui/ConfirmButton';
 import { MapApp } from './MapApp';
 import { showWelcomeAgain } from './Welcome';
+import { IdCard } from '@/components/citizen/IdCard';
+import { countryOf } from '@/lib/world/countries';
 
 /** Buys at or above this many bags ask "Sure?" first. */
 const BIG_SPEND = 1000;
@@ -30,6 +32,7 @@ const APPS: { id: PhoneApp; label: string; emoji: string; bg: string }[] = [
   { id: 'gist', label: 'Gist', emoji: '💬', bg: 'linear-gradient(135deg,#1D9BF0,#2EC4B6)' },
   { id: 'map', label: 'Map', emoji: '🗺️', bg: 'linear-gradient(135deg,#7FB069,#2D6A4F)' },
   { id: 'guestbook', label: 'Guestbook', emoji: '🪨', bg: 'linear-gradient(135deg,#E8DCC8,#8A96A8)' },
+  { id: 'id', label: 'ID card', emoji: '🪪', bg: 'linear-gradient(135deg,#9945FF,#F3BA2F,#00C805)' },
   { id: 'settings', label: 'Settings', emoji: '⚙️', bg: 'linear-gradient(135deg,#9AA6B8,#4B5563)' },
 ];
 
@@ -104,6 +107,8 @@ export function Phone({ sendSocial, handle }: { sendSocial: SocialSend; handle: 
             <MapApp />
           ) : phone.app === 'guestbook' ? (
             <GuestbookApp />
+          ) : phone.app === 'id' ? (
+            <IdApp />
           ) : (
             <SettingsApp handle={handle} />
           )}
@@ -717,6 +722,25 @@ function GuestbookApp() {
       <button className="btn mt-4 w-full" onClick={() => { setGuestbookOpen(true); closePhone(); }}>
         Leave a stone
       </button>
+    </div>
+  );
+}
+
+function IdApp() {
+  const me = useWorld((s) => s.life?.me ?? null);
+  if (!me?.citizen) return null;
+  const c = countryOf(me.citizen.country);
+  return (
+    <div className="mt-3 space-y-3 text-sm">
+      <IdCard holder={{ name: me.name, handle: me.handle, avatarUrl: me.avatarUrl, look: me.look }} citizen={me.citizen} />
+      <div className="rounded-2xl bg-white/5 p-3 text-white/75">
+        <p>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={c.logo} alt="" className="mr-1 inline h-4 w-4 align-[-2px]" />
+          Citizen of <b className="text-white">{c.name}</b>, home city {c.capital}. President: {c.president}.
+        </p>
+        {!me.citizen.nationality && <p className="mt-1 text-white/55">You have not picked a nationality yet, so you count as Solanan.</p>}
+      </div>
     </div>
   );
 }

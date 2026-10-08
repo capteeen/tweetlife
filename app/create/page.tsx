@@ -3,12 +3,12 @@ import { getUser } from '@/lib/session';
 import { ensurePlayer } from '@/lib/life/player';
 import { lookFor, parseLook } from '@/lib/life/look';
 import { SignInButton } from '@/components/ui/Chrome';
-import { AvatarCreator } from '@/components/create/AvatarCreator';
+import { CreateFlow } from '@/components/create/CreateFlow';
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'Create your look', robots: { index: false } };
 
-// The avatar creator. New players land here straight after their first sign-in (see the X callback);
+// Sign-up: nationality, then the avatar creator. New players land here straight after their first sign-in (see the X callback);
 // anyone can come back later from the phone's Settings to change their look.
 export default async function CreatePage({ searchParams }: { searchParams: { next?: string } }) {
   const raw = searchParams.next ?? '';
@@ -29,5 +29,16 @@ export default async function CreatePage({ searchParams }: { searchParams: { nex
   }
   const player = await ensurePlayer(user.id);
   const initial = parseLook(player.look) ?? lookFor(user.handle);
-  return <AvatarCreator handle={user.handle} initial={initial} next={next} firstTime={player.lookPending} />;
+  // a new player picks their country first; anyone else without one is asked here too (or once in the world)
+  return (
+    <CreateFlow
+      handle={user.handle}
+      name={user.name}
+      avatarUrl={user.avatarUrl}
+      initial={initial}
+      next={next}
+      firstTime={player.lookPending}
+      needsCountry={!player.nationality}
+    />
+  );
 }

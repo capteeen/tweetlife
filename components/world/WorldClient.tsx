@@ -18,6 +18,7 @@ import { VenueCard } from '@/components/life/VenueCard';
 import { CityMap, TripBanner } from '@/components/life/CityMap';
 import { VenueMusic } from '@/components/life/VenueMusic';
 import { Welcome } from '@/components/life/Welcome';
+import { CountryPrompt } from '@/components/citizen/CountryPrompt';
 import { useLife } from '@/components/life/useLife';
 import { enterVenue } from '@/components/life/travel';
 import { placeVenues } from '@/lib/life/venues';
@@ -194,6 +195,7 @@ export function WorldClient({ handle, spawnPostId, embed, backdrop }: { handle: 
           <ResidentCard />
           <VenueCard sendSocial={sendSocial} />
           <Phone sendSocial={sendSocial} handle={model.handle} />
+          {!lookPending && <CountryPrompt />}
           <TripBanner />
           <VenueMusic />
           <CityMap />

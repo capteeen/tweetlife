@@ -86,6 +86,8 @@ export function Player({ structures, blocks, grid, boundaryRadius, contentRadius
     // once: a world still building reloads its structures every few seconds, and that mustn't yank you back here
     if (spawn || placed.current) return;
     placed.current = true;
+    // TODO(countries): when each country is its own city, spawn in the home city of
+    // useWorld.getState().life?.me?.citizen.country (lib/life/citizen.ts) instead of DEFAULT_SPAWN here.
     const free = freeSpotNear(structures, obstacles, DEFAULT_SPAWN.x, DEFAULT_SPAWN.z, boundaryRadius, 'walk', airport);
     pos.current.set(free.x, 0, free.z);
     // eslint-disable-next-line react-hooks/exhaustive-deps

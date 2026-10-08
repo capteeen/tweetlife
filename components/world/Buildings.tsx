@@ -90,7 +90,7 @@ function writePart(mesh: THREE.InstancedMesh, i: number, s: Placed, p: Part, rec
 
 type Group = { mesh: THREE.InstancedMesh | null; owners: Int32Array };
 
-export function Buildings({ items, interactive, detailRadius = 120 }: { items: Placed[]; interactive: boolean; detailRadius?: number }) {
+export function Buildings({ items, interactive, detailRadius = 120, night = false }: { items: Placed[]; interactive: boolean; detailRadius?: number; night?: boolean }) {
   const select = useWorld((s) => s.select);
   const playerPos = useWorld((s) => s.playerPos);
   // each country repaints awnings, roofs, signs and glass in its coin's colours
@@ -124,6 +124,10 @@ export function Buildings({ items, interactive, detailRadius = 120 }: { items: P
 
   const geometries = useMemo(() => Object.fromEntries(KEYS.map(([g]) => [g, makeGeometry(g)])) as Record<PartGeo, THREE.BufferGeometry>, []);
   const materials = useMemo(() => Object.fromEntries((['solid', 'glass', 'lit'] as PartMat[]).map((m) => [m, makeMaterial(m)])) as unknown as Record<PartMat, THREE.Material>, []);
+  // after dark the lit windows (replies) burn brighter, enough to bloom; the data still decides which ones are lit
+  useEffect(() => {
+    (materials.lit as THREE.MeshBasicMaterial).color.setScalar(night ? 1.45 : 1);
+  }, [materials, night]);
 
   const massRefs = useRef(new Map<string, Group>());
   const detailRefs = useRef(new Map<string, Group>());

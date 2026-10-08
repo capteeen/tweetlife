@@ -2,11 +2,12 @@ import { groundHeightAt, type Block, type CityGrid } from './geometry';
 import { DANCE_FLOOR, FLOOR_Y, WALK_IN } from './interiors';
 import { DISTRICTS, RING_ROAD_W, RING_SLOTS, airportLayout, inRect, ringRoadRadius, slotAngle, type Airport, type Rect } from './layout';
 import { placeVenues, type PlacedVenue } from '../life/venues';
+import { TERMINAL_FLOOR } from './terminal';
 
 // One answer to "how high is the ground here?" for everyone who stands on it: the player, visitors, residents,
 // crowds and cars, indoors and out. It mirrors the surfaces the scene draws, so feet land on what you see:
 // City.tsx (road grid, sidewalks, blocks, lots, countryside), CityExtras.tsx (ring road, spurs, district ground,
-// airport road, bridge and island), Venues.tsx (plazas) and Interiors.tsx (venue floors, the club's dance floor).
+// airport road, bridge and island), Terminal.tsx (the terminal hall), Venues.tsx (plazas) and Interiors.tsx (venue floors, the club's dance floor).
 // If one of those surfaces moves, move its number here too; scripts/check-world.ts walks the world and fails on
 // a mismatch it can see (walkers below a floor, things floating).
 
@@ -128,6 +129,7 @@ export const taxiLinks = (ap: Airport): Rect[] =>
 /** Height of the airport's surfaces at (x, z), or null off the airport (bridge, island and the road to them). */
 export function airportGroundAt(ap: Airport, x: number, z: number): number | null {
   if (inRect(ap.island, x, z)) {
+    if (inRect(ap.terminal, x, z)) return TERMINAL_FLOOR;
     if (inRect(ap.runway, x, z)) return RUNWAY_TOP;
     if (inRect(ap.taxiway, x, z) || taxiLinks(ap).some((l) => inRect(l, x, z))) return TAXIWAY_TOP;
     if (inRect(ap.apron, x, z) || inRect(ap.islandRoad, x, z) || inRect(ap.carPark, x, z)) return ISLAND_PAVED_TOP;

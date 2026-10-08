@@ -7,6 +7,7 @@ import { terrainOf, groundAt, venueFloorAt, toVenueFrame } from '../lib/world/gr
 import { placementSite, placementConflict, zoneAt, type Site } from '../lib/world/placement';
 import { cityTrees, palmSpots, TREE_R } from '../lib/world/scatter';
 import { DANCE_FLOOR, FLOOR_Y, WALK_IN } from '../lib/world/interiors';
+import { TERMINAL_FLOOR } from '../lib/world/terminal';
 import { RING_ROAD_W, billboardSpots, inRect } from '../lib/world/layout';
 import { RESIDENTS } from '../lib/life/residents';
 import { COUNTRIES } from '../lib/world/countries';
@@ -189,6 +190,12 @@ function check(c: Case) {
     const { lx, lz } = toVenueFrame(club, x, z);
     if (Math.abs(lx - DANCE_FLOOR.x) > 1e-6 || Math.abs(lz - DANCE_FLOOR.z) > 1e-6) fail(w, 'venue frame round trip is off');
     if (groundAt(t, x, z) !== DANCE_FLOOR.top) fail(w, `dance floor centre gives ${groundAt(t, x, z)}, tiles are at ${DANCE_FLOOR.top}`);
+  }
+  // 8. the airport terminal hall: travellers stand on its floor
+  if (t.hasCity) {
+    const tr = t.airport.terminal;
+    const y = groundAt(t, tr.x, tr.z);
+    if (y !== TERMINAL_FLOOR) fail(w, `terminal floor gives ${y}, the hall floor is at ${TERMINAL_FLOOR}`);
   }
   return placed;
 }

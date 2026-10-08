@@ -90,3 +90,30 @@ canvas {
   touch-action: none;
   display: block;
 }
+
+/* welcome page */
+@keyframes tl-drift {
+  from {
+    transform: translateX(-20vw);
+  }
+  to {
+    transform: translateX(120vw);
+  }
+}
+@keyframes tl-eq {
+  from {
+    transform: scaleY(0.3);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+.welcome {
+  color-scheme: light;
+}
+@media (prefers-reduced-motion: reduce) {
+  .welcome * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

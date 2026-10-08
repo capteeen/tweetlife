@@ -16,9 +16,11 @@ export const CAPITAL_SLOT = 0;
 export type PlotCell = { pi: number; pj: number };
 
 const cellCache: PlotCell[] = [];
+let ringsCached = 0;
 /** Plot cells in allocation order: the centre, then ring by ring, each ring clockwise from the top. */
 export function plotCell(slot: number): PlotCell {
-  for (let k = 0; cellCache.length <= slot; k++) {
+  while (cellCache.length <= slot) {
+    const k = ringsCached++;
     if (k === 0) {
       cellCache.push({ pi: 0, pj: 0 });
       continue;

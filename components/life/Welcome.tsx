@@ -30,6 +30,7 @@ export function markWelcomeSeen() {
   try {
     localStorage.setItem(SEEN, '1');
   } catch {}
+  window.dispatchEvent(new Event('tl-welcome-seen'));
 }
 
 export function showWelcomeAgain() {
@@ -58,9 +59,14 @@ export function Welcome() {
         setOpen(true);
       }
     };
+    const seen = () => setOpen(false);
     if (me) check();
     window.addEventListener('tl-welcome', check);
-    return () => window.removeEventListener('tl-welcome', check);
+    window.addEventListener('tl-welcome-seen', seen);
+    return () => {
+      window.removeEventListener('tl-welcome', check);
+      window.removeEventListener('tl-welcome-seen', seen);
+    };
     // only the first time the player loads, not on every stat tick
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [!!me]);

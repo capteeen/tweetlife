@@ -31,7 +31,11 @@ export function FirstDayGuide({ place }: { place: 'city' | 'home' }) {
 
   // a new step starts idle; the coin step ending shows the balloon moment before the finale
   useEffect(() => {
-    if (prevStep.current === 'coin' && step === 'finish') setPhase('balloon');
+    if (prevStep.current === 'coin' && step === 'finish') {
+      // close the shop so the balloon on your hand is in view
+      setPhase('balloon');
+      setTimeout(() => useWorld.getState().selectVenue(null), 1200);
+    }
     // (the ride ends by moving the step on to furniture while the "you're home" card is still up)
     else if (prevStep.current !== step) setPhase((p) => (step === 'furniture' && p === 'arrived' ? p : 'idle'));
     prevStep.current = step;
@@ -45,7 +49,8 @@ export function FirstDayGuide({ place }: { place: 'city' | 'home' }) {
     const s = useWorld.getState();
     const at = arrivalSpot();
     // arriving on a flight (the flights feature) puts you at the kerb already
-    if (at && !(s as unknown as { flight?: unknown }).flight) s.setTeleport(at);
+    // facing the terminal (east), so the camera sits out over the road rather than inside the building
+    if (at && !(s as unknown as { flight?: unknown }).flight) s.setTeleport({ ...at, yaw: -Math.PI / 2 });
     const t = setTimeout(() => setPassportOpen(true), 1200);
     return () => clearTimeout(t);
   }, [place, step, hasModel]);
@@ -160,7 +165,7 @@ export function FirstDayGuide({ place }: { place: 'city' | 'home' }) {
       hint = 'The Coin Shop is in the city.';
       action = { label: '🚪 Back to the city', onClick: toCity };
     } else if (selectedVenue === 'exchange') {
-      hint = 'Pick a coin from the board and tap 100 to buy it.';
+      hint = 'Pick a coin on the board, then tap “100 bags” to buy it.';
     } else if (phase === 'moving') {
       title = 'Heading to the Coin Shop';
       hint = 'Live memecoins over the counter, paid in bags.';
@@ -225,7 +230,8 @@ export function FirstDayGuide({ place }: { place: 'city' | 'home' }) {
           {err && <p className="mt-1.5 text-xs text-rose-300">{err}</p>}
         </div>
       </div>
-      {passportOpen && step === 'passport' && place === 'city' && <PassportControl onClose={() => setPassportOpen(false)} />}
+      {/* stays up through the stamp even though the step has already moved on */}
+      {passportOpen && place === 'city' && <PassportControl onClose={() => setPassportOpen(false)} />}
     </>
   );
 }
@@ -264,7 +270,7 @@ function PassportControl({ onClose }: { onClose: () => void }) {
     try {
       const r = await firstDayActions.complete('passport');
       setPaid(r.paid);
-      setTimeout(onClose, 1800);
+      setTimeout(onClose, 3000);
     } catch (e) {
       setErr((e as Error).message);
     }

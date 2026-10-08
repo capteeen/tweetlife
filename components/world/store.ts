@@ -95,7 +95,8 @@ export type WorldState = {
   selectedVenue: PlacedVenue | null;
   nearVenue: string | null;
   riding: Item | null;
-  teleport: { x: number; z: number } | null;
+  /** jump the player here; `yaw` (optional) turns the camera too, same convention as a spawn */
+  teleport: { x: number; z: number; yaw?: number } | null;
   trip: Trip | null;
   mapOpen: boolean;
   toasts: Toast[];
@@ -136,7 +137,7 @@ export type WorldState = {
   selectVenue: (v: PlacedVenue | null) => void;
   setNearVenue: (id: string | null) => void;
   setRiding: (i: Item | null) => void;
-  setTeleport: (t: { x: number; z: number } | null) => void;
+  setTeleport: (t: { x: number; z: number; yaw?: number } | null) => void;
   setTrip: (t: Trip | null) => void;
   setMapOpen: (v: boolean) => void;
   pushToast: (text: string, kind?: string) => void;

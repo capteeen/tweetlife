@@ -106,6 +106,7 @@ export function Player({ structures, blocks, grid, boundaryRadius, contentRadius
     if (!teleport) return;
     const free = freeSpotNear(structures, obstacles, teleport.x, teleport.z, boundaryRadius, 'walk', airport);
     pos.current.set(free.x, 0, free.z);
+    if (teleport.yaw != null) yaw.current = teleport.yaw;
     setTeleport(null);
   }, [teleport, structures, obstacles, boundaryRadius, setTeleport, airport]);
 

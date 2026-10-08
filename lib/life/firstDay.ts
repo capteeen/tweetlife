@@ -15,8 +15,8 @@ async function evidence(playerId: string, step: FirstDayStepId): Promise<boolean
     case 'furniture':
       return (await db.asset.count({ where: { playerId, slot: { not: null }, paid: { gt: 0 } } })) > 0;
     case 'shift':
-      // a job shift (kind 'job', from the jobs feature) or a Hustle Hub shift (lib/life/venues.ts)
-      return (await db.bagTx.count({ where: { playerId, OR: [{ kind: 'job' }, { note: { startsWith: '🏢 Hustle Hub: Work a shift' } }] } })) > 0;
+      // a paid job shift (kind 'wage', from the Jobs app) or paid work at the Hustle Hub (lib/life/venues.ts)
+      return (await db.bagTx.count({ where: { playerId, OR: [{ kind: 'wage' }, { note: { startsWith: '🏢 Hustle Hub:' }, amount: { gt: 0 } }] } })) > 0;
     case 'coin':
       return (await db.bagTx.count({ where: { playerId, kind: 'buy', note: { startsWith: '🪙 Bought' } } })) > 0;
     default:

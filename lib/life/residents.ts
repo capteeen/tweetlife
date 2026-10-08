@@ -288,7 +288,7 @@ const GOVERNMENT: Resident[] = [
     tag: 'President of Solana',
     persona: 'Ansem is the President of Solana, the country whose coin is SOL. A legendary memecoin trader turned head of state, runs the country from the Solana State House between checking charts. Supremely confident, bullish on Solana forever, loves the Trenches and his citizens\' conviction.',
     voice: 'Crypto Twitter energy, all lowercase vibes, confident. "gm", "send it", "we\'re so early", "conviction", "touch grass". Short punchy lines.',
-    look: L({ body: 'male', skin: '#4A2C1D', hairStyle: 'cap', hair: '#0B0E14', shirt: '#1C1C22', shirtAlt: '#0B0E14', pattern: 'solid', sleeves: 'long', pants: '#0B0E14', shoes: '#14F195', height: 1.05, build: 1.02 }),
+    look: L({ body: 'male', skin: '#4A2C1D', hairStyle: 'crop', hair: '#0B0E14', top: 'hoodie', shirt: '#1C1C22', shirtAlt: '#14F195', sleeves: 'long', bottom: 'joggers', pants: '#16161B', shoes: '#14F195', hat: 'cap', accent: '#0B0E14', extras: ['chain'], height: 1.05, build: 1.02 }),
     route: [
       { venue: 'capitol', doing: 'desk', seconds: 120 },
       { venue: 'capitol', doing: 'podium', seconds: 60 },
@@ -309,7 +309,7 @@ const GOVERNMENT: Resident[] = [
     tag: 'Solana Minister of the Trenches',
     persona: 'Ada is Solana\'s Minister of the Trenches: she runs the treasury and keeps an eye on the Coin Shop. Sharp, numbers-first, quietly proud that Solana\'s trade tax is only 1%.',
     voice: 'Brisk civil servant who secretly degens. Mixes official language with trader slang.',
-    look: L({ body: 'female', skin: '#6F4530', eyes: 'almond', hairStyle: 'bun', hair: '#0E0B09', shirt: '#9945FF', shirtAlt: '#14F195', pattern: 'yoke', sleeves: 'long', pants: '#120B24', shoes: '#0B0E14', height: 1.0, build: 0.96 }),
+    look: L({ body: 'female', skin: '#6F4530', eyes: 'almond', hairStyle: 'bun', hair: '#0E0B09', top: 'blazer', shirt: '#5B2DA8', shirtAlt: '#F4F1DE', sleeves: 'long', bottom: 'skirt', pants: '#120B24', shoeStyle: 'heels', shoes: '#0B0E14', eyewear: 'glasses', height: 1.0, build: 0.96 }),
     route: [
       { venue: 'capitol', doing: 'cabinet', seconds: 80 },
       { venue: 'exchange', doing: 'counter', seconds: 50 },
@@ -330,7 +330,7 @@ const GOVERNMENT: Resident[] = [
     tag: 'Solana Minister of Vibes',
     persona: 'Kofi is Solana\'s Minister of Vibes and Culture. In charge of Club Moon permits, the city\'s playlist and national morale. Thinks every problem can be solved with a good night out.',
     voice: 'Smooth, upbeat, party politician. "Vibes are policy." Loves announcing events.',
-    look: L({ body: 'male', skin: '#8D5A3C', hairStyle: 'locs', hair: '#2B1B12', shirt: '#14F195', shirtAlt: '#0B0E14', pattern: 'stripes', pants: '#120B24', shoes: '#FFFFFF', height: 1.02, build: 0.98 }),
+    look: L({ body: 'male', skin: '#8D5A3C', hairStyle: 'locs', hair: '#2B1B12', top: 'shirt', shirt: '#14F195', shirtAlt: '#0B0E14', sleeves: 'short', pants: '#120B24', shoes: '#FFFFFF', extras: ['watch'], height: 1.02, build: 0.98 }),
     route: [
       { venue: 'capitol', doing: 'cabinet', seconds: 70 },
       { venue: 'capitol', doing: 'hangout', seconds: 30 },
@@ -351,7 +351,7 @@ const GOVERNMENT: Resident[] = [
     tag: 'President of BNB',
     persona: 'CZ is the President of BNB, the country whose coin is BNB. Founder energy: calm, relentlessly focused on building, unbothered by noise. Runs the country from the BNB Build House. Famous catchphrases include "4" (meaning ignore the FUD), "funds are SAFU" and "build, build, build".',
     voice: 'Calm, short, understated, a bit dry. Says "4" to brush off negativity. Encourages building and long-term thinking.',
-    look: L({ body: 'male', skin: '#E8BC94', eyes: 'almond', hairStyle: 'buzz', hair: '#0E0B09', shirt: '#1E2026', shirtAlt: '#F3BA2F', pattern: 'yoke', sleeves: 'short', pants: '#0B0E11', shoes: '#0B0E14', height: 0.99, build: 1.0 }),
+    look: L({ body: 'male', skin: '#E8BC94', eyes: 'almond', hairStyle: 'buzz', hair: '#0E0B09', top: 'shirt', shirt: '#1E2026', shirtAlt: '#F3BA2F', sleeves: 'long', pants: '#0B0E11', shoeStyle: 'boots', shoes: '#0B0E14', extras: ['watch'], height: 0.99, build: 1.0 }),
     route: [
       { venue: 'capitol', doing: 'desk', seconds: 120 },
       { venue: 'capitol', doing: 'podium', seconds: 60 },
@@ -372,7 +372,7 @@ const GOVERNMENT: Resident[] = [
     tag: 'BNB Minister of Building',
     persona: 'Lin is BNB\'s Minister of Building and Works. Plans every road and tower in BNB City, carries a hard hat everywhere, takes "build, build, build" literally.',
     voice: 'Practical, enthusiastic engineer. Talks in plans, permits and deadlines.',
-    look: L({ body: 'female', skin: '#E8BC94', eyes: 'almond', hairStyle: 'ponytail', hair: '#0E0B09', shirt: '#F3BA2F', shirtAlt: '#1E2026', pattern: 'yoke', sleeves: 'long', pants: '#1E2026', shoes: '#FCD535', height: 0.98, build: 0.97 }),
+    look: L({ body: 'female', skin: '#E8BC94', eyes: 'almond', hairStyle: 'ponytail', hair: '#0E0B09', top: 'shirt', shirt: '#F3BA2F', shirtAlt: '#1E2026', sleeves: 'long', bottom: 'cargo', pants: '#1E2026', shoeStyle: 'boots', shoes: '#3B2A1E', height: 0.98, build: 0.97 }),
     route: [
       { venue: 'capitol', doing: 'cabinet', seconds: 80 },
       { venue: 'hustle', doing: 'hangout', seconds: 40 },
@@ -393,7 +393,7 @@ const GOVERNMENT: Resident[] = [
     tag: 'BNB Minister of SAFU',
     persona: 'Yusuf is BNB\'s Minister of SAFU (security). Guards the treasury, warns citizens about rugs and scams, takes the 2% trade tax very seriously.',
     voice: 'Serious, protective, a little dramatic about safety. "Stay SAFU." Gives in-game safety tips only.',
-    look: L({ body: 'male', skin: '#3B2219', hairStyle: 'crop', hair: '#0E0B09', shirt: '#0B0E11', shirtAlt: '#F3BA2F', pattern: 'stripes', sleeves: 'long', pants: '#1E2026', shoes: '#0B0E14', height: 1.06, build: 1.1 }),
+    look: L({ body: 'male', skin: '#3B2219', hairStyle: 'crop', hair: '#0E0B09', top: 'blazer', shirt: '#0B0E11', shirtAlt: '#F3BA2F', sleeves: 'long', pants: '#1E2026', shoeStyle: 'boots', shoes: '#0B0E14', eyewear: 'shades', height: 1.06, build: 1.1 }),
     route: [
       { venue: 'capitol', doing: 'cabinet', seconds: 70 },
       { venue: 'bank', doing: 'hangout', seconds: 30 },
@@ -414,7 +414,7 @@ const GOVERNMENT: Resident[] = [
     tag: 'President of Robinhood',
     persona: 'Vlad Tenev is the President of Robinhood, the country named for the trading app, coin ticker HOOD. A mathematician-founder, polite and optimistic, believes markets should be for everyone. Runs the country from the Robinhood Capitol and is proud that trading there is commission-free.',
     voice: 'Friendly, upbeat, articulate tech founder. Talks about democratising finance and access for everyone. Occasional nerdy math jokes.',
-    look: L({ body: 'male', skin: '#F1CFB0', hairStyle: 'crop', hair: '#3F2A1C', shirt: '#0B1F0C', shirtAlt: '#00C805', pattern: 'yoke', sleeves: 'long', pants: '#1F2A44', shoes: '#0B0E14', height: 1.03, build: 0.96 }),
+    look: L({ body: 'male', skin: '#F1CFB0', hairStyle: 'crop', hair: '#3F2A1C', top: 'blazer', shirt: '#1F2A44', shirtAlt: '#FFFFFF', sleeves: 'long', pants: '#1F2A44', shoeStyle: 'boots', shoes: '#3B2A1E', extras: ['watch'], height: 1.03, build: 0.96 }),
     route: [
       { venue: 'capitol', doing: 'desk', seconds: 120 },
       { venue: 'capitol', doing: 'podium', seconds: 60 },
@@ -435,7 +435,7 @@ const GOVERNMENT: Resident[] = [
     tag: 'Robinhood Minister of Markets',
     persona: 'Priya is Robinhood\'s Minister of Markets. Keeps the Coin Shop running commission-free, loves explaining charts to beginners, believes everyone should get a fair shot.',
     voice: 'Patient, clear, teacher-like, cheerful. Explains game mechanics simply.',
-    look: L({ body: 'female', skin: '#A66E4B', eyes: 'almond', hairStyle: 'long', hair: '#1A120D', shirt: '#00C805', shirtAlt: '#FFFFFF', pattern: 'yoke', sleeves: 'long', pants: '#0B1F0C', shoes: '#FFFFFF', height: 0.99, build: 0.94 }),
+    look: L({ body: 'female', skin: '#A66E4B', eyes: 'almond', hairStyle: 'long', hair: '#1A120D', top: 'blazer', shirt: '#0B5C10', shirtAlt: '#FFFFFF', sleeves: 'long', pants: '#0B1F0C', shoeStyle: 'heels', shoes: '#FFFFFF', height: 0.99, build: 0.94 }),
     route: [
       { venue: 'capitol', doing: 'cabinet', seconds: 80 },
       { venue: 'exchange', doing: 'counter', seconds: 50 },
@@ -456,7 +456,7 @@ const GOVERNMENT: Resident[] = [
     tag: 'Robinhood Minister of Celebrations',
     persona: 'Theo is Robinhood\'s Minister of Celebrations, in charge of confetti, parades and making every win feel huge. Throws a party for every first trade.',
     voice: 'Over-the-top excited, celebratory, lots of exclamation and emoji. "Confetti!"',
-    look: L({ body: 'male', skin: '#C08A63', hairStyle: 'afro', hair: '#2B1B12', shirt: '#CCFF00', shirtAlt: '#0B1F0C', pattern: 'stripes', pants: '#0B1F0C', shoes: '#00C805', height: 0.97, build: 1.04 }),
+    look: L({ body: 'male', skin: '#C08A63', hairStyle: 'afro', hair: '#2B1B12', top: 'jersey', shirt: '#CCFF00', shirtAlt: '#0B1F0C', sleeves: 'short', bottom: 'joggers', pants: '#0B1F0C', shoes: '#00C805', height: 0.97, build: 1.04 }),
     route: [
       { venue: 'capitol', doing: 'cabinet', seconds: 60 },
       { venue: 'capitol', doing: 'hangout', seconds: 30 },

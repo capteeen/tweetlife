@@ -17,7 +17,7 @@ export function BlockBadge() {
   const me = useWorld((s) => s.me);
   const c = COUNTRIES[country];
   return (
-    <div className="pointer-events-auto absolute left-3 top-16 z-20 flex max-w-[min(70vw,340px)] flex-col gap-1 max-sm:top-[4.5rem]">
+    <div className="pointer-events-auto absolute left-1/2 top-16 z-20 flex max-w-[min(80vw,360px)] -translate-x-1/2 flex-col items-center gap-1 text-center">
       <div className="flex items-center gap-2 rounded-full chrome py-1 pl-1 pr-3 text-sm">
         {plot?.ownerAvatar ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -95,7 +95,7 @@ export function Neighbours() {
   return (
     <>
       <button
-        className="pointer-events-auto absolute bottom-44 right-3 z-20 rounded-full chrome px-4 py-2 text-sm font-semibold hover:bg-white/10 [@media(any-pointer:coarse)]:bottom-[22rem]"
+        className="pointer-events-auto absolute bottom-56 right-3 z-20 rounded-full chrome px-4 py-2 text-sm font-semibold hover:bg-white/10 [@media(any-pointer:coarse)]:bottom-[26rem]"
         onClick={() => setOpen(!open)}
       >
         👥 Neighbours

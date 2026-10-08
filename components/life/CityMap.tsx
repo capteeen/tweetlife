@@ -1,4 +1,5 @@
 'use client';
+import { CAPITAL_SLOT, plotRect } from '@/lib/world/country-map';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useWorld } from '@/components/world/store';
 import { PALETTES, type Biome } from '@/lib/world/biomes';
@@ -359,6 +360,23 @@ export function CityMap() {
         ctx.fill();
         ctx.fillStyle = '#FFFFFF';
         ctx.fillText(vn.name, px, pz + 24);
+      }
+    }
+    // blocks on a country map: whose posts city each one is (yours in gold), and Capital Square
+    if (st.countryMap) {
+      const labels = [{ text: 'Capital Square', ...plotRect(CAPITAL_SLOT), mine: false }, ...st.countryMap.plots.map((p) => ({ text: `@${p.handle}`, ...p.rect, mine: st.mine?.country === st.countryMap!.country && st.mine.slot === p.slot }))];
+      ctx.font = '700 12px Inter, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      for (const l of labels) {
+        const px = sx(l.x), pz = sz(l.z);
+        const tw = ctx.measureText(l.text).width;
+        ctx.fillStyle = l.mine ? 'rgba(245,196,81,0.92)' : 'rgba(11,14,20,0.78)';
+        ctx.beginPath();
+        ctx.roundRect(px - tw / 2 - 7, pz - 10, tw + 14, 20, 10);
+        ctx.fill();
+        ctx.fillStyle = l.mine ? '#0B0E14' : '#FFFFFF';
+        ctx.fillText(l.text, px, pz + 1);
       }
     }
     // neighbours

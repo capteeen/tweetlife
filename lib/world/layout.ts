@@ -13,9 +13,10 @@ export const DISTRICTS: District[] = [
   { id: 'wellness', name: 'Wellness Row', color: '#2D6A4F', slots: [4, 5, 6], venues: ['gym', 'barber', 'clinic'] },
   { id: 'strip', name: 'The Strip', color: '#FF5D8F', slots: [8, 9, 10], venues: ['club', 'bar', 'suya'] },
   { id: 'trenches', name: 'Trenches Quarter', color: '#06D6A0', slots: [11, 12, 13, 14], venues: ['tech', 'exchange', 'bank', 'hustle'] },
+  { id: 'civic', name: 'Government Hill', color: '#C9A227', slots: [3], venues: ['capitol'] },
 ];
 /** Slots between districts. New venues that no district names land here, in this order. */
-export const SPARE_SLOTS = [3, 7, 15];
+export const SPARE_SLOTS = [7, 15];
 
 export const districtOf = (venueId: string) => DISTRICTS.find((d) => d.venues.includes(venueId)) ?? null;
 export const slotAngle = (slot: number) => (slot / RING_SLOTS) * Math.PI * 2;

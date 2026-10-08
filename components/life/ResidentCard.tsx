@@ -1,17 +1,21 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useWorld, type ResidentMsg } from '@/components/world/store';
-import { RESIDENTS, doingLabel, residentById } from '@/lib/life/residents';
+import { castFor, doingLabel, residentById } from '@/lib/life/residents';
+import { useCountry } from '@/components/world/country';
 import { placeVenues } from '@/lib/life/venues';
 import { buildRoutes, poseAt } from '@/components/world/residentPaths';
 import { SocialMenu } from './SocialMenu';
 import { refreshLove } from './loveClient';
 import type { SocialSend } from './useLife';
+import { SuggestionBox } from './SuggestionBox';
 
 // Tap a named resident: who they are, what they're up to, and a conversation with them (AI, via
-// /api/life/residents/chat). Their latest line also pops up over their head.
+// /api/life/residents/chat). Their latest line also pops up over their head. A president's card also has the
+// country's suggestion box (Suggest tab).
 
 const STARTERS = ['How far? 👋', 'What\'s happening here?', 'Any gist?', 'How do I get more bags?'];
+const GOV_STARTERS = ['Good day, your excellency 🫡', 'What\'s today\'s address?', 'What are the national rules?', 'How do I get my stipend?'];
 
 export function ResidentCard({ sendSocial }: { sendSocial: SocialSend }) {
   const id = useWorld((s) => s.selectedResident);
@@ -22,21 +26,25 @@ export function ResidentCard({ sendSocial }: { sendSocial: SocialSend }) {
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [tab, setTab] = useState<'talk' | 'suggest'>('talk');
   const list = useRef<HTMLDivElement>(null);
   const r = id ? residentById(id) : null;
+  const country = useCountry();
 
   const doing = useMemo(() => {
     if (!r || !geometry) return '';
-    const venues = placeVenues(geometry.contentRadius, geometry.boundaryRadius, useWorld.getState().country);
-    const route = buildRoutes(RESIDENTS, venues, geometry.contentRadius)[RESIDENTS.indexOf(r)];
+    const venues = placeVenues(geometry.contentRadius, geometry.boundaryRadius, country);
+    const cast = castFor(country);
+    const route = buildRoutes(cast, venues, geometry.contentRadius)[cast.indexOf(r)];
     if (!route) return '';
     const p = poseAt(route, Date.now() / 1000);
     return doingLabel(p.stop, p.venue?.name ?? null);
-  }, [r, geometry]);
+  }, [r, geometry, country]);
 
   useEffect(() => {
     setErr(null);
     setText('');
+    setTab('talk');
   }, [id]);
   useEffect(() => {
     list.current?.scrollTo({ top: list.current.scrollHeight, behavior: 'smooth' });
@@ -73,7 +81,7 @@ export function ResidentCard({ sendSocial }: { sendSocial: SocialSend }) {
     }
   };
 
-  const first = r.name.replace(/^(Big|Coach|Uncle|DJ|Nurse) /, '');
+  const first = r.name.replace(/^(Big|Coach|Uncle|DJ|Nurse|Minister|President) /, '');
   return (
     <div className="pointer-events-auto absolute bottom-20 left-1/2 z-30 flex max-h-[78vh] w-[min(94vw,520px)] -translate-x-1/2 flex-col overflow-y-auto rounded-3xl chrome p-4 sm:p-5">
       <div className="flex items-start justify-between gap-3">
@@ -94,54 +102,71 @@ export function ResidentCard({ sendSocial }: { sendSocial: SocialSend }) {
         </button>
       </div>
 
-      <div ref={list} className="mt-3 flex max-h-[34vh] min-h-[3rem] flex-col gap-2 overflow-y-auto pr-1">
-        {!chat?.length && <p className="text-sm text-white/50">Say hi to {first}.</p>}
-        {chat?.map((m, i) => (
-          <div
-            key={i}
-            className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm leading-snug ${m.role === 'user' ? 'self-end bg-x/90 text-white' : 'self-start bg-white/10'}`}
-          >
-            {m.content}
-          </div>
-        ))}
-        {busy && <div className="self-start rounded-2xl bg-white/10 px-3 py-2 text-sm text-white/60">{first} is typing…</div>}
-      </div>
-
-      {!me ? (
-        <p className="mt-3 text-sm text-white/60">Sign in with X to talk to {first}.</p>
+      {r.office === 'president' && r.country && (
+        <div className="mt-3 flex gap-1 rounded-full bg-white/5 p-1 text-sm font-semibold">
+          {(['talk', 'suggest'] as const).map((t) => (
+            <button key={t} onClick={() => setTab(t)} className={`flex-1 rounded-full px-3 py-1.5 ${tab === t ? 'bg-white/15' : 'text-white/60 hover:text-white'}`}>
+              {t === 'talk' ? '💬 Talk' : '💡 Suggest'}
+            </button>
+          ))}
+        </div>
+      )}
+      {tab === 'suggest' && r.country ? (
+        <div className="mt-3 max-h-[52vh] overflow-y-auto pr-1">
+          <SuggestionBox country={r.country} />
+        </div>
       ) : (
         <>
-          {!chat?.length && (
-            <div className="mt-3 flex flex-wrap gap-2">
-              {STARTERS.map((s) => (
-                <button key={s} disabled={busy} onClick={() => send(s)} className="rounded-full bg-white/5 px-3 py-1.5 text-xs font-medium hover:bg-white/10 disabled:opacity-50">
-                  {s}
+          <div ref={list} className="mt-3 flex max-h-[34vh] min-h-[3rem] flex-col gap-2 overflow-y-auto pr-1">
+            {!chat?.length && <p className="text-sm text-white/50">Say hi to {first}.</p>}
+            {chat?.map((m, i) => (
+              <div
+                key={i}
+                className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm leading-snug ${m.role === 'user' ? 'self-end bg-x/90 text-white' : 'self-start bg-white/10'}`}
+              >
+                {m.content}
+              </div>
+            ))}
+            {busy && <div className="self-start rounded-2xl bg-white/10 px-3 py-2 text-sm text-white/60">{first} is typing…</div>}
+          </div>
+
+          {!me ? (
+            <p className="mt-3 text-sm text-white/60">Sign in with X to talk to {first}.</p>
+          ) : (
+            <>
+              {!chat?.length && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {(r.office ? GOV_STARTERS : STARTERS).map((s) => (
+                    <button key={s} disabled={busy} onClick={() => send(s)} className="rounded-full bg-white/5 px-3 py-1.5 text-xs font-medium hover:bg-white/10 disabled:opacity-50">
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <form
+                className="mt-3 flex gap-2"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  send(text);
+                }}
+              >
+                <input
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  maxLength={400}
+                  placeholder={`Talk to ${first}…`}
+                  className="min-w-0 flex-1 rounded-full bg-white/10 px-4 py-2 text-sm outline-none placeholder:text-white/40 focus:bg-white/15"
+                />
+                <button type="submit" disabled={busy || !text.trim()} className="rounded-full bg-x px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+                  Send
                 </button>
-              ))}
-            </div>
+              </form>
+            </>
           )}
-          <form
-            className="mt-3 flex gap-2"
-            onSubmit={(e) => {
-              e.preventDefault();
-              send(text);
-            }}
-          >
-            <input
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              maxLength={400}
-              placeholder={`Talk to ${first}…`}
-              className="min-w-0 flex-1 rounded-full bg-white/10 px-4 py-2 text-sm outline-none placeholder:text-white/40 focus:bg-white/15"
-            />
-            <button type="submit" disabled={busy || !text.trim()} className="rounded-full bg-x px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
-              Send
-            </button>
-          </form>
         </>
       )}
       {err && <p className="mt-2 text-xs text-rose-300">{err}</p>}
-      {me && (
+      {me && tab === 'talk' && (
         <SocialMenu
           target={{ kind: 'resident', id: r.id, name: r.name }}
           sendSocial={sendSocial}

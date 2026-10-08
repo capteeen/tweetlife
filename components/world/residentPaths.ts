@@ -2,6 +2,7 @@ import type { PlacedVenue } from '@/lib/life/venues';
 import type { Resident, ResidentDoing, ResidentStop } from '@/lib/life/residents';
 import { FLOOR_Y, WALK_IN } from '@/lib/world/interiors';
 import { RING_ROAD_W, ringRoadRadius } from '@/lib/world/layout';
+import { CABINET_CHAIRS, CABINET_SEAT, DESK_CHAIR, PODIUM } from '@/lib/world/capitol';
 import type { FigureAct } from './figureMoves';
 import type { HomePose } from './figurePoses';
 
@@ -11,7 +12,8 @@ import type { HomePose } from './figurePoses';
 
 const WALK_SPEED = 2.2;
 
-type Spot = { x: number; z: number; rot: number; act: FigureAct | HomePose | null; seat?: number; walk?: boolean; via?: [number, number] };
+type Spot = { x: number; z: number; rot: number; act: FigureAct | HomePose | null; seat?: number; walk?: boolean; via?: [number, number][] };
+// `via`: waypoints between the door and the spot, in walking-in order, to step round furniture
 
 const stand = (upper: HomePose['upper']): HomePose => ({ base: 'stand', upper, seat: 0 });
 const chair = (upper: HomePose['upper'], seat: number): HomePose => ({ base: 'chair', upper, seat });
@@ -36,15 +38,15 @@ const SPOTS: Record<string, Partial<Record<ResidentDoing, Spot[]>>> = {
     ],
   },
   bar: {
-    stool: STOOLS.map((x) => ({ x, z: -2.05, rot: Math.PI, act: chair('drink', 0.87), via: [x, 0] as [number, number] })),
-    booth: BOOTHS.map(([s, z]) => ({ x: s * 4.65, z, rot: -s * (Math.PI / 2), act: chair('idle', 0.6), via: [s * 4.0, 3.2] as [number, number] })),
+    stool: STOOLS.map((x) => ({ x, z: -2.05, rot: Math.PI, act: chair('drink', 0.87), via: [[x, 0]] as [number, number][] })),
+    booth: BOOTHS.map(([s, z]) => ({ x: s * 4.65, z, rot: -s * (Math.PI / 2), act: chair('idle', 0.6), via: [[s * 4.0, 3.2]] as [number, number][] })),
     dance: [
       { x: 1.0, z: 0.6, rot: 0.3, act: 'dance' },
       { x: -1.8, z: 3.0, rot: 2.8, act: 'dance' },
     ],
   },
   gym: {
-    treadmill: [-4.2, -2.8].map((x) => ({ x, z: 2.3, rot: Math.PI, act: null, seat: 0.32, walk: true, via: [x, 4.2] as [number, number] })),
+    treadmill: [-4.2, -2.8].map((x) => ({ x, z: 2.3, rot: Math.PI, act: null, seat: 0.32, walk: true, via: [[x, 4.2]] as [number, number][] })),
     yoga: [
       { x: 1.0, z: 2.6, rot: Math.PI, act: 'stretch' },
       { x: 3.6, z: 2.6, rot: Math.PI, act: 'stretch' },
@@ -53,6 +55,19 @@ const SPOTS: Record<string, Partial<Record<ResidentDoing, Spot[]>>> = {
       { x: -1.6, z: 0.6, rot: Math.PI / 2, act: 'pushups' },
       { x: 2.0, z: -0.9, rot: -Math.PI / 2, act: 'pushups' },
     ],
+  },
+  // government house (lib/world/capitol.ts): down the carpet, then round the benches, desk and cabinet table
+  capitol: {
+    desk: [{ x: DESK_CHAIR.x, z: DESK_CHAIR.z, rot: 0, act: chair('write', DESK_CHAIR.seat), via: [[0.8, 0.3], [2.2, -3.0], [2.2, -5.2], [0.9, -5.2]] }],
+    podium: [{ x: PODIUM.x - 0.2, z: PODIUM.z - 0.8, rot: PODIUM.rot, act: stand('cheer'), via: [[-0.8, 0.3], [-1.3, -1.7], [-3.6, -3.4]] }],
+    // the four seats ministers use, in cast order: near side first, then the far side round the end of the table
+    cabinet: [CABINET_CHAIRS[0], CABINET_CHAIRS[3], CABINET_CHAIRS[4], CABINET_CHAIRS[1]].map((c, i) => ({
+      x: c.x,
+      z: c.z,
+      rot: -c.side * (Math.PI / 2),
+      act: chair((['read', 'write', 'idle', 'phone'] as const)[i], CABINET_SEAT),
+      via: (c.side < 0 ? [[0.8, 0.3], [2.9, 0.3], [2.9, c.z]] : [[0.8, 0.3], [6.6, 0.3], [6.6, c.z]]) as [number, number][],
+    })),
   },
   exchange: {
     counter: [-1.6, 0.4, 2.2].map((x) => ({ x, z: -1.2, rot: Math.PI, act: stand('phone') })),
@@ -96,7 +111,7 @@ const toWorld = (v: PlacedVenue, x: number, z: number): P => {
 function wayOut(v: PlacedVenue, sp: Spot): P[] {
   const k = WALK_IN[v.id];
   const pts: P[] = [];
-  if (sp.via) pts.push(toWorld(v, ...sp.via));
+  if (sp.via) for (const p of [...sp.via].reverse()) pts.push(toWorld(v, ...p));
   if (k) {
     pts.push(toWorld(v, 0, k.d / 2 - 1.2), toWorld(v, 0, k.d / 2 + 2.2));
   } else pts.push(toWorld(v, sp.x * 0.5, 10.5));
@@ -155,8 +170,8 @@ function buildRoute(r: Resident, index: number, venues: PlacedVenue[], contentRa
     const to = toWorld(nv, nsp.x, nsp.z);
     if (nv.id === v.id) {
       const pts: P[] = [at];
-      if (sp.via) pts.push(toWorld(v, ...sp.via));
-      if (nsp.via) pts.push(toWorld(nv, ...nsp.via));
+      if (sp.via) for (const p of [...sp.via].reverse()) pts.push(toWorld(v, ...p));
+      if (nsp.via) for (const p of nsp.via) pts.push(toWorld(nv, ...p));
       pts.push(to);
       legs.push(walkLeg(pts));
       return;

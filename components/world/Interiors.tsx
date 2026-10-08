@@ -12,12 +12,14 @@ import { JOBS } from '@/lib/life/jobs';
 import { Figure } from './Figure';
 import { beat } from './clubAudio';
 import { DistanceDetail } from './DistanceDetail';
+import { Capitol } from './Capitol';
 
 // Walk-in venues, open to the sky so the camera can follow you in: Club Moon (dance floor, DJ, moving
 // lights, mirror ball), the Degen Lounge (bar, booths, slow lights), the gym (racks, benches, treadmills,
-// mats), the Trenches Coin Shop (counter, live ticker, coin balloons), and the workplaces: the Clinic (beds,
-// patients, reception), the Hustle Hub job centre (the job board, advisers) and Devnet Labs (standing desks,
-// code on every screen). Built in the venue's own frame, door at +z facing the city.
+// mats), the Trenches Coin Shop (counter, live ticker, coin balloons), the government house (desk, flags,
+// podium with today's address, cabinet table, columns and a dome, all in the country's colours), and the
+// workplaces: the Clinic (beds, patients, reception), the Hustle Hub job centre (the job board, advisers) and
+// Devnet Labs (standing desks, code on every screen). Built in the venue's own frame, door at +z facing the city.
 
 const FONT = '/fonts/inter-600.woff';
 const tmp = new THREE.Object3D();
@@ -50,6 +52,7 @@ export function WalkInVenue({ v, near, onClick }: { v: PlacedVenue; near: boolea
         {v.id === 'clinic' && <Clinic k={k} />}
         {v.id === 'hustle' && <JobCentre k={k} />}
         {v.id === 'tech' && <TechOffice k={k} />}
+        {v.id === 'capitol' && <Capitol k={k} y={FLOOR_Y} />}
       </DistanceDetail>
     </group>
   );
@@ -63,6 +66,7 @@ const SHELL: Record<string, { wall: string; floor: string }> = {
   clinic: { wall: '#F4F7F6', floor: '#D6ECE6' },
   hustle: { wall: '#EDE9F7', floor: '#B9B4CC' },
   tech: { wall: '#1B2436', floor: '#C9CDD2' },
+  capitol: { wall: '#EFEAE0', floor: '#D8D0C0' },
 };
 
 const FRONT_H = 1.3;

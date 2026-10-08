@@ -10,6 +10,10 @@ import type { PlacedVenue } from '@/lib/life/venues';
 import { statDelta } from '@/lib/life/statNames';
 import { SHIFTS_PER_DAY, SHIFT_COST, SHIFT_SECONDS, jobsAt, levelOf, wageFor, type Job } from '@/lib/life/jobs';
 import { jobActions } from './jobs';
+import { citizenOf, curfew, governmentOf, pct, todaysAddress } from '@/lib/life/government';
+import { COUNTRIES } from '@/lib/world/countries';
+import { useCountry } from '@/components/world/country';
+import { SuggestionBox } from './SuggestionBox';
 
 /** Where a ride drops you for a venue: on its plaza, in front of the door (the terminal kerb for the airport). */
 export function venueDoor(v: PlacedVenue, contentRadius: number, boundaryRadius: number) {
@@ -37,7 +41,15 @@ export function VenueCard({ sendSocial }: { sendSocial: SocialSend }) {
   const selectPeer = useWorld((s) => s.selectPeer);
   const doing = useWorld((s) => s.doing);
   const [peek, setPeek] = useState(false);
+  const country = useCountry();
   if (!venue) return null;
+  const gov = governmentOf(country);
+  const capitol = venue.id === 'capitol';
+  const closed = capitol && curfew().on;
+  const citizen = !!me && citizenOf(me) === country;
+  // what an action actually pays or costs here, after the country's rules
+  const bagsFor = (a: { id: string; bags: number }) =>
+    capitol && a.id === 'stipend' ? -gov.rules.stipend : venue.id === 'hustle' && a.id === 'shift' ? Math.round(a.bags * (1 + gov.rules.shiftBonus)) : a.bags;
 
   const gap = (p: { x: number; z: number }) => Math.hypot(Math.max(0, Math.abs(p.x - venue.x) - venue.w / 2), Math.max(0, Math.abs(p.z - venue.z) - venue.d / 2));
   const island = venue.id === 'airport' && geometry ? airportLayout(geometry.contentRadius, geometry.boundaryRadius).island : null;
@@ -57,7 +69,8 @@ export function VenueCard({ sendSocial }: { sendSocial: SocialSend }) {
       const a = venue.actions.find((x) => x.id === actionId)!;
       // play the move that goes with it (dancing at the club, push-ups at the gym...)
       if (a.act) useWorld.getState().setDoing({ id: a.act, until: Date.now() + (a.actSeconds ?? 8) * 1000 });
-      setMsg(`${a.emoji} ${statDelta(a.me)}.${a.nearby ? ` ${r.lifted ? `${r.lifted} ${r.lifted === 1 ? 'person' : 'people'} nearby felt it too.` : 'Nobody else is here yet, so the room was all yours. Bring friends next time.'}` : ''}`);
+      const got = (r as { bags?: number }).bags ?? 0;
+      setMsg(`${a.emoji} ${[got > 0 ? `+${got} bags` : '', statDelta(a.me)].filter(Boolean).join(', ')}.${a.nearby ? ` ${r.lifted ? `${r.lifted} ${r.lifted === 1 ? 'person' : 'people'} nearby felt it too.` : 'Nobody else is here yet, so the room was all yours. Bring friends next time.'}` : ''}`);
     } catch (e) {
       setMsg((e as Error).message);
     } finally {
@@ -111,6 +124,7 @@ export function VenueCard({ sendSocial }: { sendSocial: SocialSend }) {
           {!hereNow.length && !(here && me) && <span className="text-xs text-white/40">Nobody right now.</span>}
         </div>
       </div>
+      {capitol && <Government country={country} closed={closed} />}
       {!me ? (
         <p className="mt-3 text-sm text-white/60">Sign in with X to use the city.</p>
       ) : (
@@ -123,7 +137,7 @@ export function VenueCard({ sendSocial }: { sendSocial: SocialSend }) {
           {venue.actions.map((a) => (
             <button
               key={a.id}
-              disabled={!here || busy !== null || (a.bags > 0 && me.bags < a.bags)}
+              disabled={!here || busy !== null || closed || (capitol && a.id === 'stipend' && !citizen) || (bagsFor(a) > 0 && me.bags < bagsFor(a))}
               onClick={() => act(a.id)}
               className="flex items-start gap-3 rounded-2xl bg-white/5 px-3 py-2.5 text-left transition hover:bg-white/10 disabled:opacity-50"
             >
@@ -131,7 +145,7 @@ export function VenueCard({ sendSocial }: { sendSocial: SocialSend }) {
               <span className="min-w-0">
                 <span className="block text-sm font-semibold">{a.label}</span>
                 <span className="block text-[11px] text-white/55">
-                  {a.bags > 0 ? `${a.bags} bags · ` : a.bags < 0 ? `earn ${-a.bags} bags · ` : 'free · '}
+                  {bagsFor(a) > 0 ? `${bagsFor(a)} bags · ` : bagsFor(a) < 0 ? `earn ${-bagsFor(a)} bags${capitol && a.id === 'stipend' ? ` · once a day · ${citizen ? 'you qualify' : `${COUNTRIES[country].demonym}s only`}` : ''}` : 'free · '}
                   {fmt(a.me)}
                   {a.nearby ? ` · nearby ${fmt(a.nearby)}` : ''}
                 </span>
@@ -224,6 +238,30 @@ function WorkHere({ venueId, here, gas }: { venueId: string; here: boolean; gas:
         );
       })}
       {err && <p className="mt-2 text-xs text-amber-300">{err}</p>}
+    </div>
+  );
+}
+
+/** The government panel on the government house sheet: today's address and the national rules. */
+function Government({ country, closed }: { country: ReturnType<typeof useCountry>; closed: boolean }) {
+  const c = COUNTRIES[country];
+  const g = governmentOf(country);
+  const a = todaysAddress(country);
+  return (
+    <div className="mt-3 rounded-2xl p-3" style={{ background: `linear-gradient(135deg, ${c.theme.gradient[0]}33, ${c.theme.gradient[1]}22)` }}>
+      <div className="text-xs font-semibold uppercase tracking-wide text-white/60">Today&apos;s address · President {c.president}</div>
+      <p className="mt-1 text-sm leading-snug">&ldquo;{a.text}&rdquo;</p>
+      <div className="mt-2.5 text-xs font-semibold uppercase tracking-wide text-white/60">National rules of {c.name}</div>
+      <ul className="mt-1 space-y-0.5 text-xs text-white/80">
+        <li>🪙 {pct(g.rules.tradeTax)} tax on Coin Shop sales</li>
+        <li>🪪 {g.rules.stipend} bags a day for every {c.demonym}</li>
+        <li>⭐ {g.rules.perk}</li>
+        <li>🌙 Curfew: the house closes while NEPA has taken light</li>
+      </ul>
+      {closed && <p className="mt-2 text-xs font-semibold text-amber-200">Curfew is on. NEPA has taken light, so the house is closed until it comes back.</p>}
+      <div className="mt-3 border-t border-white/10 pt-3">
+        <SuggestionBox country={country} compact />
+      </div>
     </div>
   );
 }

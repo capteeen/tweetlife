@@ -3,6 +3,8 @@ import { redis } from '../redis';
 import { quotes, quoteOne } from './trenches';
 import { balloonKey } from './balloons';
 import { BAGS_PER_USD } from './coinRules';
+import { tradeTaxOn } from './government';
+import { COUNTRIES, DEFAULT_COUNTRY, type CountryId } from '../world/countries';
 
 export { BAGS_PER_USD, MIN_BUY, MAX_BUY, BUY_PRESETS } from './coinRules';
 
@@ -61,23 +63,25 @@ export async function buyCoin(playerId: string, chain: string, mint: string, bag
   return { symbol: t.symbol, units, bags };
 }
 
-/** Sell a fraction (0..1] of a position at the live price. */
-export async function sellCoin(playerId: string, mint: string, fraction: number) {
+/** Sell a fraction (0..1] of a position at the live price. The country you sell in keeps its trade tax. */
+export async function sellCoin(playerId: string, mint: string, fraction: number, country: CountryId = DEFAULT_COUNTRY) {
   const row = await db.paperCoin.findUnique({ where: { playerId_mint: { playerId, mint } } });
   if (!row) throw new Error('You do not hold that coin.');
   const t = await quoteOne(row.chain, row.mint);
   if (!t || !(t.priceUsd > 0)) throw new Error('No live price for that coin right now. Try again in a minute.');
   const f = Math.max(0.01, Math.min(1, fraction));
   const units = f >= 0.999 ? row.units : row.units * f;
-  const bags = Math.floor(units * t.priceUsd * BAGS_PER_USD);
+  const gross = Math.floor(units * t.priceUsd * BAGS_PER_USD);
+  const tax = tradeTaxOn(country, gross);
+  const bags = gross - tax;
   const cost = f >= 0.999 ? row.costBags : Math.round(row.costBags * f);
   await db.$transaction([
     db.player.update({ where: { id: playerId }, data: { bags: { increment: bags } } }),
-    db.bagTx.create({ data: { playerId, kind: 'sell', amount: bags, note: `🪙 Sold $${row.symbol} at the Coin Shop` } }),
+    db.bagTx.create({ data: { playerId, kind: 'sell', amount: bags, note: `🪙 Sold $${row.symbol} at the Coin Shop${tax ? ` (${tax} bags ${COUNTRIES[country].name} tax)` : ''}` } }),
     f >= 0.999
       ? db.paperCoin.delete({ where: { id: row.id } })
       : db.paperCoin.update({ where: { id: row.id }, data: { units: { decrement: units }, costBags: { decrement: cost } } }),
   ]);
   await redis().del(balloonKey(playerId)).catch(() => {});
-  return { symbol: row.symbol, bags, pnl: bags - cost };
+  return { symbol: row.symbol, bags, tax, pnl: bags - cost };
 }

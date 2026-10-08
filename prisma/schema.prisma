@@ -289,6 +289,8 @@ model Player {
   loveSent      SocialRequest[] @relation("loveSent")
   loveGot       SocialRequest[] @relation("loveGot")
   firstDaySteps FirstDayStep[]
+  suggestions Suggestion[]
+  backed      SuggestionBacker[]
 }
 
 model BagTx {
@@ -468,4 +470,38 @@ model FirstDayStep {
   at       DateTime @default(now())
 
   @@id([playerId, step])
+}
+
+/// A suggestion a citizen filed with their president at the government house (lib/life/suggestions.ts).
+/// Kept for good: the president answers it, other citizens back it, and the most-backed ones reach the
+/// cabinet's agenda and the president's own talking points.
+model Suggestion {
+  id        String   @id @default(cuid())
+  playerId  String
+  player    Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  /// Country id (lib/world/countries.ts): whose president it was filed with
+  country   String
+  topic     String
+  text      String
+  /// review (answered, under review) | agenda (enough citizens backed it to go on the cabinet's agenda)
+  status    String   @default("review")
+  /// The president's answer
+  reply     String?
+  backers   Int      @default(0)
+  createdAt DateTime @default(now())
+
+  backedBy SuggestionBacker[]
+
+  @@index([country, status, backers])
+  @@index([playerId, createdAt])
+}
+
+model SuggestionBacker {
+  suggestionId String
+  suggestion   Suggestion @relation(fields: [suggestionId], references: [id], onDelete: Cascade)
+  playerId     String
+  player       Player     @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  at           DateTime   @default(now())
+
+  @@id([suggestionId, playerId])
 }

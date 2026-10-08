@@ -126,3 +126,37 @@ canvas {
     animation-iteration-count: 1 !important;
   }
 }
+
+/* welcome page: the filmstrip of game pictures drifting sideways (two copies of the row, so -50% loops) */
+.tl-strip-track {
+  padding-right: 0.75rem;
+  animation: tl-marquee 80s linear infinite;
+}
+@media (min-width: 640px) {
+  .tl-strip-track {
+    padding-right: 1rem;
+  }
+}
+.tl-strip:hover .tl-strip-track,
+.tl-strip:focus-within .tl-strip-track {
+  animation-play-state: paused;
+}
+@keyframes tl-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tl-strip {
+    overflow-x: auto;
+  }
+  .tl-strip-track {
+    animation: none;
+  }
+  .tl-strip-track > [aria-hidden='true'] {
+    display: none;
+  }
+}

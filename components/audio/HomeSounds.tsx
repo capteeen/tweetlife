@@ -7,7 +7,6 @@ import { Loop, type LoopKind } from '@/lib/audio/loops';
 import { sfx, type SfxName } from '@/lib/audio/sfx';
 import { play as playMusic, stop as stopMusic, type Style } from '@/components/world/clubAudio';
 import { whenUnlocked } from '@/lib/audio/engine';
-import { useSoundSettings } from '@/lib/audio/settings';
 
 // The house: the mains hum while NEPA has the light on, the hum cutting out when it goes, the generator
 // chugging when it's fuelled, the fan, and whatever the avatar is doing with the furniture: sitting down,
@@ -86,7 +85,7 @@ export function HomeSounds() {
         later(l.kind === 'snore' ? 2500 : 1200, () => act === loop && loop.set(l.level, l.params));
       }
       const style = MUSIC[id];
-      if (style) musicTimer = setInterval(() => !useSoundSettings.getState().muted && playMusic(style, 0.7), 300);
+      if (style) musicTimer = setInterval(() => playMusic(style, 0.7), 300);
     };
 
     const stopUnlock = whenUnlocked(() => {
@@ -104,13 +103,9 @@ export function HomeSounds() {
       }
       if (s.acting !== prev.acting) acting(s.acting);
     });
-    const unsubMute = useSoundSettings.subscribe((s, prev) => {
-      if (s.muted !== prev.muted && !s.muted) power(useHome.getState().home);
-    });
     return () => {
       stopUnlock();
       unsub();
-      unsubMute();
       timers.forEach(clearTimeout);
       if (musicTimer) clearInterval(musicTimer);
       stopMusic();

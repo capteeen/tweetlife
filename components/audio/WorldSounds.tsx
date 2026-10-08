@@ -88,7 +88,7 @@ export function WorldSounds({ geometry }: { geometry: WorldGeometry }) {
     const now = state.clock.elapsedTime;
     const st = useWorld.getState();
     if (!audio()) {
-      // muted or not unlocked yet: wind everything down (loops shut themselves off once quiet)
+      // not unlocked yet, or the tab is hidden: wind everything down (loops shut themselves off once quiet)
       if (now - slow.current > 1) {
         slow.current = now;
         all.forEach((l) => l.set(0));

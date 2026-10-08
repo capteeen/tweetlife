@@ -3,18 +3,19 @@ import { useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { XMark } from '@/components/ui/Chrome';
-import { installAudioUnlock, isAudioUnlocked, unlockAudio, whenUnlocked } from '@/lib/audio/engine';
-import { useSoundSettings } from '@/lib/audio/settings';
+import { installAudioUnlock, whenUnlocked } from '@/lib/audio/engine';
 import { COUNTRY_LIST } from '@/lib/world/countries';
 import { startTheme, stopTheme, ui, type UiSound } from './titleSound';
+import { Filmstrip, Gallery, ShotViewer } from './Gallery';
 
 const WelcomeScene = dynamic(() => import('./WelcomeScene').then((m) => m.WelcomeScene), { ssr: false });
 const CountriesScene = dynamic(() => import('./CountriesScene').then((m) => m.CountriesScene), { ssr: false });
 
 // The welcome page. Up top, a little 3D city on a speech-bubble island (the brand: white bubble-buildings with
 // yellow windows on sky blue) behind the headline and the two ways in. Below, how a world grows, the three
-// countries as 3D islands with a plane flying between them, and what there is to do inside, with real screenshots. A sunny theme tune starts on the first tap (browsers block sound before
-// that); the speaker button mutes it, and the choice is kept for the game too.
+// countries as 3D islands with a plane flying between them, and a gallery of real screenshots of what there is
+// to do (Gallery.tsx). A sunny theme tune starts on the first tap anywhere (browsers block sound before that).
+// Sound is always on: there is no mute, here or in the game.
 
 type Props = {
   /** The operator's public world, linked as a live showcase. Null = none yet. */
@@ -65,10 +66,11 @@ export function TitleScreen({ backdropHandle, signedInHandle, authError, liveWor
       />
       <HowItWorks />
       <Countries />
-      <Features />
+      <Gallery />
       <Stats />
       <FinalCta signedInHandle={signedInHandle} onPrimary={primary} onEnter={() => open('enter')} />
       <Footer backdropHandle={backdropHandle} liveWorlds={liveWorlds} />
+      <ShotViewer />
 
       {modal && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#0F2747]/35 p-3 backdrop-blur-sm sm:items-center" onClick={close}>
@@ -81,55 +83,31 @@ export function TitleScreen({ backdropHandle, signedInHandle, authError, liveWor
   );
 }
 
-/** Start the theme on the first tap (unless muted), and follow the mute switch after that. */
+/** Sound is always on: the theme starts with the first tap, click or key press anywhere on the page
+ *  (browsers block audio until then). */
 function useThemeMusic() {
-  const muted = useSoundSettings((s) => s.muted);
   useEffect(() => {
     installAudioUnlock();
-    const off = whenUnlocked(() => {
-      if (!useSoundSettings.getState().muted) startTheme();
-    });
+    const off = whenUnlocked(() => startTheme());
     return () => {
       off();
       stopTheme();
     };
   }, []);
-  useEffect(() => {
-    if (!isAudioUnlocked()) return;
-    if (muted) stopTheme();
-    else startTheme();
-  }, [muted]);
 }
 
-function SoundToggle() {
-  const saved = useSoundSettings((s) => s.muted);
-  const [unlocked, setUnlocked] = useState(false);
-  // the saved choice lives in localStorage, which the server can't see: show it only once mounted
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-  useEffect(() => whenUnlocked(() => setUnlocked(true)), []);
-  const muted = mounted && saved;
-  const toggle = () => {
-    unlockAudio();
-    const next = !useSoundSettings.getState().muted;
-    useSoundSettings.getState().setMuted(next);
-    if (!next) setTimeout(() => ui('on'), 30);
-  };
-  const live = unlocked && !muted;
+/** "Now playing" once the theme has started. Not a button: there is no mute. */
+function NowPlaying() {
+  const [on, setOn] = useState(false);
+  useEffect(() => whenUnlocked(() => setOn(true)), []);
   return (
-    <button
-      onClick={toggle}
-      aria-pressed={!muted}
-      aria-label={muted ? 'Turn sound on' : 'Turn sound off'}
-      className={`group flex h-10 items-center gap-2 rounded-full bg-white/90 pl-2.5 pr-3.5 text-sm font-semibold text-[#0F2747] shadow-[0_6px_20px_rgba(15,39,71,0.18)] backdrop-blur transition hover:bg-white ${mounted ? '' : 'opacity-0'}`}
+    <div
+      aria-hidden
+      className={`flex h-10 items-center gap-2 rounded-full bg-white/90 px-3.5 text-sm font-semibold text-[#0F2747] shadow-[0_6px_20px_rgba(15,39,71,0.18)] backdrop-blur transition-opacity duration-500 ${on ? 'opacity-100' : 'opacity-0'}`}
     >
-      <span className="relative flex h-6 w-6 items-center justify-center">
-        {muted ? <SpeakerOff /> : <SpeakerOn />}
-        {!muted && !unlocked && <span className="absolute inset-0 animate-ping rounded-full bg-[#3BA9F5]/40" />}
-      </span>
-      <span className="hidden sm:inline">{muted ? 'Sound off' : live ? 'Sound on' : 'Tap for sound'}</span>
-      {live && <Bars />}
-    </button>
+      <Bars />
+      <span className="hidden sm:inline">Sunny Block</span>
+    </div>
   );
 }
 
@@ -142,19 +120,6 @@ function Bars() {
     </span>
   );
 }
-
-const SpeakerOn = () => (
-  <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-    <path d="M11 5 6 9H3v6h3l5 4V5Z" fill="currentColor" />
-    <path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13" />
-  </svg>
-);
-const SpeakerOff = () => (
-  <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-    <path d="M11 5 6 9H3v6h3l5 4V5Z" fill="currentColor" />
-    <path d="m16 9 5 6M21 9l-5 6" />
-  </svg>
-);
 
 /** The logo: a speech bubble that is a building (white, yellow windows, a little door), on sky blue. */
 export function BubbleLogo({ className = 'h-10 w-10' }: { className?: string }) {
@@ -246,7 +211,7 @@ function Hero({
           <span className="text-xl font-black tracking-tight text-white drop-shadow-[0_2px_0_rgba(15,60,120,0.35)]">tweetlife</span>
         </Link>
         <div className="flex items-center gap-2">
-          <SoundToggle />
+          <NowPlaying />
         </div>
       </header>
 
@@ -374,6 +339,7 @@ function HowItWorks() {
           </li>
         ))}
       </ol>
+      <Filmstrip />
     </section>
   );
 }
@@ -437,34 +403,6 @@ function Countries() {
             <p className="mt-1 text-sm text-[#4A5B73]">President {c.president}</p>
             <span className="mt-3 inline-block text-sm font-bold text-[#1D9BF0] group-hover:underline">Visit {c.capital} →</span>
           </a>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function Features() {
-  const items = [
-    { img: 'city', title: 'A skyline from your timeline', body: 'Towers for your biggest posts, a landmark for your best one, and traffic in the streets.' },
-    { img: 'look', title: 'Make your look', body: 'Pick hair, skin and outfit. That person is you, walking your own streets.' },
-    { img: 'home', title: 'A home to furnish', body: 'Start in a starter flat and fill it with 50+ pieces from the furniture market.' },
-    { img: 'club', title: 'Nights out', body: 'Dance at Club Moon, lift at the gym, and chat with residents who talk back.' },
-    { img: 'coins', title: 'Coins on a string', body: 'Every coin you hold floats over your head. Pump and it turns gold. Rug and it pops.' },
-    { img: 'rides', title: 'Get around', body: 'Walk, bike, scooter, bus, rideshare or a yellow cab, anywhere on the city map.' },
-  ];
-  return (
-    <section className="bg-[#F6FAFE] px-5 py-16 sm:px-8 md:py-20">
-      <SectionTitle kicker="What's inside" title="A whole life in your city" sub="Tweetlife is a little life game. You start with 10,000 bags and a starter flat. What you do next is up to you." />
-      <div className="mx-auto mt-10 grid max-w-6xl gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {items.map((f) => (
-          <article key={f.img} className="overflow-hidden rounded-3xl bg-white shadow-[0_8px_30px_rgba(15,39,71,0.08)] ring-1 ring-[#0F2747]/5">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={`/welcome/${f.img}.webp`} alt={f.title} loading="lazy" decoding="async" width={720} height={540} className="aspect-[4/3] w-full bg-[#DCEBFA] object-cover" />
-            <div className="p-5">
-              <h3 className="text-lg font-extrabold">{f.title}</h3>
-              <p className="mt-1 text-[15px] leading-6 text-[#4A5B73]">{f.body}</p>
-            </div>
-          </article>
         ))}
       </div>
     </section>

@@ -4,7 +4,7 @@ import { distToListener, panner } from './spatial';
 import { hiss, hz, ping, rand, tone, type Eng } from './synth';
 
 // One-shot sound effects, all synthesised. `sfx('coins')` plays at the player; `sfx('horn', { at })` plays in
-// 3D at a spot in the world. Nothing plays before the first tap, while muted, or when too far away to hear.
+// 3D at a spot in the world. Nothing plays before the first tap or when too far away to hear.
 
 export type Surface = 'asphalt' | 'concrete' | 'grass' | 'dirt' | 'sand' | 'wood' | 'tile' | 'carpet' | 'metal';
 

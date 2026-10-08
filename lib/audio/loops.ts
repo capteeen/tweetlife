@@ -1,7 +1,7 @@
 'use client';
 import { audioRaw } from './engine';
 import { movePanner, panner } from './spatial';
-import { useSoundSettings, type Bus } from './settings';
+import type { Bus } from './settings';
 import { drive, filter, gain, hiss, hz, lfo, noiseLoop, pick, rand, tone, type Eng } from './synth';
 
 // Continuous sounds: the city bed, wind, birds, crowds, engines, the generator, the TV... A Loop is built the
@@ -448,8 +448,8 @@ export class Loop {
     if (!e) return;
     const t = e.ctx.currentTime;
     if (params) Object.assign(this.params, params);
-    // muted: let everything wind down instead of running silently
-    if (useSoundSettings.getState().muted || e.ctx.state !== 'running') level = 0;
+    // suspended (tab hidden): let everything wind down instead of running silently
+    if (e.ctx.state !== 'running') level = 0;
     this.level = level;
     if (level > 0.001 && !this.built) this.build(e);
     if (!this.built || !this.out) return;

@@ -6,6 +6,7 @@ import { countryOf } from '@/lib/world/countries';
 import { FIRST_DAY, FIRST_DAY_TOTAL, firstDayStep, type FirstDayStepId } from '@/lib/life/firstDaySteps';
 import { arrivalSpot, doorOf, firstDayActions, freeLift, homeSpot, venueSpot } from './firstDay';
 import { enterVenue } from './travel';
+import { arrive } from './flight';
 import { markWelcomeSeen } from './Welcome';
 
 // The guided first day, on screen: a card at the top that says what to do next and has the button that does it,
@@ -21,6 +22,7 @@ export function FirstDayGuide({ place }: { place: 'city' | 'home' }) {
   const selectedVenue = useWorld((s) => s.selectedVenue?.id ?? null);
   const furnitureKey = useWorld((s) => (s.life?.furniture ?? []).filter((f) => f.paid > 0).length);
   const txKey = useWorld((s) => s.life?.txs?.[0]?.id ?? '');
+  const onTrip = useWorld((s) => !!s.trip);
   const step = fd?.state === 'active' ? fd.next : null;
   const [phase, setPhase] = useState<Phase>('idle');
   const [passportOpen, setPassportOpen] = useState(false);
@@ -42,18 +44,34 @@ export function FirstDayGuide({ place }: { place: 'city' | 'home' }) {
     setErr(null);
   }, [step]);
 
-  // you land at the airport: stand on the kerb outside the terminal, then passport control
+  // you land at your country's airport: off the plane at the arrival stand, walked in to passport control
+  // (components/life/flight.ts), where your ID card gets stamped; then the airport's welcome
+  const booth = useRef<(() => void) | null>(null);
   useEffect(() => {
     if (place !== 'city' || step !== 'passport' || !hasModel || landed.current) return;
     landed.current = true;
     const s = useWorld.getState();
+    const country = s.life?.me?.citizen?.country;
     const at = arrivalSpot();
-    // arriving on a flight (the flights feature) puts you at the kerb already
-    // facing the terminal (east), so the camera sits out over the road rather than inside the building
-    if (at && !(s as unknown as { flight?: unknown }).flight) s.setTeleport({ ...at, yaw: -Math.PI / 2 });
-    const t = setTimeout(() => setPassportOpen(true), 1200);
-    return () => clearTimeout(t);
+    // looking west at the terminal, so the camera starts out over the apron
+    if (at) s.setTeleport({ ...at, yaw: Math.PI / 2 });
+    const atBooth = () =>
+      new Promise<void>((done) => {
+        // stamped already (another tab): straight on to the welcome
+        if (useWorld.getState().life?.firstDay?.next !== 'passport') return done();
+        booth.current = done;
+        setPassportOpen(true);
+      });
+    setTimeout(() => {
+      if (country) arrive(country, { atBooth }).catch(() => setPassportOpen(true));
+      else setPassportOpen(true);
+    }, 800);
   }, [place, step, hasModel]);
+  const closePassport = () => {
+    setPassportOpen(false);
+    booth.current?.();
+    booth.current = null;
+  };
 
   // the beacon: over wherever the current step happens
   useEffect(() => {
@@ -95,10 +113,7 @@ export function FirstDayGuide({ place }: { place: 'city' | 'home' }) {
 
   if (step === 'passport') {
     if (place === 'home') action = { label: '✈️ Go to the airport', onClick: toCity };
-    else {
-      hint = `You just landed in ${country.capital}. Passport control is this way.`;
-      action = { label: '🛂 Show my ID', onClick: () => setPassportOpen(true) };
-    }
+    else hint = `Your plane just landed in ${country.capital}. Through to passport control with your ID.`;
   } else if (step === 'ride') {
     if (place === 'home') {
       // you made it home on your own: the ride is done
@@ -201,8 +216,11 @@ export function FirstDayGuide({ place }: { place: 'city' | 'home' }) {
     }
   }
 
+  // on a ride or walking in from the plane, the trip banner says where you are going: the card steps aside
+  const hidden = onTrip && (phase === 'moving' || step === 'passport');
   return (
     <>
+      {!hidden && (
       <div className="pointer-events-auto absolute left-1/2 top-16 z-30 w-[min(94vw,440px)] -translate-x-1/2 max-sm:top-[6.75rem]" role="status" aria-live="polite">
         <div className="rounded-2xl border border-[#FFD166]/40 bg-[#0B0E14]/88 p-3 shadow-2xl backdrop-blur-md">
           <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#FFD166]">
@@ -230,8 +248,9 @@ export function FirstDayGuide({ place }: { place: 'city' | 'home' }) {
           {err && <p className="mt-1.5 text-xs text-rose-300">{err}</p>}
         </div>
       </div>
+      )}
       {/* stays up through the stamp even though the step has already moved on */}
-      {passportOpen && place === 'city' && <PassportControl onClose={() => setPassportOpen(false)} />}
+      {passportOpen && place === 'city' && <PassportControl onClose={closePassport} />}
     </>
   );
 }
@@ -270,9 +289,10 @@ function PassportControl({ onClose }: { onClose: () => void }) {
     try {
       const r = await firstDayActions.complete('passport');
       setPaid(r.paid);
-      setTimeout(onClose, 3000);
+      setTimeout(onClose, 2200);
     } catch (e) {
       setErr((e as Error).message);
+      setStamped(false);
     }
   };
   return (

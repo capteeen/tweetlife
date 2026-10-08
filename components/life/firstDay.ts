@@ -1,11 +1,11 @@
 'use client';
 import { useWorld } from '@/components/world/store';
-import { airportLayout, pathLength, type Pt } from '@/lib/world/layout';
+import { airportLayout, pathLength, route, type Pt } from '@/lib/world/layout';
+import { terminalLayout } from '@/lib/world/terminal';
 import { BLOCK_D, BLOCK_W, SIDEWALK } from '@/lib/world/geometry';
 import { placeVenues, type PlacedVenue } from '@/lib/life/venues';
 import { tripSeconds } from '@/lib/life/transport';
 import { firstDayStep, type FirstDayStepId, type FirstDayView } from '@/lib/life/firstDaySteps';
-import { plannedRoute } from './travel';
 import { refreshLife } from './useLife';
 
 // Client side of the guided first day: talk to /api/life/firstday, and the places the guide sends you.
@@ -58,11 +58,30 @@ export const firstDayActions = {
   },
 };
 
-/** Where you land: the airport kerb, outside the terminal (lib/world/layout.ts). */
+/** Where a new player's plane parks: the arrival stand on the apron (components/life/flight.ts walks you in from there). */
 export function arrivalSpot(): Pt | null {
   const g = useWorld.getState().model?.geometry;
   if (!g) return null;
-  return airportLayout(g.contentRadius, g.boundaryRadius).kerb;
+  const a = airportLayout(g.contentRadius, g.boundaryRadius);
+  return { x: a.apron.x - 1, z: 38 };
+}
+
+/** Out of the terminal: through the landside doors to the kerb, where the cabs wait. Empty when you are not inside. */
+function outOfTerminal(from: Pt): Pt[] {
+  const g = useWorld.getState().model?.geometry;
+  if (!g) return [];
+  const a = airportLayout(g.contentRadius, g.boundaryRadius);
+  const t = terminalLayout(a);
+  const inside = from.x > t.west - 0.5 && from.x < t.east + 0.5 && Math.abs(from.z - a.terminal.z) < a.terminal.d / 2;
+  return inside ? [{ x: from.x, z: a.terminal.z }, t.entrance, { x: t.west - 1.5, z: a.terminal.z }, a.kerb] : [];
+}
+
+function routeFrom(from: Pt, to: Pt): Pt[] {
+  const g = useWorld.getState().model?.geometry;
+  if (!g) return [from, to];
+  const { K, pitchX, pitchZ, road } = g.grid;
+  const box = g.blocks.length ? { halfW: ((2 * K + 1) * pitchX + road) / 2, halfD: ((2 * K + 1) * pitchZ + road) / 2, pitchX, pitchZ } : null;
+  return route(from, to, g.contentRadius, g.boundaryRadius, box);
 }
 
 /**
@@ -90,25 +109,21 @@ export function doorOf(v: PlacedVenue, out = 3): Pt {
 
 /**
  * A free first-day lift: the trip runs like a paid ride (the player controller drives it) but costs nothing,
- * so nothing is sent to the travel endpoint. Resolves when you arrive.
+ * so nothing is sent to the travel endpoint. From inside the terminal it walks you out to the kerb first.
+ * Resolves when you arrive.
  */
 export function freeLift(mode: 'taxi' | 'scooter', emoji: string, label: string, to: Pt): Promise<void> {
   const s = useWorld.getState();
-  const path = plannedRoute(to);
+  const me = { x: s.playerPos.x, z: s.playerPos.z };
+  const out = outOfTerminal(me);
+  const path = out.length ? [me, ...out.slice(0, -1), ...routeFrom(out[out.length - 1], to)] : routeFrom(me, to);
   const duration = tripSeconds(pathLength(path), mode === 'taxi' ? 4 : 3.2);
   s.selectVenue(null);
   s.setMapOpen(false);
   s.closePhone();
-  s.setTrip({ mode, emoji, label, path, startedAt: performance.now(), duration, itemId: null });
   return new Promise((resolve) => {
-    const started = performance.now();
-    const t = setInterval(() => {
-      const now = useWorld.getState().trip;
-      // arrived (the controller clears the trip), or the trip was replaced or cancelled
-      if (!now || now.label !== label || performance.now() - started > (duration + 5) * 1000) {
-        clearInterval(t);
-        resolve();
-      }
-    }, 200);
+    s.setTrip({ mode, emoji, label, path, startedAt: performance.now(), duration, itemId: null, onDone: resolve });
+    // a trip replaced or cancelled never calls onDone: give up waiting a little after it should have ended
+    setTimeout(resolve, (duration + 6) * 1000);
   });
 }

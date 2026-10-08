@@ -127,12 +127,14 @@ async function fly(r: Resp, toPlane: Pt[]) {
  * the ID card stamped and the welcome. A flight ends with this; a brand-new player's first landing in their
  * home country can call it with no flight before it.
  */
-export async function arrive(to: CountryId, opts: { from?: CountryId; number?: string; cabin?: CabinId } = {}) {
+export async function arrive(to: CountryId, opts: { from?: CountryId; number?: string; cabin?: CabinId; atBooth?: () => Promise<void> } = {}) {
   const dest = COUNTRIES[to];
   const flight = { from: opts.from ?? to, to, cabin: opts.cabin ?? 'economy', number: opts.number ?? '' };
   const a = ap(), t = terminalLayout(a), d = t.doors.arrivalsIn, door = (d[0] + d[1]) / 2, st = arrivalStandOf(a);
   useWorld.getState().setFlight({ ...flight, phase: 'arriving', at: performance.now() });
   await walk([{ x: st.x - 3, z: st.z - 2 }, { x: t.east + 4, z: door + 8 }, { x: t.east + 2, z: door }, { x: t.east - 1.5, z: door }, t.booth], 'Passport control');
+  // a brand-new player's passport moment (the ID card stamped, components/life/FirstDay.tsx) happens at the booth
+  if (opts.atBooth) await opts.atBooth();
   useWorld.getState().setFlight({ ...flight, phase: 'arrived', at: performance.now() });
   useWorld.getState().pushToast(`${dest.flag} Welcome to ${dest.capital}. The exit to the city is behind you.`, 'travel');
   await wait(FLIGHT.welcome);

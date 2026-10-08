@@ -11,6 +11,7 @@ import { statDelta } from '@/lib/life/statNames';
 import { citizenOf, curfew, governmentOf, pct, todaysAddress } from '@/lib/life/government';
 import { COUNTRIES } from '@/lib/world/countries';
 import { useCountry } from '@/components/world/country';
+import { SuggestionBox } from './SuggestionBox';
 
 /** Where a ride drops you for a venue: on its plaza, in front of the door (the terminal kerb for the airport). */
 export function venueDoor(v: PlacedVenue, contentRadius: number, boundaryRadius: number) {
@@ -182,6 +183,9 @@ function Government({ country, closed }: { country: ReturnType<typeof useCountry
         <li>🌙 Curfew: the house closes while NEPA has taken light</li>
       </ul>
       {closed && <p className="mt-2 text-xs font-semibold text-amber-200">Curfew is on. NEPA has taken light, so the house is closed until it comes back.</p>}
+      <div className="mt-3 border-t border-white/10 pt-3">
+        <SuggestionBox country={country} compact />
+      </div>
     </div>
   );
 }

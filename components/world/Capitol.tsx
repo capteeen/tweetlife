@@ -7,7 +7,7 @@ import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeom
 import { WALL, type WalkIn } from '@/lib/world/interiors';
 import { COUNTRIES, type Country } from '@/lib/world/countries';
 import { curfew, governmentOf, pct, todaysAddress } from '@/lib/life/government';
-import { BENCHES, CABINET, CABINET_CHAIRS, CABINET_SEAT, DESK, DESK_CHAIR, FLAGS, PODIUM } from '@/lib/world/capitol';
+import { BENCHES, CABINET, CABINET_CHAIRS, CABINET_SEAT, DESK, DESK_CHAIR, FLAGS, PODIUM, SUGGESTION_BOX } from '@/lib/world/capitol';
 import type { FigureAct } from './figureMoves';
 import { Figure } from './Figure';
 import { DistanceDetail } from './DistanceDetail';
@@ -585,6 +585,27 @@ function Lectern({ c }: { c: Country }) {
   );
 }
 
+/** The suggestion box: a ballot box in the country's colour with a brass slot, on a mahogany stand. Faces +z. */
+function SuggestionBox3D({ c }: { c: Country }) {
+  return (
+    <group>
+      <Part p={[0, 0.03, 0]} s={[0.56, 0.06, 0.56]} round={0.015} c={MAHOGANY_DARK} rough={0.45} />
+      <Part p={[0, 0.5, 0]} s={[0.4, 0.88, 0.4]} round={0.015} c={MAHOGANY} rough={0.4} />
+      <Part p={[0, 0.95, 0]} s={[0.5, 0.04, 0.5]} round={0.012} c={MAHOGANY_DARK} rough={0.4} />
+      <Part p={[0, 1.17, 0]} s={[0.5, 0.4, 0.4]} round={0.02} c={c.theme.primary} rough={0.5} />
+      <Part p={[0, 1.375, 0]} s={[0.52, 0.02, 0.42]} round={0.008} c={GOLD} metal={0.85} rough={0.3} />
+      <Part p={[0, 1.388, 0]} s={[0.26, 0.01, 0.035]} c="#0B0E14" shadow={false} />
+      {/* a slip going in */}
+      <Part p={[0.02, 1.43, 0]} s={[0.18, 0.09, 0.004]} c="#F7F3E8" rough={0.9} rot={[0, 0, 0.08]} shadow={false} />
+      <Part p={[0, 1.2, 0.202]} s={[0.4, 0.13, 0.008]} c={GOLD} metal={0.6} rough={0.3} glow="#8A6A1A" glowI={0.5} shadow={false} />
+      <Text font={FONT} position={[0, 1.2, 0.208]} fontSize={0.045} color="#2A1A0A" anchorX="center" anchorY="middle" maxWidth={0.38} textAlign="center">
+        SUGGESTION BOX
+      </Text>
+      <Logo c={c} size={0.1} position={[0, 1.06, 0.202]} glow={0.2} />
+    </group>
+  );
+}
+
 function Guard({ seed, position }: { seed: string; position: V3 }) {
   const act = useRef<FigureAct | null>(null);
   const speed = useRef(0);
@@ -705,6 +726,11 @@ export function Capitol({ k, y }: { k: WalkIn; y: number }) {
         CABINET ROOM
       </Text>
       <Seal c={c} r={0.35} position={[right - 0.03, y + 3.4, CABINET.z]} rotation={[0, -Math.PI / 2, 0]} />
+
+      {/* the suggestion box by the door: tap the president to file one */}
+      <group position={[SUGGESTION_BOX.x, y, SUGGESTION_BOX.z]} rotation={[0, SUGGESTION_BOX.rot, 0]}>
+        <SuggestionBox3D c={c} />
+      </group>
 
       {/* marble columns at the front corners, and a dome over the back */}
       {[-1, 1].map((s) => <Column key={s} position={[s * (k.w / 2 - 0.3), y, k.d / 2 + 0.6]} h={k.h + 0.4} />)}

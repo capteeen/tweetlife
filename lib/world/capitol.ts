@@ -18,6 +18,8 @@ export const BENCHES = [0.9, 2.7].flatMap((z) => [-2.6, 2.6].map((x) => ({ x, z,
 /** The cabinet table and its chairs; `side` is which side of the table a chair is on (-1 = towards the carpet). */
 export const CABINET = { x: 4.6, z: -1.8, w: 1.9, d: 3.6, h: 0.76 };
 export const CABINET_SEAT = 0.5;
+/** The suggestion box on its stand by the door, turned towards people coming in. */
+export const SUGGESTION_BOX = { x: -5.6, z: 3.6, rot: 1.0 };
 export const CABINET_CHAIRS = [-2.7, -1.8, -0.9].flatMap((z) => [
   { x: 3.45, z, side: -1 as const },
   { x: 5.75, z, side: 1 as const },
@@ -34,5 +36,6 @@ export function capitolSolids(): Rect[] {
     ...BENCHES.map((b) => ({ x: b.x, z: b.z, w: b.w, d: b.d })),
     // the table with its chairs round it
     { x: CABINET.x, z: CABINET.z, w: CABINET.w + 1.0, d: CABINET.d + 0.2 },
+    { x: SUGGESTION_BOX.x, z: SUGGESTION_BOX.z, w: 0.7, d: 0.7 },
   ];
 }

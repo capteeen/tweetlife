@@ -17,7 +17,7 @@ export function BlockBadge() {
   const me = useWorld((s) => s.me);
   const c = COUNTRIES[country];
   return (
-    <div className="pointer-events-auto absolute left-1/2 top-16 z-20 flex max-w-[min(80vw,360px)] -translate-x-1/2 flex-col items-center gap-1 text-center">
+    <div className="pointer-events-auto absolute left-1/2 top-16 z-20 flex max-w-[min(80vw,360px)] -translate-x-1/2 flex-col items-center gap-1 text-center max-sm:top-[7.25rem]">
       <div className="flex items-center gap-2 rounded-full chrome py-1 pl-1 pr-3 text-sm">
         {plot?.ownerAvatar ? (
           // eslint-disable-next-line @next/next/no-img-element

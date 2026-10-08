@@ -1,8 +1,9 @@
 import { revalidateTag, unstable_cache } from 'next/cache';
 import { Prisma, type World } from '@prisma/client';
 import { db } from '../db';
-import { BLOCK_D, BLOCK_W, PITCH_X, PITCH_Z, ROAD, SIDEWALK, LOTS_PER_BLOCK, buildWorld, type Block, type CityGrid, type TerrainClass, type Placed, type StructureRow, type WorldGeometry } from './geometry';
-import { CAPITAL_SLOT, PLOT_BLOCKS, PLOT_LOTS, plotBlocks, plotCell, plotRect, type PlotRect } from './country-map';
+import type { StructureRow, WorldGeometry } from './geometry';
+import { CAPITAL_SLOT, PLOT_LOTS, plotRect, type PlotRect } from './country-map';
+import { composeCountryGeometry } from './country-geometry';
 import { countryOf, type CountryId } from './countries';
 import type { MarkModel } from './load';
 
@@ -114,11 +115,6 @@ export async function blockPostIds(worldId: string) {
   return (await blockRows([worldId])).map((r) => r.postId);
 }
 
-const ringOf = (slot: number) => {
-  const c = plotCell(slot);
-  return Math.max(Math.abs(c.pi), Math.abs(c.pj));
-};
-
 async function buildCountry(country: CountryId): Promise<CountryModel> {
   const plots = await db.plot.findMany({
     where: { country, world: { owner: { revokedAt: null } } },
@@ -133,30 +129,19 @@ async function buildCountry(country: CountryId): Promise<CountryModel> {
   const byWorld = new Map<string, BlockRow[]>();
   for (const r of rows) byWorld.get(r.worldId)?.push(r) ?? byWorld.set(r.worldId, [r]);
 
-  const structures: Placed[] = [];
-  const blocks: Block[] = [];
-  const taken = new Set<string>();
-  const models: PlotModel[] = [];
-  let followers = 0;
-  for (const p of plots) {
+  const { geometry, shown } = composeCountryGeometry(
+    plots.map((p) => ({
+      slot: p.slot,
+      handle: p.world.handle,
+      rows: (byWorld.get(p.worldId) ?? []).map((r) => ({ ...r, text: '', mediaUrl: null, hidden: false }) as StructureRow),
+      accountCreatedAt: p.world.accountCreatedAt,
+      followersCount: p.world.followersCount,
+      landmarkPostId: p.world.landmarkPostId,
+    })),
+  );
+  const models: PlotModel[] = plots.map((p) => {
     const w = p.world;
-    const mine = (byWorld.get(w.id) ?? []).map((r) => ({ ...r, text: '', mediaUrl: null, hidden: false }) as StructureRow);
-    const g = buildWorld(mine, {
-      handle: w.handle,
-      accountCreatedAt: w.accountCreatedAt,
-      followersCount: w.followersCount,
-      landmarkPostId: w.landmarkPostId,
-      showReplies: true,
-      blockOrder: plotBlocks(p.slot),
-      noGaps: true,
-    });
-    for (const s of g.structures) structures.push({ ...s, owner: w.handle });
-    for (const b of g.blocks) {
-      blocks.push(b);
-      taken.add(`${b.i},${b.j}`);
-    }
-    followers += w.followersCount;
-    models.push({
+    return {
       slot: p.slot,
       handle: w.handle,
       worldId: w.id,
@@ -166,51 +151,15 @@ async function buildCountry(country: CountryId): Promise<CountryModel> {
       access: w.access,
       followersCount: w.followersCount,
       postCount: w.postCount,
-      shown: g.structures.length,
+      shown: shown.get(p.slot) ?? 0,
       showMetrics: w.showMetrics,
       chatEnabled: w.chatEnabled,
       accountCreatedAt: w.accountCreatedAt.toISOString(),
       lastSyncAt: w.lastSyncAt?.toISOString() ?? null,
       ingestState: w.ingestState,
       rect: plotRect(p.slot),
-    });
-  }
-
-  // Every other city block inside the square of rings: Capital Square is a park, free plots are bare lots.
-  const rings = Math.max(1, ...plots.map((p) => ringOf(p.slot)));
-  const K = rings * PLOT_BLOCKS + (PLOT_BLOCKS - 1) / 2;
-  const capital = new Set(plotBlocks(CAPITAL_SLOT).map((b) => `${b.i},${b.j}`));
-  for (let i = -K; i <= K; i++)
-    for (let j = -K; j <= K; j++) {
-      const key = `${i},${j}`;
-      if (taken.has(key)) continue;
-      const cls: TerrainClass = capital.has(key) ? 'lush' : 'sand';
-      const x = i * PITCH_X, z = j * PITCH_Z;
-      const vacant = Array.from({ length: LOTS_PER_BLOCK }, (_, l) => {
-        const row = l < LOTS_PER_BLOCK / 2 ? -1 : 1;
-        const col = l % (LOTS_PER_BLOCK / 2);
-        const lw = BLOCK_W / (LOTS_PER_BLOCK / 2), ld = BLOCK_D / 2;
-        return { x: x - BLOCK_W / 2 + lw / 2 + col * lw, z: z + (row * ld) / 2, w: lw, d: ld, cls, facing: row as 1 | -1 };
-      });
-      blocks.push({ i, j, x, z, cls, vacant, used: 0 });
-    }
-
-  const grid: CityGrid = { K, pitchX: PITCH_X, pitchZ: PITCH_Z, blockW: BLOCK_W, blockD: BLOCK_D, road: ROAD, sidewalk: SIDEWALK };
-  const contentRadius = Math.hypot((K + 0.5) * PITCH_X, (K + 0.5) * PITCH_Z);
-  const geometry: WorldGeometry = {
-    structures,
-    blocks,
-    grid,
-    outside: 'lush',
-    boundaryRadius: contentRadius + 45,
-    contentRadius,
-    // a country keeps its own clock: early afternoon
-    skyPhase: 'noon',
-    skyT: 0.36,
-    residents: Math.min(40, 8 + Math.round(Math.log10(1 + followers) * 4)),
-    cars: Math.min(64, 12 + plots.length * 4),
-    landmarkId: null,
-  };
+    };
+  });
 
   // Guestbook stones are kept relative to their block's centre (older ones were laid in a world of their own,
   // centred the same way); clamp them into the block so a stone from a big old world never lands next door.

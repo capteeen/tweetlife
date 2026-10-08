@@ -98,7 +98,8 @@ async function whereIAm(): Promise<CountryId | null> {
 export function useCountryWorld(opts: { handle?: string; country?: string; spawnPostId?: string; enabled: boolean }) {
   const { handle, spawnPostId, enabled } = opts;
   const [error, setError] = useState<string | null>(null);
-  const [entry, setEntry] = useState<{ focus: string | null; country: CountryId } | null>(null);
+  // `square`: a /c/<country> link asks for Capital Square, not your own block
+  const [entry, setEntry] = useState<{ focus: string | null; country: CountryId; square?: boolean } | null>(null);
   const country = useWorld((s) => s.country);
   const loads = useRef(0);
 
@@ -129,7 +130,7 @@ export function useCountryWorld(opts: { handle?: string; country?: string; spawn
         const c = asked ?? (await whereIAm()) ?? useWorld.getState().country;
         if (cancelled) return;
         useWorld.getState().setCountry(c);
-        setEntry({ focus: null, country: c });
+        setEntry({ focus: null, country: c, square: !!asked });
       }
     })();
     return () => {
@@ -168,7 +169,7 @@ export function useCountryWorld(opts: { handle?: string; country?: string; spawn
       else if (st.flight) {
         const ap = airportLayout(j.geometry.contentRadius, j.geometry.boundaryRadius);
         spawn = { x: ap.kerb.x, z: ap.kerb.z, rot: Math.PI / 2, depth: 0 };
-      } else if (mineHere) focus = mineHere.handle;
+      } else if (mineHere && !(first && entry.square)) focus = mineHere.handle;
       applied.clear();
       st.setCountryMap(cm, j.mine);
       st.setModel(focusBlock(base, cm, focus), false, j.me);

@@ -2,7 +2,9 @@
 // the scene scatters stands where it shouldn't (a tree on a road, a lamp in a doorway, a palm on the runway, a
 // resident inside a wall) or if anyone would stand below the floor they're on (the club's dance floor, venue
 // floors, plazas). Run: npm run check:world
-import { buildWorld, type StructureRow, type StructureKind } from '../lib/world/geometry';
+import { buildWorld, type StructureRow, type StructureKind, type WorldGeometry } from '../lib/world/geometry';
+import { composeCountryGeometry } from '../lib/world/country-geometry';
+import { PLOT_LOTS } from '../lib/world/country-map';
 import { terrainOf, groundAt, venueFloorAt, toVenueFrame, taxiLinks, HANGAR_FLOOR } from '../lib/world/ground';
 import { airportSpots, arrivalStand, footprint, privateStand, PLANE_SIZE } from '../lib/world/aircraft';
 import { placementSite, placementConflict, zoneAt, type Site } from '../lib/world/placement';
@@ -47,8 +49,8 @@ const problems: string[] = [];
 const fail = (world: string, what: string) => problems.push(`${world}: ${what}`);
 const fmt = (x: number, z: number) => `(${x.toFixed(1)}, ${z.toFixed(1)})`;
 
-function check(c: Case) {
-  const g = buildWorld(rows(c.posts, c.gapEvery), {
+function check(c: Case, prebuilt?: WorldGeometry) {
+  const g = prebuilt ?? buildWorld(rows(c.posts, c.gapEvery), {
     handle: c.handle, accountCreatedAt: new Date('2019-03-14'), followersCount: c.followers, landmarkPostId: null, showReplies: true, now: new Date('2026-10-08'),
   });
   const R = g.boundaryRadius;
@@ -251,10 +253,28 @@ for (const c of CASES) {
   total += n;
   console.log(`${problems.length === before ? 'ok  ' : 'FAIL'} @${c.handle}: ${n} placed things checked${problems.length > before ? `, ${problems.length - before} problems` : ''}`);
 }
+// Shared country maps: Capital Square plus every player's block (their standout posts, as the server picks them),
+// with one ring of plots and with two.
+for (const n of [5, 14]) {
+  const plots = Array.from({ length: n }, (_, k) => {
+    const c = CASES[(k % (CASES.length - 1)) + 1];
+    const picked = rows(c.posts, c.gapEvery)
+      .filter((r) => r.kind !== 'lantern' && r.kind !== 'outbuilding')
+      .sort((a, b) => (b.likes ?? 0) - (a.likes ?? 0))
+      .slice(0, PLOT_LOTS);
+    return { slot: k + 1, handle: `${c.handle}${k}`, rows: picked, accountCreatedAt: new Date('2019-03-14'), followersCount: c.followers, landmarkPostId: null };
+  });
+  const { geometry } = composeCountryGeometry(plots, new Date('2026-10-08'));
+  const name = `country with ${n} blocks`;
+  const before = problems.length;
+  const m = check({ handle: `country${n}`, posts: geometry.structures.length, gapEvery: 0, followers: 0 }, geometry);
+  total += m;
+  console.log(`${problems.length === before ? 'ok  ' : 'FAIL'} ${name}: ${m} placed things checked${problems.length > before ? `, ${problems.length - before} problems` : ''}`);
+}
 if (problems.length) {
   console.log(`\n${problems.length} problems:`);
   for (const p of problems.slice(0, Number(process.env.SHOW ?? 80))) console.log('  ' + p);
   if (problems.length > 80) console.log(`  … and ${problems.length - 80} more`);
   process.exit(1);
 }
-console.log(`\nworld check passed: ${total} placements across ${CASES.length} worlds`);
+console.log(`\nworld check passed: ${total} placements across ${CASES.length} worlds and 2 country maps`);

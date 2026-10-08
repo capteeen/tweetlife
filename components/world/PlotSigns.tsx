@@ -3,7 +3,7 @@ import { useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { Text } from '@react-three/drei';
-import { CAPITAL_SLOT, plotEntrance, plotRect } from '@/lib/world/country-map';
+import { CAPITAL_SLOT, plotEntrance } from '@/lib/world/country-map';
 import { BLOCK_W, SIDEWALK } from '@/lib/world/geometry';
 import { COUNTRIES } from '@/lib/world/countries';
 import { DistanceDetail } from './DistanceDetail';
@@ -31,8 +31,6 @@ export function PlotSigns() {
 
 function Sign({ slot, title, sub, color }: { slot: number; title: string; sub: string; color: string }) {
   const e = plotEntrance(slot);
-  const r = plotRect(slot);
-  void r;
   // on the front sidewalk, at the left corner of the centre block, clear of the door
   const x = e.front.x - BLOCK_W / 2 + 1.2, z = e.front.z - SIDEWALK / 2 + 0.6;
   return (

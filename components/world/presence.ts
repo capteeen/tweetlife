@@ -6,6 +6,7 @@ import { refreshLife } from '@/components/life/useLife';
 import { refreshLove } from '@/components/life/loveClient';
 import { ROSTER_MS } from '@/lib/world/country-map';
 import type { CountryId } from '@/lib/world/countries';
+import { onCrimeSignal } from '@/components/life/crime';
 
 // Presence client. With a `country`, joins that country's shared room (everyone in the country, see
 // party/world.ts): it first asks the base room which shard to use, preferring the one a friend is in (the
@@ -104,6 +105,8 @@ export function usePresence(handle: string, enabled: boolean, country?: CountryI
             refreshLife();
             // a request or an answer from someone in this world: show it now rather than on the next poll
             if (m.kind === 'love') refreshLove();
+            // someone robbed, jumped or reported you (components/life/crime.ts)
+            if (m.kind === 'crime' || m.kind === 'arrest') onCrimeSignal({ kind: String(m.kind), from: String(m.from ?? ''), delta: m.delta });
           } else if (m.t === 'chat') {
             pushChat({ id: m.id as string, from: m.from as string, text: m.text as string, at: m.at as number, x: m.x as number, z: m.z as number });
           } else if (m.t === 'full' && typeof m.next === 'string') {

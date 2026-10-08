@@ -30,6 +30,8 @@ import { AirportDesk } from '@/components/life/AirportDesk';
 import { useLife } from '@/components/life/useLife';
 import { useLoveSync } from '@/components/life/loveClient';
 import { RequestNotices } from '@/components/life/RequestNotices';
+import { useCrime } from '@/components/life/crime';
+import { CrimeHUD } from '@/components/life/CrimeHUD';
 import { enterVenue } from '@/components/life/travel';
 import { placeVenues } from '@/lib/life/venues';
 import { useCountryWorld } from './countryClient';
@@ -126,6 +128,7 @@ export function WorldClient({ handle, spawnPostId, embed, backdrop, country: cou
   useCrowds(legacy ? handle : block ?? myHandle, admitted && !backdrop, signedIn);
   const onShift = useWorld((s) => !!s.shift);
   useLoveSync(admitted && !backdrop && signedIn);
+  useCrime(admitted && !backdrop && signedIn);
   const nearVenue = useWorld((s) => s.nearVenue);
   // inside the terminal the desks offer what to do, not an "Enter Airport" button
   const inTerminal = useWorld((s) => s.airport.zone !== 'outside');
@@ -235,6 +238,7 @@ export function WorldClient({ handle, spawnPostId, embed, backdrop, country: cou
           <PostButton />
           <VenueCard sendSocial={sendSocial} />
           <ShiftHUD />
+          <CrimeHUD sendSocial={sendSocial} />
           <Phone sendSocial={sendSocial} handle={model.handle} />
           {!lookPending && <CountryPrompt />}
           <TripBanner />

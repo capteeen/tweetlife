@@ -145,6 +145,10 @@ export const VENUES: Venue[] = [
       { id: 'townhall', label: 'Sit in on the town hall', emoji: '🗳️', bags: 0, me: { vibes: +6, clout: +2, gas: -2 }, nearby: { vibes: +2 }, cooldown: 1800, line: 'spoke up at the town hall 🗳️' },
     ],
   },
+  {
+    id: 'police', name: 'Police Station', emoji: '🚔', color: '#2B59C3', blurb: 'Report a crime, check your record, post bail. The cells are round the side.',
+    actions: [],
+  },
   { id: 'exchange', name: 'Trenches Coin Shop', emoji: '🪙', color: '#06D6A0', blurb: 'Live memecoins over the counter. Buy with bags, watch them float on your hand.', actions: [], app: 'trenches' },
 ];
 

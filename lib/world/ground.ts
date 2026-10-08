@@ -3,6 +3,7 @@ import { WALK_IN, walkInFloorAt } from './interiors';
 import { DISTRICTS, RING_ROAD_W, RING_SLOTS, airportLayout, inRect, ringRoadRadius, slotAngle, type Airport, type Rect } from './layout';
 import { placeVenues, type PlacedVenue } from '../life/venues';
 import { TERMINAL_FLOOR } from './terminal';
+import { CELL, CELL_TOP } from '../life/police';
 
 // One answer to "how high is the ground here?" for everyone who stands on it: the player, visitors, residents,
 // crowds and cars, indoors and out. It mirrors the surfaces the scene draws, so feet land on what you see:
@@ -106,7 +107,11 @@ export function venueFloorAt(venues: PlacedVenue[], x: number, z: number): numbe
       if (Math.abs(lx) < (k.w + 3) / 2 && lz > -k.d / 2 - 1.5 && lz < k.d / 2 + 4.5) return PLAZA_TOP;
       // the path out to a club on the nightlife row (Interiors.tsx)
       if (v.approach && v.approach > 0.5 && Math.abs(lx) < BOARDWALK_W / 2 && lz >= k.d / 2 + 4.5 && lz < k.d / 2 + 4.6 + v.approach) return BOARDWALK_TOP;
-    } else if (Math.abs(lx) < (v.w + 6) / 2 && Math.abs(lz) < (v.d + 6) / 2) return PLAZA_TOP;
+    } else {
+      // the police station's holding cell stands on its own slab beside the building
+      if (v.id === 'police' && Math.abs(lx - CELL.lx) < CELL.w / 2 + 0.15 && Math.abs(lz - CELL.lz) < CELL.d / 2 + 0.15) return CELL_TOP;
+      if (Math.abs(lx) < (v.w + 6) / 2 && Math.abs(lz) < (v.d + 6) / 2) return PLAZA_TOP;
+    }
   }
   return null;
 }

@@ -21,6 +21,8 @@ import { terminalLayout, terminalWalls } from '@/lib/world/terminal';
 import { carItem } from '@/components/life/travel';
 import { playerSound } from '@/lib/audio/state';
 import { lookFor } from '@/lib/life/look';
+import { clampToCell, jailCell } from '@/lib/life/police';
+import { ARREST_FX_MS } from '@/components/life/crime';
 
 // Third-person orbit-and-walk. WASD/arrows + mouse-drag on desktop, twin virtual sticks on mobile.
 // The avatar is a low-poly figure; the camera orbits it. Structures push the player out softly.
@@ -52,6 +54,11 @@ export function Player({ structures, blocks, grid, boundaryRadius, contentRadius
     ],
     [venues, airport],
   );
+  // the holding cell at the police station (lib/life/police.ts): where an arrested player waits out their time
+  const cell = useMemo(() => {
+    const st = venues.find((v) => v.id === 'police');
+    return st ? jailCell(st) : null;
+  }, [venues]);
   const trip = useWorld((s) => s.trip);
   const setTrip = useWorld((s) => s.setTrip);
   const riding = useWorld((s) => s.riding);
@@ -180,6 +187,14 @@ export function Player({ structures, blocks, grid, boundaryRadius, contentRadius
   useFrame((state, dt) => {
     const d = Math.min(dt, 0.1);
     let mx = 0, mz = 0;
+    // crime and police: cuffed during an arrest, then in the cell until released; a fight or a daze holds you still
+    const st0 = useWorld.getState();
+    const rec = st0.life?.me?.record;
+    const nowMs = Date.now();
+    const cuffing = st0.arrestFx?.who === 'me' && nowMs - st0.arrestFx.at < ARREST_FX_MS;
+    const jailed = !!cell && !!rec?.jailedUntil && Date.parse(rec.jailedUntil) > nowMs && !cuffing;
+    const held = cuffing || (!!rec?.dazedUntil && Date.parse(rec.dazedUntil) > nowMs) || (st0.doing?.id === 'fight' && st0.doing.until > nowMs);
+    if ((jailed || cuffing) && st0.trip) setTrip(null);
     // on a ride: follow the route, then step off at the nearest open spot
     const tr = useWorld.getState().trip;
     if (tr) {
@@ -201,7 +216,7 @@ export function Player({ structures, blocks, grid, boundaryRadius, contentRadius
       }
       speedRef.current = tr.mode === 'walk' ? 1 : 0;
     }
-    if (!tr && !guestbookOpen && !chatOpen) {
+    if (!tr && !guestbookOpen && !chatOpen && !held) {
       const k = keys.current;
       if (k.KeyW || k.ArrowUp) mz -= 1;
       if (k.KeyS || k.ArrowDown) mz += 1;
@@ -224,6 +239,7 @@ export function Player({ structures, blocks, grid, boundaryRadius, contentRadius
     // on shift, standing at your station, you do the job's move
     actRef.current = st.doing && !riding ? st.doing.id : st.shift?.act && !tr && !riding && len < 0.05 ? st.shift.act : null;
     let sprinting = false;
+    if (st.doing?.face) facing.current = Math.atan2(st.doing.face.x - pos.current.x, st.doing.face.z - pos.current.z);
     if (len > 0) {
       mx /= Math.max(1, len);
       mz /= Math.max(1, len);
@@ -258,6 +274,12 @@ export function Player({ structures, blocks, grid, boundaryRadius, contentRadius
       w.sprint = 0;
       w.sending = true;
       lifeActions.walk(sent.walk, sent.sprint).catch(() => {}).finally(() => (w.sending = false));
+    }
+    // in the cell you can pace, not leave; just arrested, you appear inside it
+    if (jailed && cell) {
+      const c = clampToCell(cell, pos.current.x, pos.current.z);
+      if (Math.hypot(c.x - pos.current.x, c.z - pos.current.z) > 2) pos.current.set(cell.x, pos.current.y, cell.z);
+      else pos.current.set(c.x, pos.current.y, c.z);
     }
     // the jet climbs to cruising height; everything else sits on the ground (or the water)
     const targetAlt = riding?.kind === 'plane' && !tr ? 16 : 0;
@@ -432,7 +454,8 @@ const tmpD = new THREE.Vector3();
 function gatherBlockers(scene: THREE.Scene, self: THREE.Object3D | null) {
   const out: THREE.Mesh[] = [];
   const walk = (o: THREE.Object3D) => {
-    // trees dissolve where they stand between the camera and the player (Trees.tsx), so they never pull the camera in
+    // trees dissolve where they stand between the camera and the player (Trees.tsx), and see-through props (the
+    // cell's bars) never pull the camera in
     if (!o.visible || o === self || o.userData.seeThrough) return;
     const m = o as THREE.Mesh;
     if (m.isMesh && m.geometry) {

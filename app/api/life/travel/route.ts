@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
 import { db } from '@/lib/db';
 import { bad, requirePlayer } from '@/lib/life/auth';
+import { lockedReason } from '@/lib/life/record';
 import { setStats } from '@/lib/life/player';
 import { applyDelta, moodOf } from '@/lib/life/stats';
 import { ITEMS } from '@/lib/life/market';
@@ -21,6 +22,8 @@ export async function POST(req: NextRequest) {
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return bad('mode and to required');
   const t = transportById(parsed.data.mode)!;
+  const locked = lockedReason(r.player);
+  if (locked) return bad(locked, 403);
   if (t.id === 'own') {
     const car = await db.asset.findFirst({ where: { playerId: r.user.id, itemId: { in: CARS } } });
     if (!car) return bad('You do not own a car yet. The Dealership sells them.');

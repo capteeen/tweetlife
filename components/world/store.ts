@@ -14,13 +14,19 @@ import type { FigureAct } from './figureMoves';
 import type { JobBoard, JobId } from '@/lib/life/jobs';
 import type { CabinId } from '@/lib/life/flights';
 import type { FirstDayView } from '@/lib/life/firstDaySteps';
+import type { CountryMark, PlotModel } from '@/lib/world/country';
 
 /** An everyday activity in progress (dance, stretch...): the avatar plays it until `until` or until you move. */
 export type Doing = { id: ActivityId; until: number } | null;
 
-export type Peer = { id: string; handle: string; x: number; z: number; yaw: number; at: number; ride?: string | null; act?: FigureAct | null };
+/** `far`: known only from the room's roster (beyond the interest radius): on the map, not drawn. */
+export type Peer = { id: string; handle: string; x: number; z: number; yaw: number; at: number; ride?: string | null; act?: FigureAct | null; far?: boolean };
 /** A job shift in progress (lib/life/jobs.ts): `startedAt` and `endsAt` are local ms; `act` plays while you stand at your station. */
 export type Shift = { jobId: JobId; startedAt: number; endsAt: number; tasks: number; act: FigureAct | null; uniform: string; venueId: string; ride: string | null; face: number | null; cam: { yaw: number; pitch: number } | null };
+/** A block's posts as handed out by /api/world/<handle>/block: text if the world's rules let you in, else why not. */
+export type BlockAccess = { loading: boolean; admitted: boolean; reason?: string; message?: string };
+/** The shared map of the country you are in (lib/world/country.ts). */
+export type CountryMapState = { country: CountryId; plots: PlotModel[]; marks: CountryMark[] };
 /** A ride in progress: the player follows `path` for `duration` seconds from `startedAt` (ms). */
 export type Trip = {
   mode: string; emoji: string; label: string; path: { x: number; z: number }[]; startedAt: number; duration: number; itemId?: string | null;
@@ -79,8 +85,16 @@ type Me = { id: string; handle: string; isOwner: boolean } | null;
 
 export type WorldState = {
   model: WorldModel | null;
-  /** the country whose capital is drawn around you (lib/world/countries.ts); Solana until set */
+  /** the country you are in (lib/world/countries.ts). Changing it loads that country's map and room. */
   country: CountryId;
+  /** that country's plots and stones; null in a single legacy world (embeds, the title backdrop) */
+  countryMap: CountryMapState | null;
+  /** your own block: its country and slot (lib/world/country-map.ts plotEntrance(slot) is its front door) */
+  mine: { country: CountryId; slot: number } | null;
+  /** handle of the block you are standing in; null in Capital Square or out of town */
+  block: string | null;
+  /** what each block (lowercase handle) lets you read */
+  blockAccess: Record<string, BlockAccess>;
   skyline: boolean; // true = outside view (no walking)
   me: Me;
   selected: Placed | null;
@@ -127,6 +141,12 @@ export type WorldState = {
 
   setModel: (m: WorldModel, skyline: boolean, me: Me) => void;
   setCountry: (c: CountryId) => void;
+  setCountryMap: (c: CountryMapState | null, mine?: { country: CountryId; slot: number } | null) => void;
+  /** step into a block (or Capital Square with null): the model's owner fields, stones and metrics follow it */
+  setBlock: (handle: string | null) => void;
+  setBlockAccess: (handle: string, a: BlockAccess) => void;
+  /** fill in the posts of a block once its owner's rules let you read them */
+  hydrateBlock: (handle: string, posts: Record<string, { text: string; mediaUrl: string | null }>, lit: string[]) => void;
   select: (p: Placed | null) => void;
   setLit: (ids: string[]) => void;
   toggleLit: (id: string, lit: boolean, count: number) => void;
@@ -175,6 +195,10 @@ export const useWorld = create<WorldState>((set) => ({
   model: null,
   country: DEFAULT_COUNTRY,
   setCountry: (country) => set({ country }),
+  countryMap: null,
+  mine: null,
+  block: null,
+  blockAccess: {},
   skyline: true,
   me: null,
   selected: null,
@@ -210,6 +234,27 @@ export const useWorld = create<WorldState>((set) => ({
   airport: { pass: null, cleared: false, sheet: null, zone: 'outside' },
   guide: null,
   setModel: (model, skyline, me) => set({ model, skyline, me }),
+  setCountryMap: (countryMap, mine) => set((s) => ({ countryMap, ...(mine !== undefined ? { mine } : {}), block: countryMap ? s.block : null })),
+  setBlock: (block) =>
+    set((s) => {
+      if (!s.model || !s.countryMap) return { block };
+      const model = focusBlock(s.model, s.countryMap, block);
+      return { block, model, me: s.me ? { ...s.me, isOwner: !!model.xUserId && model.xUserId === s.me.id } : s.me };
+    }),
+  setBlockAccess: (handle, a) => set((s) => ({ blockAccess: { ...s.blockAccess, [handle.toLowerCase()]: a } })),
+  hydrateBlock: (handle, posts, litIds) =>
+    set((s) => {
+      if (!s.model) return {};
+      const h = handle.toLowerCase();
+      const fill = (p: Placed) => (p.owner?.toLowerCase() === h && posts[p.postId] ? { ...p, text: posts[p.postId].text, mediaUrl: posts[p.postId].mediaUrl } : p);
+      const lit = new Set(s.lit);
+      for (const id of litIds) lit.add(id);
+      return {
+        lit,
+        model: { ...s.model, geometry: { ...s.model.geometry, structures: s.model.geometry.structures.map(fill) } },
+        selected: s.selected ? fill(s.selected) : s.selected,
+      };
+    }),
   select: (selected) => set({ selected, ...(selected ? { selectedPeer: null, selectedVenue: null, selectedResident: null } : {}) }),
   setLit: (ids) => set({ lit: new Set(ids) }),
   toggleLit: (id, lit, count) =>
@@ -233,8 +278,24 @@ export const useWorld = create<WorldState>((set) => ({
   pushChat: (c) => set((s) => ({ chat: [...s.chat.slice(-60), c] })),
   setPlayerPos: (playerPos) => set({ playerPos }),
   setSpawn: (spawnAt) => set({ spawnAt }),
-  addMark: (m) => set((s) => (s.model ? { model: { ...s.model, marks: [m, ...s.model.marks.filter((x) => x.byHandle !== m.byHandle)] } } : {})),
-  clearMarks: (id) => set((s) => (s.model ? { model: { ...s.model, marks: id ? s.model.marks.filter((m) => m.id !== id) : [] } } : {})),
+  addMark: (m) =>
+    set((s) => {
+      if (!s.model) return {};
+      const model = { ...s.model, marks: [m, ...s.model.marks.filter((x) => x.byHandle !== m.byHandle)] };
+      if (!s.countryMap || !s.block) return { model };
+      const owner = s.block;
+      const marks = [{ ...m, owner }, ...s.countryMap.marks.filter((x) => !(x.owner === owner && x.byHandle === m.byHandle))];
+      return { model, countryMap: { ...s.countryMap, marks } };
+    }),
+  clearMarks: (id) =>
+    set((s) => {
+      if (!s.model) return {};
+      const model = { ...s.model, marks: id ? s.model.marks.filter((m) => m.id !== id) : [] };
+      if (!s.countryMap || !s.block) return { model };
+      const owner = s.block;
+      const marks = s.countryMap.marks.filter((x) => (id ? x.id !== id : x.owner !== owner));
+      return { model, countryMap: { ...s.countryMap, marks } };
+    }),
   setGuestbookOpen: (guestbookOpen) => set({ guestbookOpen }),
   setChatOpen: (chatOpen) => set({ chatOpen }),
   setLife: (life) => set({ life }),
@@ -267,3 +328,34 @@ export const useWorld = create<WorldState>((set) => ({
   setFlight: (flight) => set({ flight }),
   patchAirport: (p) => set((s) => ({ airport: { ...s.airport, ...p } })),
 }));
+
+/**
+ * A country's map seen from one block: the model's owner fields (handle, avatar, post count, metrics and chat
+ * settings, stones) are that block's, so the HUD, guestbook, post cards and phone work per block.
+ * Capital Square (null) belongs to nobody.
+ */
+export function focusBlock(model: WorldModel, cm: CountryMapState, handle: string | null): WorldModel {
+  const p = handle ? cm.plots.find((q) => q.handle.toLowerCase() === handle.toLowerCase()) ?? null : null;
+  const marks = p ? cm.marks.filter((m) => m.owner === p.handle) : [];
+  if (!p) {
+    return { ...model, id: '', handle: '', ownerName: '', ownerAvatar: null, xUserId: '', access: 'public', postCount: 0, structureCount: 0, showMetrics: false, chatEnabled: true, marks };
+  }
+  return {
+    ...model,
+    id: p.worldId,
+    handle: p.handle,
+    ownerName: p.ownerName,
+    ownerAvatar: p.ownerAvatar,
+    xUserId: p.xUserId,
+    access: p.access,
+    followersCount: p.followersCount,
+    postCount: p.postCount,
+    structureCount: p.shown,
+    showMetrics: p.showMetrics,
+    chatEnabled: p.chatEnabled,
+    accountCreatedAt: p.accountCreatedAt,
+    lastSyncAt: p.lastSyncAt,
+    ingestState: p.ingestState,
+    marks,
+  };
+}

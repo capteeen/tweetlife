@@ -132,6 +132,13 @@ export function along(p: Pt[], t: number): { x: number; z: number; heading: numb
  */
 export function route(from: Pt, to: Pt, contentRadius: number, boundaryRadius: number, box: CityBox | null): Pt[] {
   if (dist(from, to) < 22) return [from, to];
+  // both in the street grid (one block to another on a country map): along its roads, never out to the ring
+  if (box && Math.abs(from.x) < box.halfW && Math.abs(from.z) < box.halfD && Math.abs(to.x) < box.halfW && Math.abs(to.z) < box.halfD) {
+    const ew = (z: number) => Math.max(-box.halfD, Math.min(box.halfD, (Math.round(z / box.pitchZ + 0.5) - 0.5) * box.pitchZ));
+    const ns = (x: number) => Math.max(-box.halfW, Math.min(box.halfW, (Math.round(x / box.pitchX + 0.5) - 0.5) * box.pitchX));
+    const z0 = ew(from.z), x1 = ns(to.x), z1 = ew(to.z);
+    return [from, { x: from.x, z: z0 }, { x: x1, z: z0 }, { x: x1, z: z1 }, { x: to.x, z: z1 }, to];
+  }
   const rr = ringRoadRadius(contentRadius);
   const ap = airportLayout(contentRadius, boundaryRadius);
   const offAirport = (p: Pt) => inRect(ap.island, p.x, p.z, 2) || inRect(ap.bridge, p.x, p.z, 2) || (p.x > 0 && inRect(ap.road, p.x, p.z, 4));

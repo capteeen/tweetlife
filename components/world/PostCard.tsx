@@ -19,18 +19,23 @@ export function PostCard({ handle, showMetrics, canAct }: { handle: string; show
   const select = useWorld((s) => s.select);
   const lit = useWorld((s) => s.lit);
   const toggleLit = useWorld((s) => s.toggleLit);
+  const blockAccess = useWorld((s) => s.blockAccess);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   if (!selected) return null;
   const s = selected;
-  const url = `https://x.com/${handle}/status/${s.postId}`;
+  // on a country map a building belongs to whoever's block it stands in
+  const owner = s.owner ?? handle;
+  const access = s.owner ? blockAccess[s.owner.toLowerCase()] : undefined;
+  const locked = !!s.owner && !s.text && !!access && !access.loading && !access.admitted;
+  const url = `https://x.com/${owner}/status/${s.postId}`;
   const isLit = lit.has(s.id);
 
   const light = async () => {
     setBusy(true);
     setErr(null);
     try {
-      const res = await fetch(`/api/world/${encodeURIComponent(handle)}/lantern`, {
+      const res = await fetch(`/api/world/${encodeURIComponent(owner)}/lantern`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ structureId: s.id }),
@@ -56,7 +61,14 @@ export function PostCard({ handle, showMetrics, canAct }: { handle: string; show
           ✕
         </button>
       </div>
-      <p className="whitespace-pre-wrap break-words leading-[22px]">{s.text}</p>
+      {s.owner && <p className="mb-1 text-xs text-white/55">@{s.owner}&apos;s block</p>}
+      {locked ? (
+        <p className="text-white/70">{access?.message ?? `Follow @${owner} to read their posts.`}</p>
+      ) : s.owner && !s.text ? (
+        <p className="text-white/50">Loading the post…</p>
+      ) : (
+        <p className="whitespace-pre-wrap break-words leading-[22px]">{s.text}</p>
+      )}
       {showMetrics && (
         <div className="num mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-white/60">
           <span title="Likes">♥ {compact(s.likes)}</span>
@@ -67,7 +79,12 @@ export function PostCard({ handle, showMetrics, canAct }: { handle: string; show
         </div>
       )}
       <div className="mt-3 flex items-center gap-2">
-        {canAct && (
+        {locked && access?.reason === 'not_following' && (
+          <a className="btn" href={`https://x.com/intent/follow?screen_name=${owner}`} target="_blank" rel="noopener noreferrer">
+            Follow @{owner}
+          </a>
+        )}
+        {canAct && !locked && (
           <button className={isLit ? 'btn-ghost' : 'btn'} onClick={light} disabled={busy}>
             <span style={{ color: '#FFD089' }}>✦</span> {isLit ? 'Lantern lit' : 'Light a lantern'}
             <span className="num text-xs opacity-70">{s.lanternsLit}</span>

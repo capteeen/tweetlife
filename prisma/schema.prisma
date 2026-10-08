@@ -103,8 +103,22 @@ model World {
   lanterns   Lantern[]
   sessions   VisitorSession[]
   timelapses TimelapseJob[]
+  plot       Plot?
 
   @@index([listedOnExplore, access])
+}
+
+/// A player's block on their country's shared map (lib/world/country-map.ts). Given once, in join order,
+/// and never moved. Slot 0 is Capital Square, so player slots start at 1.
+model Plot {
+  id        String   @id @default(cuid())
+  country   String
+  slot      Int
+  worldId   String   @unique
+  world     World    @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([country, slot])
 }
 
 model Structure {

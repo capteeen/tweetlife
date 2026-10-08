@@ -4,6 +4,7 @@ import { compact, relativeTime } from '@/lib/format';
 void relativeTime;
 import type { WorldModel } from '@/lib/world/load';
 import { useWorld } from './store';
+import { COUNTRIES } from '@/lib/world/countries';
 
 // Bottom bar: owner, visitors online, lanterns lit, Guestbook, Share. Plus the guestbook and chat panels.
 
@@ -27,12 +28,16 @@ export function HUD({
   const setChatOpen = useWorld((s) => s.setChatOpen);
   const openPhone = useWorld((s) => s.openPhone);
   const [shared, setShared] = useState(false);
+  const country = useWorld((s) => s.country);
+  const rect = useWorld((s) => (s.block ? s.countryMap?.plots.find((p) => p.handle === s.block)?.rect ?? null : null));
+  // Capital Square on a country map: nobody's block
+  const square = !model.handle;
 
   const share = async () => {
-    const url = `${location.origin}/w/${model.handle}`;
-    const text = `Walk around @${model.handle}'s world on TweetLife — ${model.structureCount} posts, built from the real timeline.`;
+    const url = square ? `${location.origin}/c/${country}` : `${location.origin}/w/${model.handle}`;
+    const text = square ? `Come hang out in ${COUNTRIES[country].capital} on TweetLife.` : `Walk around @${model.handle}'s block on TweetLife — ${model.structureCount} posts, built from the real timeline.`;
     if (navigator.share) {
-      await navigator.share({ title: `@${model.handle}'s world`, text, url }).catch(() => {});
+      await navigator.share({ title: square ? COUNTRIES[country].capital : `@${model.handle}'s block`, text, url }).catch(() => {});
     } else {
       await navigator.clipboard.writeText(url).catch(() => {});
       setShared(true);
@@ -43,6 +48,15 @@ export function HUD({
   return (
     <>
       <div className="pointer-events-auto absolute inset-x-3 bottom-3 z-20 flex items-center gap-2 rounded-2xl chrome px-3 py-2 text-sm">
+        {square ? (
+          <span className="flex min-w-0 items-center gap-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={COUNTRIES[country].logo} alt="" className="h-7 w-7 rounded-full bg-white/10 p-1" />
+            <span className="truncate font-medium">
+              Capital Square<span className="hidden font-normal text-white/55 min-[480px]:inline"> · {COUNTRIES[country].capital}</span>
+            </span>
+          </span>
+        ) : (
         <a href={`https://x.com/${model.handle}`} target="_blank" rel="noopener noreferrer" className="flex min-w-0 items-center gap-2">
           {model.ownerAvatar ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -52,9 +66,10 @@ export function HUD({
           )}
           <span className="truncate font-medium">
             @{model.handle}
-            <span className="hidden font-normal text-white/55 min-[480px]:inline">&apos;s world</span>
+            <span className="hidden font-normal text-white/55 min-[480px]:inline">{rect ? "'s block" : "'s world"}</span>
           </span>
         </a>
+        )}
         <span className="num ml-auto hidden text-white/60 sm:inline" title="Structures">
           {model.structureCount} posts
         </span>
@@ -70,9 +85,11 @@ export function HUD({
         <button className="btn-ghost !px-3 !py-1.5" onClick={() => openPhone('home')} title="Phone">
           📱 Phone
         </button>
-        <button className="btn-ghost !px-3 !py-1.5 max-sm:!hidden" onClick={() => setGuestbookOpen(!guestbookOpen)}>
-          Guestbook
-        </button>
+        {!square && (
+          <button className="btn-ghost !px-3 !py-1.5 max-sm:!hidden" onClick={() => setGuestbookOpen(!guestbookOpen)}>
+            Guestbook
+          </button>
+        )}
         {chatAvailable && (
           <button className="btn-ghost !px-3 !py-1.5" onClick={() => setChatOpen(!chatOpen)}>
             Chat
@@ -82,13 +99,14 @@ export function HUD({
           {shared ? 'Copied' : 'Share'}
         </button>
       </div>
-      {guestbookOpen && <Guestbook model={model} canAct={canAct} />}
+      {guestbookOpen && !square && <Guestbook model={model} canAct={canAct} offset={rect} />}
       {chatOpen && chatAvailable && <Chat sendChat={sendChat} />}
     </>
   );
 }
 
-function Guestbook({ model, canAct }: { model: WorldModel; canAct: boolean }) {
+/** `offset`: the block's centre on a country map. Stones are stored relative to it and drawn in the country frame. */
+function Guestbook({ model, canAct, offset }: { model: WorldModel; canAct: boolean; offset: { x: number; z: number } | null }) {
   const me = useWorld((s) => s.me);
   const playerPos = useWorld((s) => s.playerPos);
   const addMark = useWorld((s) => s.addMark);
@@ -105,11 +123,11 @@ function Guestbook({ model, canAct }: { model: WorldModel; canAct: boolean }) {
       const res = await fetch(`/api/world/${encodeURIComponent(model.handle)}/marks`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ text, x: playerPos.x, z: playerPos.z }),
+        body: JSON.stringify({ text, x: playerPos.x - (offset?.x ?? 0), z: playerPos.z - (offset?.z ?? 0) }),
       });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error ?? 'failed');
-      addMark(j.mark);
+      addMark({ ...j.mark, x: j.mark.x + (offset?.x ?? 0), z: j.mark.z + (offset?.z ?? 0) });
       setText('');
     } catch (e) {
       setErr((e as Error).message);

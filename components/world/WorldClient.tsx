@@ -32,7 +32,8 @@ import { useLoveSync } from '@/components/life/loveClient';
 import { RequestNotices } from '@/components/life/RequestNotices';
 import { enterVenue } from '@/components/life/travel';
 import { placeVenues } from '@/lib/life/venues';
-import { isCountryId } from '@/lib/world/countries';
+import { useCountryWorld } from './countryClient';
+import { BlockBadge, Neighbours } from './CountryHUD';
 
 const WorldCanvas = dynamic(() => import('./WorldCanvas').then((m) => m.WorldCanvas), { ssr: false });
 
@@ -48,9 +49,11 @@ type Me = { id: string; handle: string; isOwner: boolean } | null;
 type Skyline = Pick<WorldModel, 'handle' | 'ownerName' | 'ownerAvatar' | 'followersCount' | 'structureCount' | 'biome' | 'accountCreatedAt' | 'geometry' | 'marks' | 'paths'>;
 
 // `backdrop`: the title screen's background — the slow orbit view with no chrome at all.
-// `country` (?country=bnb) picks which country's capital is drawn; without it the store keeps its current
-// country (Solana by default), which nationality and flights set with useWorld.getState().setCountry.
-export function WorldClient({ handle, spawnPostId, embed, backdrop, country }: { handle: string; spawnPostId?: string; embed?: boolean; backdrop?: boolean; country?: string }) {
+// Playing, you are always in a country: one shared map and room for everyone in it, where each player's posts
+// city is their own block (components/world/countryClient.ts). /w/<handle> takes you to that player's block,
+// /c/<country> (`handle` empty) to Capital Square. Embeds and the backdrop still show one world on its own.
+export function WorldClient({ handle, spawnPostId, embed, backdrop, country: countryParam }: { handle: string; spawnPostId?: string; embed?: boolean; backdrop?: boolean; country?: string }) {
+  const legacy = !!(embed || backdrop);
   const [payload, setPayload] = useState<Payload | null>(null);
   const [progress, setProgress] = useState<{ placed: number; postCount: number; ingestState: string; ingestError: string | null } | null>(null);
   const setModel = useWorld((s) => s.setModel);
@@ -58,17 +61,6 @@ export function WorldClient({ handle, spawnPostId, embed, backdrop, country }: {
   const setSpawn = useWorld((s) => s.setSpawn);
   const model = useWorld((s) => s.model);
   const [ready, setReady] = useState(false);
-  // a ?country link wins; otherwise you start where you last flew to, else your home country (your
-  // nationality, Solana until picked). A flight in progress sets the country itself.
-  const homeCountry = useWorld((s) => s.life?.me?.location ?? s.life?.me?.citizen?.country);
-  const homeApplied = useRef(false);
-  useEffect(() => {
-    if (isCountryId(country)) useWorld.getState().setCountry(country);
-    else if (!homeApplied.current && isCountryId(homeCountry) && !useWorld.getState().flight) {
-      homeApplied.current = true;
-      useWorld.getState().setCountry(homeCountry);
-    }
-  }, [country, homeCountry]);
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/world/${encodeURIComponent(handle)}`, { cache: 'no-store' });
@@ -91,11 +83,20 @@ export function WorldClient({ handle, spawnPostId, embed, backdrop, country }: {
   }, [handle, spawnPostId, setModel, setLit, setSpawn]);
 
   useEffect(() => {
+    if (!legacy) return;
     load().catch(() => setPayload({ error: 'Could not load this world.' }));
-  }, [load]);
+  }, [load, legacy]);
+  const countryWorld = useCountryWorld({ handle: handle || undefined, country: countryParam, spawnPostId, enabled: !legacy });
+  useEffect(() => {
+    if (countryWorld.error) setPayload({ error: countryWorld.error });
+  }, [countryWorld.error]);
+  const country = useWorld((s) => s.country);
+  const inCountry = useWorld((s) => !!s.countryMap);
+  const countryMarks = useWorld((s) => s.countryMap?.marks);
+  const block = useWorld((s) => s.block);
 
   // While building: poll real counts and reload the model as pages land.
-  const building = model?.ingestState === 'building' || model?.ingestState === 'queued';
+  const building = legacy && (model?.ingestState === 'building' || model?.ingestState === 'queued');
   // The counter polls every 4s; the scene itself reloads at most every 15s (a reload rebuilds every
   // building), or immediately when the build finishes.
   const lastReload = useRef(0);
@@ -115,11 +116,14 @@ export function WorldClient({ handle, spawnPostId, embed, backdrop, country }: {
     return () => clearInterval(t);
   }, [building, handle, load, model?.structureCount, model?.ingestState]);
 
-  const admitted = !!payload && 'admitted' in payload && payload.admitted;
-  const { online, sendChat, sendSocial, connected } = usePresence(handle, admitted);
-  useLife(admitted && !backdrop);
+  // a country is open to everyone: guests walk the streets, a block's posts follow its owner's rules
+  const admitted = legacy ? !!payload && 'admitted' in payload && payload.admitted : inCountry;
+  const { online, sendChat, sendSocial, connected } = usePresence(handle, admitted && !legacy, country);
+  // in a country your profile loads straight away: it says where you are (your last flight, else home)
+  useLife(!backdrop && (legacy ? admitted : true));
   const signedIn = useWorld((s) => !!s.me);
-  useCrowds(handle, admitted && !backdrop, signedIn);
+  const myHandle = useWorld((s) => s.me?.handle ?? '');
+  useCrowds(legacy ? handle : block ?? myHandle, admitted && !backdrop, signedIn);
   const onShift = useWorld((s) => !!s.shift);
   useLoveSync(admitted && !backdrop && signedIn);
   const nearVenue = useWorld((s) => s.nearVenue);
@@ -153,10 +157,10 @@ export function WorldClient({ handle, spawnPostId, embed, backdrop, country }: {
       </Shell>
     );
   }
-  if (!payload || !model) {
+  if ((legacy && !payload) || !model || (!legacy && !inCountry)) {
     return (
       <Shell>
-        <p className="text-white/60">Resolving access…</p>
+        <p className="text-white/60">{legacy ? 'Resolving access…' : 'Finding your way into town…'}</p>
       </Shell>
     );
   }
@@ -168,10 +172,10 @@ export function WorldClient({ handle, spawnPostId, embed, backdrop, country }: {
     <div className="fixed inset-0 overflow-hidden bg-base">
       <WorldCanvas
         geometry={g}
-        marks={model.marks}
+        marks={countryMarks ?? model.marks}
         paths={model.paths}
         biome={model.biome}
-        handle={model.handle}
+        handle={legacy ? model.handle : `country:${country}`}
         showMetrics={model.showMetrics}
         mode={admitted && !backdrop ? 'walk' : 'boundary'}
         spawn={spawnAt}
@@ -202,7 +206,7 @@ export function WorldClient({ handle, spawnPostId, embed, backdrop, country }: {
           No posts have been fetched for this account yet.
         </div>
       )}
-      {admitted && stale && !building && (
+      {legacy && admitted && stale && !building && (
         <div className="pointer-events-none absolute left-1/2 top-16 z-10 -translate-x-1/2 rounded-full chrome px-3 py-1 text-xs text-white/70">
           Data may be stale — last synced {relativeTime(model.lastSyncAt)}
         </div>
@@ -211,6 +215,8 @@ export function WorldClient({ handle, spawnPostId, embed, backdrop, country }: {
       {admitted ? (
         <>
           <TopHUD online={online} handle={model.handle} />
+          {inCountry && <BlockBadge />}
+          {inCountry && <Neighbours />}
           {lookPending && (
             <a
               className="pointer-events-auto absolute left-1/2 top-16 z-20 -translate-x-1/2 max-sm:left-auto max-sm:right-3 max-sm:translate-x-0 rounded-full bg-x px-4 py-1.5 text-sm font-semibold text-white shadow-lg hover:brightness-110"
@@ -279,7 +285,7 @@ export function WorldClient({ handle, spawnPostId, embed, backdrop, country }: {
           )}
         </>
       ) : (
-        <Boundary payload={payload as Extract<Payload, { admitted: false }>} model={model} embed={embed} />
+        payload && 'admitted' in payload && <Boundary payload={payload as Extract<Payload, { admitted: false }>} model={model} embed={embed} />
       )}
       <a
         href="/"

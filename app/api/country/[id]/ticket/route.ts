@@ -1,21 +1,21 @@
 import { NextResponse } from 'next/server';
 import { createHmac } from 'node:crypto';
 import { env } from '@/lib/env';
-import { resolveEntry } from '@/lib/world/entry';
-import { blockOf } from '@/lib/world/country';
+import { getUser } from '@/lib/session';
+import { isCountryId } from '@/lib/world/countries';
 import { roomFor } from '@/lib/world/country-map';
 
 export const dynamic = 'force-dynamic';
 
-// Older clients asked for a per-world room. There is one room per country now (see /api/country/<id>/ticket),
-// so this hands out a ticket for the country the world's block is in.
-export async function GET(_: Request, { params }: { params: { handle: string } }) {
+// A 5-minute signed ticket for a country's presence room (`country:<id>`, and its shards `country:<id>:N`,
+// which the ticket also opens). Everyone in a country is in it together, so anyone may have one; signed-out
+// visitors join as guests. Presence is optional: without PartyKit configured the country still works.
+export async function GET(_: Request, { params }: { params: { id: string } }) {
+  if (!isCountryId(params.id)) return NextResponse.json({ error: 'No such country.' }, { status: 404 });
   const e = env();
   if (!e.NEXT_PUBLIC_PARTYKIT_HOST || !e.PRESENCE_SECRET) return NextResponse.json({ ticket: null, host: null });
-  const { world, visitor } = await resolveEntry(params.handle);
-  if (!world) return NextResponse.json({ error: 'No world.' }, { status: 404 });
-  const { country } = await blockOf(world);
-  const room = roomFor(country);
+  const visitor = await getUser();
+  const room = roomFor(params.id);
   const payload = Buffer.from(
     JSON.stringify({ id: visitor?.id ?? `anon-${crypto.randomUUID()}`, handle: visitor?.handle ?? 'visitor', room, exp: Math.floor(Date.now() / 1000) + 300 }),
   ).toString('base64url');

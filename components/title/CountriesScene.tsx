@@ -50,7 +50,7 @@ export function CountriesScene({ paused, onReady, reducedMotion }: { paused: boo
       {COUNTRY_LIST.map((c, i) => (
         <Isle key={c.id} country={c} at={SPOTS[i]} bob={i * 2.1} />
       ))}
-      <FlyingPlane fly={tour} tint="#1D9BF0" scale={0.5} />
+      <FlyingPlane fly={tour} tint="#1D9BF0" scale={0.36} />
     </Canvas>
   );
 }

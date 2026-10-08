@@ -75,7 +75,7 @@ export function WelcomeScene({ paused, onReady, reducedMotion }: { paused: boole
         <Floaters />
         <Birds />
       </group>
-      <FlyingPlane fly={circling} tint="#1D9BF0" scale={0.72} />
+      <FlyingPlane fly={circling} tint="#1D9BF0" scale={0.48} />
       <Clouds />
     </Canvas>
   );

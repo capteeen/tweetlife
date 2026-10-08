@@ -1,11 +1,10 @@
 'use client';
 import { useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { useFrame } from '@react-three/fiber';
 import { RoundedBox } from '@react-three/drei';
 import { Plane } from '@/components/world/Plane';
-import { COUNTRIES, type CountryId } from '@/lib/world/countries';
+import type { CountryId } from '@/lib/world/countries';
 import { prng } from '@/lib/world/seed';
 
 // Pieces shared by the welcome page's two scenes (the hero city and the three countries): the speech-bubble
@@ -309,25 +308,17 @@ export function Clouds({ count = 9, rMin = 62, rSpread = 18, seed = 3 }: { count
 
 export type FlightPose = { x: number; y: number; z: number; heading: number; pitch: number; bank: number };
 
-// the airliner's cheat lines and its windows plus cockpit glass, each merged into one mesh
-let cheat: THREE.BufferGeometry | null = null;
-let glass: THREE.BufferGeometry | null = null;
-const cheatGeo = () => (cheat ??= mergeGeometries([-1, 1].map((side) => new THREE.BoxGeometry(0.04, 0.16, 9.6).translate(side * 0.86, 1.45, 0.4)))!);
-const glassGeo = () =>
-  (glass ??= mergeGeometries([
-    ...[-1, 1].flatMap((side) => Array.from({ length: 14 }, (_, i) => new THREE.BoxGeometry(0.03, 0.16, 0.2).translate(side * 0.875, 1.82, -3.6 + i * 0.62))),
-    new THREE.BoxGeometry(0.95, 0.22, 0.5).rotateX(-0.5).translate(0, 1.95, 5.75),
-  ])!);
-
 const TRAIL = 70;
 const TRAIL_EVERY = 0.03;
 
+/** where the airliner's engines end, relative to its middle (components/world/planeModels.ts) */
+const ENGINE_OUT = { x: 2.7, y: 0.78 - 1.75, z: 0.3 };
+
 /**
- * The game's airliner (components/world/Plane.tsx) in flight: `fly(t)` says where it is at time t. A cheat line
- * and windows in the livery colour dress it up, and its engines leave a contrail that spreads and fades.
+ * The game's airliner (components/world/Plane.tsx) in flight, gear up: `fly(t)` says where it is at time t. Its
+ * engines leave a contrail that spreads and fades.
  */
 export function FlyingPlane({ fly, country, tint, scale = 1 }: { fly: (t: number) => FlightPose; country?: CountryId; tint?: string; scale?: number }) {
-  const livery = country ? COUNTRIES[country].theme.primary : tint ?? '#1D9BF0';
   const plane = useRef<THREE.Group>(null);
   const trail = useRef<THREE.InstancedMesh>(null);
   const st = useRef({ samples: [] as { p: THREE.Vector3; t: number }[], last: -1, now: 0 });
@@ -345,7 +336,7 @@ export function FlyingPlane({ fly, country, tint, scale = 1 }: { fly: (t: number
     if (s.now - s.last > TRAIL_EVERY) {
       s.last = s.now;
       for (const side of [-1, 1]) {
-        s.samples.push({ p: tmp.v.set(side * 2.6 * scale, -0.8 * scale, -0.6 * scale).applyMatrix4(g.matrix).clone(), t: s.now });
+        s.samples.push({ p: tmp.v.set(side * ENGINE_OUT.x * scale, ENGINE_OUT.y * scale, ENGINE_OUT.z * scale).applyMatrix4(g.matrix).clone(), t: s.now });
       }
       while (s.samples.length > TRAIL * 2) s.samples.shift();
     }
@@ -356,7 +347,7 @@ export function FlyingPlane({ fly, country, tint, scale = 1 }: { fly: (t: number
       const age = (s.now - sm.t) / life; // 0 new .. 1 gone
       const k = Math.max(0, Math.min(1, age * 5)) * Math.max(0, 1 - age);
       tmp.o.position.copy(sm.p);
-      tmp.o.scale.setScalar(Math.max(0.001, (0.3 + age * 0.6) * k * scale));
+      tmp.o.scale.setScalar(Math.max(0.001, (0.45 + age * 0.9) * k * scale)); // sized to the 16.5-long airliner
       tmp.o.updateMatrix();
       m.setMatrixAt(i, tmp.o.matrix);
     });
@@ -366,15 +357,9 @@ export function FlyingPlane({ fly, country, tint, scale = 1 }: { fly: (t: number
   return (
     <group>
       <group ref={plane} matrixAutoUpdate={false}>
-        <group position-y={-1.6 * scale} scale={scale}>
+        {/* the model's middle sits 1.75 above its wheels */}
+        <group position-y={-1.75 * scale} scale={scale}>
           <Plane kind="airliner" country={country} tint={tint} flying />
-          {/* cheat line, windows and the cockpit glass */}
-          <mesh geometry={cheatGeo()}>
-            <meshStandardMaterial color={livery} roughness={0.5} />
-          </mesh>
-          <mesh geometry={glassGeo()}>
-            <meshStandardMaterial color="#26344A" roughness={0.2} metalness={0.3} />
-          </mesh>
         </group>
       </group>
       <instancedMesh ref={trail} args={[undefined, undefined, TRAIL * 2]} frustumCulled={false}>

@@ -280,6 +280,10 @@ model Player {
   received   Interaction[] @relation("received")
   assets     Asset[]
   paperCoins PaperCoin[]
+  bonds      Bond[]          @relation("bonds")
+  bondedTo   Bond[]          @relation("bondedTo")
+  loveSent   SocialRequest[] @relation("loveSent")
+  loveGot    SocialRequest[] @relation("loveGot")
 }
 
 model BagTx {
@@ -379,4 +383,55 @@ model PaperCoin {
   updatedAt DateTime @updatedAt
 
   @@unique([playerId, mint])
+}
+
+/// One side of a relationship: you and another player (partnerId) or you and an AI resident (residentId).
+/// Player-to-player bonds are written in pairs, one row per side, in one transaction. Rules in lib/life/love.ts.
+model Bond {
+  id          String    @id @default(cuid())
+  playerId    String
+  player      Player    @relation("bonds", fields: [playerId], references: [id], onDelete: Cascade)
+  partnerId   String?
+  partner     Player?   @relation("bondedTo", fields: [partnerId], references: [id], onDelete: Cascade)
+  residentId  String?
+  /// talking (visited, or chatted with a resident) | dating (counts against the cap of six) | ended
+  status      String    @default("talking")
+  /// AI residents only: how well you get on, 0..100
+  affinity    Int       @default(0)
+  since       DateTime  @default(now())
+  datingSince DateTime?
+  endedAt     DateTime?
+  lastDateAt  DateTime?
+  dates       Int       @default(0)
+
+  @@unique([playerId, partnerId])
+  @@unique([playerId, residentId])
+  @@index([partnerId])
+  @@index([playerId, status])
+}
+
+/// A request to another player (answered later, in their phone) or to an AI resident (answered on the spot):
+/// invite home, ask to come over, ask out, or go on a date with a partner.
+model SocialRequest {
+  id          String    @id @default(cuid())
+  fromId      String
+  from        Player    @relation("loveSent", fields: [fromId], references: [id], onDelete: Cascade)
+  toId        String?
+  to          Player?   @relation("loveGot", fields: [toId], references: [id], onDelete: Cascade)
+  residentId  String?
+  /// invite | visit | date | outing
+  kind        String
+  /// outing only: which date (lib/life/love.ts DATES)
+  detail      String?
+  /// pending | accepted | declined | cancelled
+  status      String    @default("pending")
+  createdAt   DateTime  @default(now())
+  expiresAt   DateTime
+  respondedAt DateTime?
+  /// an accepted invite or visit: the guest may be in the host's house until then
+  passUntil   DateTime?
+
+  @@index([toId, status])
+  @@index([fromId, status])
+  @@index([fromId, toId, kind])
 }

@@ -494,4 +494,10 @@ export type HomeView = {
   placed: HomeItem[];
   stored: HomeItem[];
   power: PowerState;
+  /** set when it is an AI resident's house (lib/life/love.ts residentHome) */
+  resident?: { id: string; name: string };
+  /** why you may be here: your own house, an accepted invite or visit (until when), or you're dating them */
+  access?: { reason: 'owner' | 'pass' | 'partner'; until: string | null; requestId: string | null };
+  /** AI residents the owner invited over, in the room now */
+  guests?: { id: string; name: string }[];
 };

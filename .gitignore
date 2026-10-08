@@ -12,3 +12,5 @@ out
 dump.rdb
 tsconfig.tsbuildinfo
 next-env.d.ts
+.wrangler
+.dev.vars

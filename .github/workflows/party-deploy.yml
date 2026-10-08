@@ -1,16 +1,17 @@
-# Deploys the presence server (party/, PartyKit) whenever it changes on the default branch, so merges that
-# touch multiplayer go live without anyone running `npm run party:deploy` by hand. Vercel does not do this.
+# Deploys the presence server (party/world.ts, run by presence/ on Cloudflare) whenever it changes on the default
+# branch, so merges that touch multiplayer go live on their own. Vercel does not do this.
 #
-# One-time setup (repo Settings > Secrets and variables > Actions):
-#   PARTYKIT_LOGIN  the GitHub username the PartyKit project was first deployed with
-#   PARTYKIT_TOKEN  from `npx partykit token generate`, run once while logged in as that user
-# Variables already set on the project (PRESENCE_SECRET) are kept between deploys.
+# The Cloudflare account is presence/wrangler.jsonc's account_id. One-time setup (repo Settings > Secrets and variables > Actions > New repository secret):
+#   CLOUDFLARE_API_TOKEN   My Profile > API Tokens > Create Token > "Edit Cloudflare Workers" template
+#   PRESENCE_SECRET        the same value as PRESENCE_SECRET in Vercel (tickets are signed with it)
+# Then set NEXT_PUBLIC_PARTYKIT_HOST in Vercel to the worker's host this workflow prints
+# (tweetlife-presence.<your-subdomain>.workers.dev) and redeploy the app.
 name: Deploy presence server
 
 on:
   push:
     branches: [claude/friendly-einstein-35hp0b]
-    paths: ['party/**', 'partykit.json', 'package-lock.json']
+    paths: ['party/**', 'presence/**', '.github/workflows/party-deploy.yml']
   workflow_dispatch:
 
 concurrency:
@@ -20,15 +21,19 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: presence
     steps:
       - name: Check secrets
         id: secrets
         env:
-          PARTYKIT_LOGIN: ${{ secrets.PARTYKIT_LOGIN }}
-          PARTYKIT_TOKEN: ${{ secrets.PARTYKIT_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          PRESENCE_SECRET: ${{ secrets.PRESENCE_SECRET }}
+        working-directory: .
         run: |
-          if [ -z "$PARTYKIT_LOGIN" ] || [ -z "$PARTYKIT_TOKEN" ]; then
-            echo "::warning::PARTYKIT_LOGIN and PARTYKIT_TOKEN are not set, skipping the presence server deploy"
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$PRESENCE_SECRET" ]; then
+            echo "::warning::CLOUDFLARE_API_TOKEN and PRESENCE_SECRET are not both set, skipping the presence server deploy"
             echo "ok=false" >> "$GITHUB_OUTPUT"
           else
             echo "ok=true" >> "$GITHUB_OUTPUT"
@@ -40,12 +45,18 @@ jobs:
         with:
           node-version: 20
           cache: npm
+          cache-dependency-path: presence/package-lock.json
       - name: Install
         if: steps.secrets.outputs.ok == 'true'
         run: npm ci
       - name: Deploy
         if: steps.secrets.outputs.ok == 'true'
         env:
-          PARTYKIT_LOGIN: ${{ secrets.PARTYKIT_LOGIN }}
-          PARTYKIT_TOKEN: ${{ secrets.PARTYKIT_TOKEN }}
-        run: npm run party:deploy
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: npx wrangler deploy
+      - name: Set the ticket secret
+        if: steps.secrets.outputs.ok == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          PRESENCE_SECRET: ${{ secrets.PRESENCE_SECRET }}
+        run: printf '%s' "$PRESENCE_SECRET" | npx wrangler secret put PRESENCE_SECRET

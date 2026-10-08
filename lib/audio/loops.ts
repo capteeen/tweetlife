@@ -63,19 +63,20 @@ const BUILD: Record<string, Builder> = {
   city: (e, out) => {
     const c = e.ctx;
     const n = noiseLoop(e, 0.5);
+    // a low rumble (felt more than heard) and a mid-range wash that phone speakers can actually play
     const lp = filter(c, 'lowpass', 220, 0.5);
-    const g = gain(c, 0.9);
+    const g = gain(c, 0.45);
     n.connect(lp).connect(g).connect(out);
     const n2 = noiseLoop(e);
-    const bp = filter(c, 'bandpass', 900, 0.6);
-    const g2 = gain(c, 0.05);
+    const bp = filter(c, 'bandpass', 700, 0.5);
+    const g2 = gain(c, 0.12);
     n2.connect(bp).connect(g2).connect(out);
-    const wob = lfo(c, 0.07, 0.3, g.gain);
+    const wob = lfo(c, 0.07, 0.15, g.gain);
     return {
       sources: start(e, n, n2, wob),
       update: (p, t) => {
         lp.frequency.setTargetAtTime(160 + (p.busy ?? 0.5) * 220, t, 0.5);
-        g2.gain.setTargetAtTime(0.02 + (p.busy ?? 0.5) * 0.08, t, 0.5);
+        g2.gain.setTargetAtTime(0.06 + (p.busy ?? 0.5) * 0.14, t, 0.5);
       },
     };
   },
@@ -117,7 +118,7 @@ const BUILD: Record<string, Builder> = {
         const o = around(e, out);
         const base = rand(2600, 5200);
         const notes = Math.floor(rand(2, 6));
-        for (let i = 0; i < notes; i++) tone(e, o, t, { at: i * rand(0.07, 0.12), f: base * rand(0.9, 1.15), f2: base * rand(1.1, 1.5), dur: rand(0.04, 0.09), gain: rand(0.03, 0.07) });
+        for (let i = 0; i < notes; i++) tone(e, o, t, { at: i * rand(0.07, 0.12), f: base * rand(0.9, 1.15), f2: base * rand(1.1, 1.5), dur: rand(0.04, 0.09), gain: rand(0.07, 0.15) });
       },
     };
   },
@@ -132,7 +133,7 @@ const BUILD: Record<string, Builder> = {
           next[i] = t + rand(0.5, 0.9);
           const o = around(e, out, pan);
           const f = 4400 + i * 350;
-          for (let k = 0; k < 3; k++) tone(e, o, t, { at: k * 0.045, f, dur: 0.025, gain: 0.03 });
+          for (let k = 0; k < 3; k++) tone(e, o, t, { at: k * 0.045, f, dur: 0.025, gain: 0.07 });
         });
       },
     };
@@ -145,9 +146,10 @@ const BUILD: Record<string, Builder> = {
         if (t < next) return;
         next = t + rand(3, 9);
         const o = around(e, out);
-        const bp = filter(e.ctx, 'bandpass', 1500, 2);
+        const bp = filter(e.ctx, 'bandpass', 1500, 1);
         bp.connect(o);
-        for (let i = 0; i < Math.floor(rand(1, 4)); i++) tone(e, bp, t, { at: i * 0.32, type: 'sawtooth', f: rand(1000, 1200), f2: rand(1500, 1800), dur: 0.22, gain: 0.05, attack: 0.04 });
+        setTimeout(() => bp.disconnect(), 3000);
+        for (let i = 0; i < Math.floor(rand(1, 4)); i++) tone(e, bp, t, { at: i * 0.32, type: 'sawtooth', f: rand(1000, 1200), f2: rand(1500, 1800), dur: 0.22, gain: 0.3, attack: 0.04 });
       },
     };
   },
@@ -220,16 +222,16 @@ const BUILD: Record<string, Builder> = {
     const c = e.ctx;
     const n = noiseLoop(e);
     const bp = filter(c, 'bandpass', 2400, 1.5);
-    const g = gain(c, 0.04);
+    const g = gain(c, 0.1);
     n.connect(bp).connect(g).connect(out);
-    const pedal = lfo(c, 1.4, 0.03, g.gain);
+    const pedal = lfo(c, 1.4, 0.06, g.gain);
     let next = 0;
     return {
       sources: start(e, n, pedal),
       tick: (t) => {
         if (t < next) return;
         next = t + 0.06;
-        hiss(e, out, t, { dur: 0.008, gain: 0.05, filter: 'highpass', f: 4500 });
+        hiss(e, out, t, { dur: 0.008, gain: 0.12, filter: 'highpass', f: 4500 });
       },
     };
   },
@@ -358,8 +360,8 @@ const BUILD: Record<string, Builder> = {
         const rate = Math.max(0.3, p.rate ?? 1);
         const hard = p.hard ?? 0.5;
         next = t + 0.5 / rate;
-        if (inhale) hiss(e, out, t, { dur: 0.35 / rate, gain: 0.05 + hard * 0.06, filter: 'bandpass', f: 1600, f2: 2200, q: 2, attack: 0.1 / rate });
-        else hiss(e, out, t, { dur: 0.3 / rate, gain: 0.07 + hard * 0.1, filter: 'bandpass', f: 950, f2: 700, q: 1.6, attack: 0.04 });
+        if (inhale) hiss(e, out, t, { dur: 0.35 / rate, gain: 0.14 + hard * 0.16, filter: 'bandpass', f: 1600, f2: 2200, q: 1.2, attack: 0.1 / rate });
+        else hiss(e, out, t, { dur: 0.3 / rate, gain: 0.2 + hard * 0.25, filter: 'bandpass', f: 950, f2: 700, q: 1, attack: 0.04 });
         inhale = !inhale;
       },
     };
@@ -374,7 +376,7 @@ const BUILD: Record<string, Builder> = {
         if (t < next) return;
         next = t + pick([0.12, 0.12, 0.24]);
         if (Math.random() < 0.15) hiss(e, out, t, { dur: 0.08, gain: 0.08, filter: 'highpass', f: 2000 });
-        else tone(e, out, t, { type: 'square', f: hz(72 + pick(scale)), dur: 0.08, gain: 0.04 });
+        else tone(e, out, t, { type: 'square', f: hz(72 + pick(scale)), dur: 0.08, gain: 0.07 });
       },
     };
   },
@@ -386,8 +388,8 @@ const BUILD: Record<string, Builder> = {
       tick: (t) => {
         if (t < next) return;
         next = t + (Math.random() < 0.12 ? rand(0.4, 0.9) : rand(0.07, 0.16));
-        hiss(e, out, t, { dur: 0.015, gain: rand(0.06, 0.1), filter: 'bandpass', f: rand(2500, 4000), q: 2 });
-        tone(e, out, t, { f: rand(180, 240), dur: 0.02, gain: 0.04 });
+        hiss(e, out, t, { dur: 0.015, gain: rand(0.12, 0.2), filter: 'bandpass', f: rand(2500, 4000), q: 1.2 });
+        tone(e, out, t, { f: rand(180, 240), dur: 0.02, gain: 0.08 });
       },
     };
   },

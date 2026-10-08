@@ -62,7 +62,10 @@ const SFX = {
     tone(e, out, t, { f: 1800, f2: 1200, dur: 0.03, gain: 0.12 });
     return hiss(e, out, t, { dur: 0.012, gain: 0.05, filter: 'highpass', f: 5000 });
   },
-  tap: (e, out, t) => tone(e, out, t, { f: 1100, f2: 850, dur: 0.05, gain: 0.14, type: 'triangle' }),
+  tap: (e, out, t) => {
+    hiss(e, out, t, { dur: 0.015, gain: 0.06, filter: 'highpass', f: 4000 });
+    return tone(e, out, t, { f: 1250, f2: 950, dur: 0.06, gain: 0.3 });
+  },
   phoneOpen: (e, out, t) => {
     hiss(e, out, t, { dur: 0.18, gain: 0.05, filter: 'bandpass', f: 800, f2: 3000, attack: 0.05 });
     tone(e, out, t, { at: 0.04, f: hz(88), dur: 0.12, gain: 0.1 });
@@ -177,17 +180,17 @@ const SFX = {
   // ----- people -----
   cheer: (e, out, t, o) => {
     const k = o.v ?? 1;
-    for (let i = 0; i < 6; i++) hiss(e, out, t, { at: rand(0, 0.25), dur: rand(1, 1.8), gain: 0.06 * k, filter: 'bandpass', f: rand(500, 2400), q: rand(2, 5), attack: rand(0.15, 0.4) });
+    for (let i = 0; i < 6; i++) hiss(e, out, t, { at: rand(0, 0.25), dur: rand(1, 1.8), gain: 0.14 * k, filter: 'bandpass', f: rand(500, 2400), q: rand(2, 5), attack: rand(0.15, 0.4) });
     tone(e, out, t, { at: 0.2, f: 2400, f2: 3200, dur: 0.35, gain: 0.03 * k }); // whistle
     return t + 2;
   },
-  clap: (e, out, t) => hiss(e, out, t, { dur: 0.09, gain: 0.25, filter: 'bandpass', f: 1500, q: 1.2 }),
+  clap: (e, out, t) => hiss(e, out, t, { dur: 0.09, gain: 0.45, filter: 'bandpass', f: 1500, q: 1.2 }),
   shutter: (e, out, t) => {
     hiss(e, out, t, { dur: 0.02, gain: 0.3, filter: 'highpass', f: 2000 });
     return hiss(e, out, t, { at: 0.07, dur: 0.03, gain: 0.25, filter: 'highpass', f: 1500 });
   },
-  exhale: (e, out, t, o) => hiss(e, out, t, { dur: 0.3, gain: 0.06 * (o.v ?? 1), filter: 'bandpass', f: 900, q: 1.5, attack: 0.05 }),
-  inhale: (e, out, t, o) => hiss(e, out, t, { dur: 0.25, gain: 0.04 * (o.v ?? 1), filter: 'bandpass', f: 1500, f2: 2200, q: 2, attack: 0.12 }),
+  exhale: (e, out, t, o) => hiss(e, out, t, { dur: 0.3, gain: 0.25 * (o.v ?? 1), filter: 'bandpass', f: 900, q: 1, attack: 0.05 }),
+  inhale: (e, out, t, o) => hiss(e, out, t, { dur: 0.25, gain: 0.18 * (o.v ?? 1), filter: 'bandpass', f: 1500, f2: 2200, q: 1.2, attack: 0.12 }),
   sigh: (e, out, t) => hiss(e, out, t, { dur: 0.8, gain: 0.06, filter: 'bandpass', f: 1100, f2: 500, q: 1.5, attack: 0.15 }),
   weights: (e, out, t) => {
     ping(e, out, t, rand(300, 420), 0.1, 0.4, [1, 2.4, 3.9]);
@@ -196,8 +199,9 @@ const SFX = {
 
   // ----- home -----
   sit: (e, out, t) => {
-    hiss(e, out, t, { dur: 0.15, gain: 0.12, filter: 'lowpass', f: 500, attack: 0.02 });
-    return tone(e, out, t, { f: 75, f2: 50, dur: 0.12, gain: 0.25 });
+    hiss(e, out, t, { dur: 0.15, gain: 0.35, filter: 'lowpass', f: 900, attack: 0.02 });
+    tone(e, out, t, { f: 140, f2: 90, dur: 0.1, gain: 0.3 });
+    return tone(e, out, t, { f: 75, f2: 50, dur: 0.12, gain: 0.5 });
   },
   liedown: (e, out, t) => {
     hiss(e, out, t, { dur: 0.4, gain: 0.1, filter: 'lowpass', f: 700, attack: 0.08 });
@@ -209,7 +213,7 @@ const SFX = {
     return t + 1.5;
   },
   munch: (e, out, t) => {
-    for (let i = 0; i < 4; i++) hiss(e, out, t, { at: i * 0.38, dur: 0.1, gain: 0.1, filter: 'bandpass', f: rand(900, 1600), q: 1 });
+    for (let i = 0; i < 4; i++) hiss(e, out, t, { at: i * 0.38, dur: 0.1, gain: 0.3, filter: 'bandpass', f: rand(900, 1600), q: 0.8 });
     return t + 1.6;
   },
   pullCord: (e, out, t) => {

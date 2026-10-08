@@ -72,7 +72,9 @@ export function hiss(e: Eng, out: AudioNode, t: number, o: HissOpts) {
   env(g.gain, t0, o.gain, o.attack ?? 0.003, o.dur);
   s.connect(f).connect(g).connect(out);
   const len = (o.attack ?? 0.003) + o.dur + 0.05;
-  s.start(t0, Math.random() * (e.noise.duration - len - 0.1));
+  // bursts longer than the noise buffer loop it
+  if (len > e.noise.duration - 0.2) s.loop = true;
+  s.start(t0, Math.random() * Math.max(0, e.noise.duration - len - 0.1));
   s.stop(t0 + len);
   return t0 + o.dur;
 }

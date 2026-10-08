@@ -20,6 +20,23 @@ export function databaseUrl(): string | undefined {
   return scan(DB_PREFERRED, isPg) ?? scan(['DATABASE_URL'], isPrismaProxy);
 }
 
+// A serverless function instance keeps its own Prisma pool, sized from the host's CPU count by default
+// (often 5-17 connections). Many warm or frozen Vercel instances add up and hit the database's connection cap
+// ("too many connections for role ..."), which takes every page down. On Vercel each instance gets a small
+// pool instead (Prisma's serverless advice); DATABASE_CONNECTION_LIMIT overrides the size. Parameters
+// already in the URL win, and the long-running worker keeps Prisma's default pool.
+export function pooledDatabaseUrl(url = databaseUrl()): string | undefined {
+  if (!url || !process.env.VERCEL || !isPg(url)) return url;
+  const add: Record<string, string> = {
+    connection_limit: process.env.DATABASE_CONNECTION_LIMIT || '1',
+    pool_timeout: '20',
+  };
+  const [base, query = ''] = url.split('?');
+  const params = new URLSearchParams(query);
+  for (const [k, v] of Object.entries(add)) if (!params.has(k)) params.set(k, v);
+  return `${base}?${params.toString()}`;
+}
+
 export function redisUrl(): string | undefined {
   return scan(REDIS_PREFERRED, isRedis);
 }

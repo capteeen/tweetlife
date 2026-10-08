@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <!-- low-poly city block mark: an isometric block with four buildings, red/orange/grey roofs, a lamp -->
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#BFE3FF"/><stop offset="1" stop-color="#FFC46B"/></linearGradient>
+  </defs>
+  <g transform="translate(100,112)">
+    <!-- block ground (lush) with sidewalk -->
+    <polygon points="0,-58 92,-6 0,46 -92,-6" fill="#B9BCC2"/>
+    <polygon points="0,-50 80,-6 0,38 -80,-6" fill="#7FB069"/>
+    <!-- asphalt edge -->
+    <polygon points="0,46 92,-6 92,4 0,56" fill="#3E434C"/>
+    <polygon points="-92,-6 0,46 0,56 -92,4" fill="#3E434C"/>
+    <!-- building 1 (tall, grey, red roof) -->
+    <g transform="translate(-34,-18)">
+      <polygon points="0,-70 28,-56 28,0 0,14" fill="#8A96A8"/>
+      <polygon points="0,-70 -28,-56 -28,0 0,14" fill="#A9B3C2"/>
+      <polygon points="0,-84 28,-70 0,-56 -28,-70" fill="#C0392B"/>
+      <rect x="6" y="-50" width="6" height="8" fill="#FFE9C2" transform="skewY(27)"/>
+      <rect x="16" y="-50" width="6" height="8" fill="#FFE9C2" transform="skewY(27)"/>
+      <rect x="6" y="-34" width="6" height="8" fill="#FFE9C2" transform="skewY(27)"/>
+      <rect x="16" y="-34" width="6" height="8" fill="#FFE9C2" transform="skewY(27)"/>
+    </g>
+    <!-- building 2 (orange roof) -->
+    <g transform="translate(22,-30)">
+      <polygon points="0,-40 24,-28 24,10 0,22" fill="#9AA6B8"/>
+      <polygon points="0,-40 -24,-28 -24,10 0,22" fill="#B8C0CC"/>
+      <polygon points="0,-52 24,-40 0,-28 -24,-40" fill="#E67E22"/>
+    </g>
+    <!-- building 3 (beige, grey roof) -->
+    <g transform="translate(40,6)">
+      <polygon points="0,-30 22,-19 22,8 0,19" fill="#D4C3A5"/>
+      <polygon points="0,-30 -22,-19 -22,8 0,19" fill="#E8DCC8"/>
+      <polygon points="0,-41 22,-30 0,-19 -22,-30" fill="#6B7280"/>
+    </g>
+    <!-- building 4 (small, red roof) -->
+    <g transform="translate(-10,14)">
+      <polygon points="0,-24 18,-15 18,6 0,15" fill="#8A96A8"/>
+      <polygon points="0,-24 -18,-15 -18,6 0,15" fill="#A9B3C2"/>
+      <polygon points="0,-33 18,-24 0,-15 -18,-24" fill="#C0392B"/>
+    </g>
+    <!-- tree -->
+    <g transform="translate(-58,8)">
+      <rect x="-1.5" y="0" width="3" height="10" fill="#5C4033"/>
+      <polygon points="0,-16 10,-4 6,8 -6,8 -10,-4" fill="#4FA653"/>
+    </g>
+    <!-- street lamp -->
+    <g transform="translate(64,24)">
+      <rect x="-1" y="-22" width="2" height="22" fill="#3E434C"/>
+      <circle cx="0" cy="-24" r="4" fill="#FFD089"/>
+      <circle cx="0" cy="-24" r="8" fill="#FFD089" opacity="0.25"/>
+    </g>
+  </g>
+</svg>

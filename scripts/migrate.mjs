@@ -12,5 +12,15 @@ if (!url) {
   console.warn(`[migrate] no postgres:// URL in the environment; skipping migrations. Storage-looking variables present: ${names.join(', ') || 'none'}`);
   process.exit(0);
 }
-const res = spawnSync('npx', ['prisma', 'migrate', 'deploy'], { stdio: 'inherit', env: { ...process.env, DATABASE_URL: url } });
-process.exit(res.status ?? 1);
+// When the running site has used up the database's connections, a deploy (often the one that fixes it) would
+// fail here. Wait and retry a few times before giving up; any other error fails the build at once.
+const busy = /too many (database )?connections|remaining connection slots/i;
+for (let attempt = 1; ; attempt++) {
+  const res = spawnSync('npx', ['prisma', 'migrate', 'deploy'], { encoding: 'utf8', env: { ...process.env, DATABASE_URL: url } });
+  process.stdout.write(res.stdout ?? '');
+  process.stderr.write(res.stderr ?? '');
+  if (res.status === 0) process.exit(0);
+  if (attempt >= 6 || !busy.test(`${res.stdout}${res.stderr}`)) process.exit(res.status ?? 1);
+  console.warn(`[migrate] database is out of connections; retrying in 20s (attempt ${attempt + 1} of 6)`);
+  await new Promise((r) => setTimeout(r, 20_000));
+}

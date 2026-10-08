@@ -1,13 +1,14 @@
 import { PrismaClient } from '@prisma/client';
-import { databaseUrl } from './db-url';
+import { pooledDatabaseUrl } from './db-url';
 
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
 export const db =
   globalForPrisma.prisma ??
   new PrismaClient({
-    datasourceUrl: databaseUrl(),
+    datasourceUrl: pooledDatabaseUrl(),
     log: process.env.NODE_ENV === 'development' ? ['warn', 'error'] : ['error'],
   });
 
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db;
+// Kept on globalThis in production too, so route bundles that each import this module share one client and one pool.
+globalForPrisma.prisma = db;

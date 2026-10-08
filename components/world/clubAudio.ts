@@ -1,8 +1,11 @@
 'use client';
 
 // The music in the club and the lounge, synthesised in the browser (no audio files). A small look-ahead
-// scheduler plays a drum pattern, a log-drum bass line and chord stabs. Volume follows how close you are.
+// scheduler plays a drum pattern, a log-drum bass line and chord stabs. Volume follows how close you are,
+// and from outside the walls it is muffled. It plays through the shared engine's music bus (lib/audio).
 // `beat()` gives the visuals (dance floor, lights) the same clock, music on or off.
+
+import { audioRaw } from '@/lib/audio/engine';
 
 export type Style = 'club' | 'lounge';
 
@@ -15,6 +18,7 @@ const STYLES: Record<Style, { bpm: number; root: number; chords: number[][] }> =
 
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
+let walls: BiquadFilterNode | null = null;
 let timer: ReturnType<typeof setInterval> | null = null;
 let style: Style = 'club';
 let nextStep = 0;
@@ -33,16 +37,18 @@ export function beat(s: Style = style) {
 
 function ensure() {
   if (ctx) return ctx;
-  const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-  if (!AC) return null;
-  ctx = new AC();
+  const e = audioRaw();
+  if (!e) return null;
+  ctx = e.ctx;
   master = ctx.createGain();
   master.gain.value = 0;
+  // the walls: a low-pass that closes when you are outside
+  walls = ctx.createBiquadFilter();
+  walls.type = 'lowpass';
+  walls.frequency.value = 18000;
   const comp = ctx.createDynamicsCompressor();
-  master.connect(comp).connect(ctx.destination);
-  noise = ctx.createBuffer(1, ctx.sampleRate * 0.5, ctx.sampleRate);
-  const d = noise.getChannelData(0);
-  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  master.connect(walls).connect(comp).connect(e.buses.music);
+  noise = e.noise;
   return ctx;
 }
 
@@ -69,7 +75,7 @@ function hiss(t: number, level: number, decay: number, freq: number) {
   f.frequency.value = freq;
   env(g, t, level, 0.001, decay);
   s.connect(f).connect(g).connect(master!);
-  s.start(t);
+  s.start(t, Math.random() * 1.5);
   s.stop(t + decay + 0.05);
 }
 
@@ -136,11 +142,12 @@ function schedule() {
   }
 }
 
-/** Start (or keep) playing a style at a volume 0..1. Must first run after a user gesture (browsers block audio before that). */
-export function play(s: Style, volume: number) {
+/** Start (or keep) playing a style at a volume 0..1; `muffle` 0..1 is how much wall is between you and it.
+ *  Does nothing until the first tap unlocks audio (lib/audio/engine.ts). */
+export function play(s: Style, volume: number, muffle = 0) {
   const c = ensure();
-  if (!c || !master) return;
-  if (c.state === 'suspended') c.resume().catch(() => {});
+  if (!c || !master || !walls) return;
+  walls.frequency.setTargetAtTime(18000 * Math.pow(400 / 18000, Math.max(0, Math.min(1, muffle))), c.currentTime, 0.15);
   if (s !== style) {
     style = s;
     const stepLen = 60 / STYLES[style].bpm / 4;

@@ -13,6 +13,8 @@ import type { FigureAct } from '@/components/world/figureMoves';
 import type { HomePose } from '@/components/world/figurePoses';
 import { placementFor, type Placement } from './poses';
 import { FurnitureMesh } from './Furniture';
+import { playerSound } from '@/lib/audio/state';
+import { FootstepSounds } from '@/components/audio/FootstepSounds';
 
 // The house, seen the way the reference shows it: a fixed three-quarter view of one room with two walls,
 // a door and a window. The avatar walks with WASD / the left stick; tap a piece of furniture to open it.
@@ -39,6 +41,7 @@ export function HomeCanvas({ home, handle, onExit }: { home: HomeView; handle: s
     >
       <color attach="background" args={['#101B30']} />
       <Room home={home} handle={handle} onExit={onExit} />
+      <FootstepSounds floor="tile" />
     </Canvas>
   );
 }
@@ -304,6 +307,8 @@ function Walker({ placed, handle }: { placed: Furniture[]; handle: string | null
     camera.position.lerp(camTo, ease);
     lookAt.current.lerp(lookTo, ease);
     camera.lookAt(lookAt.current);
+    // for footsteps (components/audio)
+    Object.assign(playerSound, { x: pos.current.x, y: 0, z: pos.current.z, speed: speedRef.current, sprint: false, tired: tiredRef.current, onFoot: !g?.settled, surface: 'tile' });
     if (group.current) {
       // the pose itself (seat height, lying down) is the figure's: components/world/figurePoses.ts
       group.current.position.copy(pos.current);

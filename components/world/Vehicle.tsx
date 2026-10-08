@@ -1,14 +1,17 @@
 'use client';
-import { useEffect, useMemo } from 'react';
 import type { Item } from '@/lib/life/market';
-import { CAR_PARTS, carMaterial, carParts, type CarModel } from './carModels';
+import type { CarModel } from './carModels';
+import { CarBody, driverSpot, type RiderSpot } from './RideVehicle';
 import { Plane } from './Plane';
 
 // Low-poly vehicles the player (or a peer) rides. Built facing +z like the figure.
 
-export function Vehicle({ item }: { item: Item }) {
+/** `mine`: the player's own ride, whose speed and brake lights come from playerVehicle; `speed` (metres per second)
+ *  turns a peer's wheels. */
+export function Vehicle({ item, mine = false, speed }: { item: Item; mine?: boolean; speed?: () => number }) {
   const m = (color: string, extra?: Record<string, unknown>) => <meshStandardMaterial color={color} flatShading roughness={0.5} metalness={0.2} {...extra} />;
-  if (item.kind === 'car') return <OwnedCar item={item} />;
+  if (item.kind === 'car')
+    return <CarBody model={OWNED_MODEL[item.id] ?? 'sedan'} paint={item.color} open {...(mine ? {} : { speed: speed ?? (() => 0), braking: () => false })} />;
   if (item.kind === 'boat') {
     const big = item.id === 'yacht';
     return (
@@ -34,23 +37,11 @@ export function Vehicle({ item }: { item: Item }) {
 
 const OWNED_MODEL: Record<string, CarModel> = { keke: 'keke', sedan: 'sedan', lambo: 'sport' };
 
-/** A Market car: the same procedural model as traffic, open-topped so the rider shows. */
-function OwnedCar({ item }: { item: Item }) {
-  const model = OWNED_MODEL[item.id] ?? 'sedan';
-  const parts = carParts(model, model !== 'keke');
-  const mats = useMemo(() => CAR_PARTS.map((p) => carMaterial(p, item.color)), [item.color]);
-  useEffect(() => () => mats.forEach((m) => m.dispose()), [mats]);
-  return (
-    <group>
-      {CAR_PARTS.map((p, i) => parts[p] && <mesh key={p} geometry={parts[p]!} material={mats[i]} castShadow={p === 'paint'} />)}
-    </group>
-  );
-}
-
-/** Where the figure sits/stands relative to the vehicle, and whether it is shown. */
-export function riderOffset(item: Item | null): { y: number; show: boolean; scale: number } {
-  if (!item) return { y: 0, show: true, scale: 1 };
-  if (item.kind === 'car') return { y: 0.55, show: true, scale: 0.85 };
-  if (item.kind === 'boat') return { y: 0.7, show: true, scale: 1 };
-  return { y: 0, show: false, scale: 1 };
+/** Where the figure sits or stands on the vehicle, whether it is shown, and the pose it holds. A Market car is the
+ *  traffic model with the roof off, and you sit at the wheel. */
+export function riderOffset(item: Item | null): RiderSpot {
+  if (!item) return { pos: [0, 0, 0], show: true, scale: 1, pose: null };
+  if (item.kind === 'car') return driverSpot(OWNED_MODEL[item.id] ?? 'sedan', true);
+  if (item.kind === 'boat') return { pos: [0, 0.7, 0], show: true, scale: 1, pose: null };
+  return { pos: [0, 0, 0], show: false, scale: 1, pose: null };
 }

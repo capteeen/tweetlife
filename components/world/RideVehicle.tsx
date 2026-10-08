@@ -1,61 +1,68 @@
 'use client';
-import { useEffect, useMemo } from 'react';
-import { CAR_PARTS, carMaterial, carParts, type CarModel } from './carModels';
+import { useEffect, useMemo, useRef } from 'react';
+import * as THREE from 'three';
+import { useFrame } from '@react-three/fiber';
+import { carGeo, carMaterial, wheelMaterial, type CarModel, type Seat } from './carModels';
+import { bikeGeo, scooterGeo, twoWheelerMaterial, type TwoWheeler } from './rideModels';
+import { lampMaterial, nightOf, tickLamps } from './vehicleLights';
+import { playerVehicle } from './vehicleState';
+import { Figure } from './Figure';
+import type { HomePose } from './figurePoses';
+import { useWorld } from './store';
 import { Plane } from './Plane';
 import type { CountryId } from '@/lib/world/countries';
 
-// The rides you can take around the city, facing +z like the figure. The bus, taxi and rideshare are the same
-// procedural models as traffic; the taxi and rideshare are open-topped so you can see yourself riding. The bike and e-scooter are built here.
+// The rides you can take around the city, facing +z like the figure: a share bike and an e-scooter you ride
+// yourself, and a city bus, a yellow cab and a rideshare with a driver at the wheel while you sit in the back.
+// Wheels turn with the ride's speed, the bike's pedals turn under your feet, the bus opens its doors at stops,
+// and brake lights come on as a ride slows. Speeds and states come from playerVehicle (vehicleState.ts),
+// which the player controller writes every frame.
 
-const m = (color: string, extra?: Record<string, unknown>) => <meshStandardMaterial color={color} flatShading roughness={0.5} metalness={0.3} {...extra} />;
-
-function Wheel({ z, r, w = 0.08, y = r }: { z: number; r: number; w?: number; y?: number }) {
-  return (
-    <mesh position={[0, y, z]} rotation={[0, 0, Math.PI / 2]}>
-      <cylinderGeometry args={[r, r, w, 14]} />
-      {m('#141414')}
-    </mesh>
-  );
+/** Lamps: the night level of this world, the indicator blink, and this vehicle's brake light. */
+function useLamps(mat: THREE.Material & { userData: { uBrake: { value: number } } }, braking: () => boolean = () => playerVehicle.braking) {
+  const skyT = useWorld((s) => s.model?.geometry.skyT ?? 0.3);
+  useFrame(() => {
+    tickLamps(nightOf(skyT));
+    mat.userData.uBrake.value = braking() ? 1 : 0;
+  });
 }
 
-function Bar({ p, s, c, rx = 0 }: { p: [number, number, number]; s: [number, number, number]; c: string; rx?: number }) {
-  return (
-    <mesh position={p} rotation={[rx, 0, 0]} castShadow>
-      <boxGeometry args={s} />
-      {m(c)}
-    </mesh>
-  );
-}
-
-/** A dock bike: teal frame, basket on the front. */
-function Bike() {
+function TwoWheel({ g, bike }: { g: TwoWheeler; bike: boolean }) {
+  const mat = useMemo(() => twoWheelerMaterial(), []);
+  const lamp = useMemo(() => lampMaterial(), []);
+  useEffect(() => () => (mat.dispose(), lamp.dispose()), [mat, lamp]);
+  useLamps(lamp);
+  const wheels = useRef<(THREE.Mesh | null)[]>([]);
+  const crank = useRef<THREE.Mesh>(null);
+  const pedals = useRef<(THREE.Mesh | null)[]>([]);
+  useFrame((_, dt) => {
+    const d = Math.min(dt, 0.1);
+    const v = playerVehicle.speed;
+    g.wheels.forEach((w, i) => {
+      const m = wheels.current[i];
+      if (m) m.rotation.x += (v * d) / w.r;
+    });
+    if (bike) {
+      // the crank turns at the wheel's rate over the gearing; the rider's feet follow it (figurePoses `saddle`)
+      playerVehicle.pedal += (v * d) / (g.wheels[0].r * 2.4);
+      const a = playerVehicle.pedal;
+      if (crank.current) crank.current.rotation.x = a;
+      pedals.current.forEach((p, i) => {
+        if (!p) return;
+        const s = i === 0 ? 1 : -1;
+        p.position.set(s * 0.16, g.bb.y + Math.cos(a) * g.crankR * s, g.bb.z + Math.sin(a) * g.crankR * s);
+      });
+    }
+  });
   return (
     <group>
-      <Wheel z={0.6} r={0.34} />
-      <Wheel z={-0.6} r={0.34} />
-      <Bar p={[0, 0.55, 0]} s={[0.07, 0.07, 1.1]} c="#06D6A0" rx={0.25} />
-      <Bar p={[0, 0.62, -0.32]} s={[0.07, 0.6, 0.07]} c="#06D6A0" rx={-0.2} />
-      <Bar p={[0, 0.72, 0.5]} s={[0.07, 0.6, 0.07]} c="#06D6A0" rx={0.25} />
-      <Bar p={[0, 0.95, -0.35]} s={[0.18, 0.06, 0.3]} c="#1B1B1B" />
-      <Bar p={[0, 1.02, 0.6]} s={[0.6, 0.05, 0.05]} c="#333" />
-      <Bar p={[0, 0.88, 0.82]} s={[0.36, 0.22, 0.28]} c="#2D2D2D" />
-    </group>
-  );
-}
-
-/** A rental e-scooter: deck, stem, bars and a light. */
-function Scooter() {
-  return (
-    <group>
-      <Wheel z={0.5} r={0.12} w={0.07} />
-      <Wheel z={-0.45} r={0.12} w={0.07} />
-      <Bar p={[0, 0.16, 0]} s={[0.22, 0.06, 0.95]} c="#2D2D2D" />
-      <Bar p={[0, 0.65, 0.48]} s={[0.06, 1.0, 0.06]} c="#2EC4B6" rx={0.12} />
-      <Bar p={[0, 1.13, 0.54]} s={[0.55, 0.05, 0.05]} c="#1B1B1B" />
-      <mesh position={[0, 0.95, 0.58]}>
-        <boxGeometry args={[0.12, 0.08, 0.05]} />
-        <meshStandardMaterial color="#FFF6D8" emissive="#FFF1C4" emissiveIntensity={1.4} toneMapped={false} />
-      </mesh>
+      <mesh geometry={g.body} material={mat} castShadow />
+      <mesh geometry={g.lamp} material={lamp} />
+      {g.wheels.map((w, i) => (
+        <mesh key={i} ref={(m) => void (wheels.current[i] = m)} geometry={g.wheel} material={mat} position={[0, w.y, w.z]} castShadow />
+      ))}
+      {g.crank && <mesh ref={crank} geometry={g.crank} material={mat} position={[0, g.bb.y, g.bb.z]} />}
+      {g.pedal && [0, 1].map((i) => <mesh key={i} ref={(m) => void (pedals.current[i] = m)} geometry={g.pedal!} material={mat} />)}
     </group>
   );
 }
@@ -63,45 +70,160 @@ function Scooter() {
 const CAR_RIDES: Record<string, { model: CarModel; paint: string }> = {
   bus: { model: 'bus', paint: '#1F4E79' },
   taxi: { model: 'taxi', paint: '#F7C600' },
-  rideshare: { model: 'suv', paint: '#2D2D2D' },
+  rideshare: { model: 'sedan', paint: '#22252B' },
 };
 
-function CarRide({ model, paint, rideshare }: { model: CarModel; paint: string; rideshare?: boolean }) {
-  const parts = carParts(model, model !== 'bus'); // you ride inside the bus; the others are open so you show
-  const mats = useMemo(() => CAR_PARTS.map((p) => carMaterial(p, paint)), [paint]);
-  useEffect(() => () => mats.forEach((x) => x.dispose()), [mats]);
+type CarBodyProps = {
+  model: CarModel;
+  paint: string;
+  /** roof off (Market cars) */
+  open?: boolean;
+  /** seed of a driver figure at the wheel */
+  driver?: string;
+  extras?: React.ReactNode;
+  /** metres per second and braking; the player's ride when left out */
+  speed?: () => number;
+  braking?: () => boolean;
+};
+
+/** A car you ride in: hollow cabin behind see-through glass, a driver at the wheel, turning wheels, bus doors. */
+export function CarBody({ model, paint, open = false, driver, extras, speed = () => playerVehicle.speed, braking }: CarBodyProps) {
+  const g = carGeo(model, { hollow: true, open });
+  const mats = useMemo(
+    () => ({ paint: carMaterial('paint', paint), glass: carMaterial('glass', paint, true), trim: carMaterial('trim'), lamp: lampMaterial(), wheel: wheelMaterial() }),
+    [paint],
+  );
+  useEffect(() => () => Object.values(mats).forEach((m) => m.dispose()), [mats]);
+  useLamps(mats.lamp, braking);
+  const wheels = useRef<(THREE.Mesh | null)[]>([]);
+  const leaves = useRef<(THREE.Group | null)[]>([]);
+  const doors = useRef(0);
+  const spin = useRef(0);
+  useFrame((_, dt) => {
+    const d = Math.min(dt, 0.1);
+    spin.current += (speed() * d) / g.wheels[0].y;
+    g.wheels.forEach((w, i) => {
+      const m = wheels.current[i];
+      if (m) m.rotation.x = w.flip ? -spin.current : spin.current;
+    });
+    if (g.doors.length) {
+      doors.current += (playerVehicle.doors - doors.current) * Math.min(1, d * 6);
+      g.doors.forEach((leaf, i) => {
+        const m = leaves.current[i];
+        if (m) m.rotation.y = leaf.dir * doors.current * 1.35;
+      });
+    }
+  });
+  const driverPose = useMemo<HomePose | null>(() => (g.seats ? seatPose(g.seats.driver, 'wheel', DRIVER_SCALE) : null), [g.seats]);
+  const driverAct = useRef<HomePose | null>(driverPose);
+  driverAct.current = driverPose;
   return (
     <group>
-      {CAR_PARTS.map((p, i) => parts[p] && <mesh key={p} geometry={parts[p]!} material={mats[i]} castShadow={p === 'paint'} />)}
-      {rideshare && (
-        // the glowing app sign on the dash
-        <mesh position={[0, 1.3, 1.05]}>
-          <boxGeometry args={[0.5, 0.16, 0.05]} />
-          <meshStandardMaterial color="#FF2E88" emissive="#FF2E88" emissiveIntensity={1.6} toneMapped={false} />
-        </mesh>
+      <mesh geometry={g.parts.paint!} material={mats.paint} castShadow />
+      {g.parts.glass && <mesh geometry={g.parts.glass} material={mats.glass} renderOrder={2} />}
+      <mesh geometry={g.parts.trim!} material={mats.trim} castShadow />
+      <mesh geometry={g.parts.lamp!} material={mats.lamp} />
+      {g.wheels.map((w, i) => (
+        <group key={i} position={[w.x, w.y, w.z]} rotation={[0, w.flip ? Math.PI : 0, 0]}>
+          <mesh ref={(m) => void (wheels.current[i] = m)} geometry={g.wheel} material={mats.wheel} />
+        </group>
+      ))}
+      {g.door &&
+        g.doors.map((leaf, i) => (
+          <group key={i} ref={(m) => void (leaves.current[i] = m)} position={[leaf.x, 0, leaf.z]} scale={[1, 1, leaf.dir]}>
+            <mesh geometry={g.door!} material={mats.trim} />
+          </group>
+        ))}
+      {driver && g.seats && driverPose && (
+        <group position={seatSpot(g.seats.driver)} scale={DRIVER_SCALE}>
+          <Figure seed={driver} actRef={driverAct} minLod={1} />
+        </group>
       )}
+      {extras}
     </group>
+  );
+}
+
+/** The rideshare's touches: a glowing app sign on the windscreen and the driver's phone on its mount. */
+function RideshareExtras() {
+  const g = carGeo('sedan', { hollow: true });
+  const w = g.seats!.wheel;
+  return (
+    <group>
+      <mesh position={[-0.45, 0.98, 0.78]} rotation={[-0.55, 0, 0]}>
+        <boxGeometry args={[0.3, 0.1, 0.015]} />
+        <meshBasicMaterial color="#FF2E88" toneMapped={false} />
+      </mesh>
+      <mesh position={[w.x - 0.32, w.y + 0.12, w.z + 0.15]} rotation={[-0.5, 0, 0]}>
+        <boxGeometry args={[0.08, 0.14, 0.012]} />
+        <meshBasicMaterial color="#7FD4FF" toneMapped={false} />
+      </mesh>
+    </group>
+  );
+}
+
+/** The taxi's clear partition between the front seats and the back. */
+function TaxiExtras() {
+  const g = carGeo('taxi', { hollow: true });
+  const z = g.seats!.driver.z - 0.42;
+  return (
+    <mesh position={[0, 1.02, z]}>
+      <boxGeometry args={[1.5, 0.36, 0.02]} />
+      <meshStandardMaterial color="#9FB4D9" transparent opacity={0.22} depthWrite={false} roughness={0.1} />
+    </mesh>
   );
 }
 
 export function RideVehicle({ mode, tint, country }: { mode: string; tint?: string; country?: CountryId }) {
   // flights between countries: a commercial airliner in the destination's colours, or your own jet
   if (mode === 'airliner' || mode === 'jet') return <Plane kind={mode} tint={tint} country={country} />;
-  if (mode === 'bike') return <Bike />;
-  if (mode === 'scooter') return <Scooter />;
+  if (mode === 'bike') return <TwoWheel g={bikeGeo()} bike />;
+  if (mode === 'scooter') return <TwoWheel g={scooterGeo()} bike={false} />;
   const c = CAR_RIDES[mode] ?? CAR_RIDES.taxi;
-  return <CarRide model={c.model} paint={c.paint} rideshare={mode === 'rideshare'} />;
+  return (
+    <CarBody
+      model={c.model}
+      paint={c.paint}
+      driver={`driver-${mode}`}
+      extras={mode === 'rideshare' ? <RideshareExtras /> : mode === 'taxi' ? <TaxiExtras /> : null}
+    />
+  );
 }
 
 /** How far the camera pulls back on each ride. */
 export const rideCamera = (mode: string) => (mode === 'airliner' ? 3.4 : mode === 'jet' ? 2.6 : mode === 'bus' ? 1.8 : mode === 'bike' || mode === 'scooter' ? 1 : 1.35);
 
-/** Where the figure sits or stands on each ride. */
-export function rideRider(mode: string): { y: number; show: boolean; scale: number } {
-  if (mode === 'bike') return { y: 0.5, show: true, scale: 0.8 };
-  if (mode === 'scooter') return { y: 0.2, show: true, scale: 0.85 };
+/** Where the figure goes on a vehicle (in the vehicle's frame), how big, and the pose it holds. */
+export type RiderSpot = { pos: [number, number, number]; scale: number; show: boolean; pose: HomePose | null };
+
+const DRIVER_SCALE = 0.84;
+const PASSENGER_SCALE = 0.84;
+
+/** Root position for a figure sitting on a seat: hips at the back of the cushion. */
+const seatSpot = (s: Seat): [number, number, number] => [s.x, 0, s.z - 0.1];
+/** The chair pose for a seat whose cushion top is at `s.y`, for a figure drawn at `scale`. */
+const seatPose = (s: Seat, upper: HomePose['upper'], scale: number): HomePose => ({ base: 'chair', upper, seat: Math.round(((s.y + 0.02) / scale - 0.08) * 1000) / 1000 });
+
+export function rideRider(mode: string): RiderSpot {
   // inside the cabin
-  if (mode === 'bus' || mode === 'airliner' || mode === 'jet') return { y: 1.2, show: false, scale: 0.85 };
-  if (mode === 'rideshare') return { y: 0.75, show: true, scale: 0.85 };
-  return { y: 0.55, show: true, scale: 0.85 };
+  if (mode === 'airliner' || mode === 'jet') return { pos: [0, 1.2, 0], scale: 0.85, show: false, pose: null };
+  if (mode === 'bike') {
+    const g = bikeGeo();
+    const s = 0.95, z = -0.19, hip = 0.9;
+    return { pos: [0, 0, z], scale: s, show: true, pose: { base: 'saddle', upper: 'bars', seat: hip / s, pedal: { y: g.bb.y / s, z: (g.bb.z - z) / s, r: g.crankR / s } } };
+  }
+  if (mode === 'scooter') return { pos: [0, 0.19, 0.02], scale: 0.9, show: true, pose: { base: 'deck', upper: 'bars', seat: 0 } };
+  const c = CAR_RIDES[mode] ?? CAR_RIDES.taxi;
+  const seats = carGeo(c.model, { hollow: true }).seats!;
+  // the bus: a window seat half way back; cabs: the back seat behind the passenger seat, by the kerb
+  const seat = mode === 'bus' ? seats.front! : seats.rear[0] ?? seats.front!;
+  return { pos: seatSpot(seat), scale: PASSENGER_SCALE, show: true, pose: seatPose(seat, mode === 'rideshare' ? 'phone' : 'ride', PASSENGER_SCALE) };
 }
+
+/** The driver's seat of a car you own (open-topped), or the keke's saddle. */
+export function driverSpot(model: CarModel, open: boolean): RiderSpot {
+  if (model === 'keke') return { pos: [0, 0, 0.18], scale: 0.85, show: true, pose: { base: 'chair', upper: 'bars', seat: Math.round((1.07 / 0.85 - 0.08) * 1000) / 1000 } };
+  const seats = carGeo(model, { hollow: true, open }).seats!;
+  return { pos: seatSpot(seats.driver), scale: DRIVER_SCALE, show: true, pose: seatPose(seats.driver, 'wheel', DRIVER_SCALE) };
+}
+

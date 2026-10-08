@@ -5,7 +5,8 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Billboard } from '@react-three/drei';
 import { Figure, lookFor } from '@/components/world/Figure';
-import { CAR_PARTS, carMaterial, carParts } from '@/components/world/carModels';
+import { carGeo, carMaterial, wheelMaterial } from '@/components/world/carModels';
+import { lampMaterial, tickLamps } from '@/components/world/vehicleLights';
 import type { FigureAct } from '@/components/world/figureMoves';
 import { prng } from '@/lib/world/seed';
 import { BubbleBuilding, Clouds, Coin, FlyingPlane, IslandBase, RingSlab, TreeField, Windows, type FlightPose } from './welcomeBits';
@@ -386,12 +387,32 @@ function BusShelter() {
   );
 }
 
-function Vehicle({ car, tail }: { car: SimCar; tail: THREE.Material }) {
-  const parts = useMemo(() => carParts(car.model), [car.model]);
-  const mats = useMemo(() => Object.fromEntries(CAR_PARTS.map((p) => [p, p === 'tail' ? tail : carMaterial(p, car.paint)])), [car.paint, tail]);
+/** One of the game's cars (drawn at scale K): brake lights from the sim, wheels turning with its speed. */
+function Vehicle({ car }: { car: SimCar }) {
+  const g = carGeo(car.model);
+  const mats = useMemo(() => ({ paint: carMaterial('paint', car.paint), glass: carMaterial('glass'), trim: carMaterial('trim'), lamp: lampMaterial(), wheel: wheelMaterial() }), [car.paint]);
+  useEffect(() => () => Object.values(mats).forEach((m) => m.dispose()), [mats]);
+  const wheels = useRef<(THREE.Mesh | null)[]>([]);
+  const spin = useRef(0);
+  useFrame((_, dt) => {
+    mats.lamp.userData.uBrake.value = car.braking ? 1 : 0;
+    spin.current += (car.v * Math.min(dt, 0.1)) / (g.wheels[0].y * K);
+    g.wheels.forEach((w, i) => {
+      const m = wheels.current[i];
+      if (m) m.rotation.x = w.flip ? -spin.current : spin.current;
+    });
+  });
   return (
     <group>
-      {CAR_PARTS.map((p) => (parts[p] ? <mesh key={p} geometry={parts[p]!} material={mats[p]} castShadow={p === 'paint'} /> : null))}
+      <mesh geometry={g.parts.paint!} material={mats.paint} castShadow />
+      {g.parts.glass && <mesh geometry={g.parts.glass} material={mats.glass} />}
+      <mesh geometry={g.parts.trim!} material={mats.trim} castShadow />
+      <mesh geometry={g.parts.lamp!} material={mats.lamp} />
+      {g.wheels.map((w, i) => (
+        <group key={i} position={[w.x, w.y, w.z]} rotation={[0, w.flip ? Math.PI : 0, 0]}>
+          <mesh ref={(m) => void (wheels.current[i] = m)} geometry={g.wheel} material={mats.wheel} />
+        </group>
+      ))}
     </group>
   );
 }
@@ -409,7 +430,6 @@ type Balloon = { p: THREE.Vector3; v: THREE.Vector3; ready: boolean; seed: numbe
 function Town() {
   const sim = useMemo(() => createSim(), []);
   const cars = useRef<(THREE.Group | null)[]>([]);
-  const tails = useMemo(() => sim.cars.map(() => carMaterial('tail') as THREE.MeshStandardMaterial), [sim]);
   const people = useMemo(() => [...sim.walkers.map((w) => ({ seed: w.seed, balloon: w.balloon })), ...sim.crossers.map((c) => ({ seed: c.seed, balloon: false }))], [sim]);
   const heights = useMemo(
     () =>
@@ -439,6 +459,7 @@ function Town() {
     c.t += dt;
     const STEP = 1 / 60;
     while (c.acc >= STEP) (stepSim(sim, STEP), (c.acc -= STEP));
+    tickLamps(0); // always daytime here
 
     sim.cars.forEach((car, i) => {
       const g = cars.current[i];
@@ -446,7 +467,6 @@ function Town() {
       const p = carPose(car);
       g.position.set(p.x, ROAD_Y, p.z);
       g.rotation.y = p.rot;
-      tails[i].emissiveIntensity = car.braking ? 3.4 : 0.8;
     });
     const poses = [...sim.walkers.map(walkerPose), ...sim.crossers.map(crosserPose)];
     const v = [...sim.walkers.map((w) => w.v), ...sim.crossers.map((x) => x.v)];
@@ -514,7 +534,7 @@ function Town() {
     <group ref={root}>
       {sim.cars.map((car, i) => (
         <group key={i} ref={(el) => void (cars.current[i] = el)} scale={K}>
-          <Vehicle car={car} tail={tails[i]} />
+          <Vehicle car={car} />
         </group>
       ))}
       {people.map((p, i) => (

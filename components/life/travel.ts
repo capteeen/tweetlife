@@ -5,6 +5,8 @@ import { OWN_RIDE, TRANSPORT, tripSeconds, type Transport } from '@/lib/life/tra
 import { pathLength, route, type Pt } from '@/lib/world/layout';
 import { lifeActions } from './useLife';
 import { WALK_IN } from '@/lib/world/interiors';
+import { airportLayout, inRect } from '@/lib/world/layout';
+import { terminalLayout, zoneOf } from '@/lib/world/terminal';
 import type { PlacedVenue } from '@/lib/life/venues';
 
 // Client side of travel: plan the road route, price each ride, pay, then hand the trip to the player
@@ -47,6 +49,7 @@ export const carItem = (id?: string | null) => (id ? ITEMS.find((i) => i.id === 
  * Venues you cannot walk into (the bank, the market, the airport) just open their sheet. */
 export function enterVenue(v: PlacedVenue) {
   const s = useWorld.getState();
+  if (v.id === 'airport' && !s.trip && walkToCheckIn()) return;
   const k = WALK_IN[v.id];
   if (!k || s.trip) return s.selectVenue(v);
   // the venue's frame: +z runs out through the door towards the city centre
@@ -75,4 +78,23 @@ export function enterVenue(v: PlacedVenue) {
     // still on this walk (not cancelled or replaced by a ride): open the venue's menu once inside
     if (!now.trip || now.trip.label === v.name) now.selectVenue(v);
   }, duration * 1000 + 150);
+}
+
+/** On the airport island: walk in through the main doors to a check-in desk and open it. False when you are not on the island. */
+function walkToCheckIn() {
+  const s = useWorld.getState();
+  const g = s.model?.geometry;
+  if (!g) return false;
+  const ap = airportLayout(g.contentRadius, g.boundaryRadius);
+  const me = { x: s.playerPos.x, z: s.playerPos.z };
+  if (!inRect(ap.island, me.x, me.z)) return false;
+  const t = terminalLayout(ap);
+  const desk = t.kiosks[1];
+  const zone = zoneOf(t, me.x, me.z);
+  // from outside, line up with the main doors first; inside the check-in hall, go straight to the desk
+  const path = zone === 'checkin' ? [me, desk] : zone === 'outside' && me.x < t.west ? [me, { x: t.west - 2, z: t.entrance.z }, t.entrance, desk] : null;
+  if (!path) return false;
+  s.selectVenue(null);
+  s.setTrip({ mode: 'walk', emoji: '🚶', label: 'Check-in', path, startedAt: performance.now(), duration: tripSeconds(pathLength(path), 1.3), itemId: null, onDone: () => useWorld.getState().patchAirport({ sheet: 'checkin' }) });
+  return true;
 }

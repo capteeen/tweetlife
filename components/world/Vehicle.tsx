@@ -1,17 +1,12 @@
 'use client';
-import { useEffect, useMemo, useRef } from 'react';
-import * as THREE from 'three';
-import { useFrame } from '@react-three/fiber';
+import { useEffect, useMemo } from 'react';
 import type { Item } from '@/lib/life/market';
 import { CAR_PARTS, carMaterial, carParts, type CarModel } from './carModels';
+import { Plane } from './Plane';
 
 // Low-poly vehicles the player (or a peer) rides. Built facing +z like the figure.
 
 export function Vehicle({ item }: { item: Item }) {
-  const spin = useRef<THREE.Mesh>(null);
-  useFrame((_, dt) => {
-    if (spin.current) spin.current.rotation.z += dt * 30;
-  });
   const m = (color: string, extra?: Record<string, unknown>) => <meshStandardMaterial color={color} flatShading roughness={0.5} metalness={0.2} {...extra} />;
   if (item.kind === 'car') return <OwnedCar item={item} />;
   if (item.kind === 'boat') {
@@ -33,34 +28,8 @@ export function Vehicle({ item }: { item: Item }) {
       </group>
     );
   }
-  return (
-    <group>
-      <mesh position={[0, 0.8, 0]} castShadow>
-        <cylinderGeometry args={[0.55, 0.45, 7, 8]} />
-        {m(item.color)}
-      </mesh>
-      <mesh position={[0, 0.8, 3.6]} castShadow>
-        <coneGeometry args={[0.5, 1.2, 8]} />
-        {m(item.color)}
-      </mesh>
-      <mesh position={[0, 0.7, 0.5]}>
-        <boxGeometry args={[8, 0.15, 1.6]} />
-        {m('#D4C3A5')}
-      </mesh>
-      <mesh position={[0, 1.6, -3]}>
-        <boxGeometry args={[0.15, 1.6, 1.2]} />
-        {m('#D4C3A5')}
-      </mesh>
-      <mesh position={[0, 0.9, -3]}>
-        <boxGeometry args={[3, 0.12, 1]} />
-        {m('#D4C3A5')}
-      </mesh>
-      <mesh ref={spin} position={[0, 0.8, 4.25]}>
-        <boxGeometry args={[2.2, 0.15, 0.05]} />
-        {m('#333')}
-      </mesh>
-    </group>
-  );
+  // the private jet, gear tucked away: when you ride it you are up at cruising height
+  return <Plane kind="jet" flying />;
 }
 
 const OWNED_MODEL: Record<string, CarModel> = { keke: 'keke', sedan: 'sedan', lambo: 'sport' };

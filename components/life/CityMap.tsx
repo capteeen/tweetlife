@@ -575,7 +575,8 @@ export function TripBanner() {
     const t = setInterval(() => tick((n) => n + 1), 200);
     return () => clearInterval(t);
   }, [trip]);
-  if (!trip) return null;
+  // flights have their own strip (FlightOverlay)
+  if (!trip || trip.fly) return null;
   const done = Math.min(1, (performance.now() - trip.startedAt) / 1000 / trip.duration);
   const left = Math.max(0, trip.duration * (1 - done));
   return (

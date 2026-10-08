@@ -10,13 +10,30 @@ import type { ActivityId } from '@/lib/life/activities';
 import type { Citizenship } from '@/lib/life/citizen';
 import type { Crowd, CrowdNotice } from '@/lib/life/crowd';
 import { DEFAULT_COUNTRY, type CountryId } from '@/lib/world/countries';
+import type { CabinId } from '@/lib/life/flights';
 
 /** An everyday activity in progress (dance, stretch...): the avatar plays it until `until` or until you move. */
 export type Doing = { id: ActivityId; until: number } | null;
 
 export type Peer = { id: string; handle: string; x: number; z: number; yaw: number; at: number; ride?: string | null; act?: ActivityId | null };
 /** A ride in progress: the player follows `path` for `duration` seconds from `startedAt` (ms). */
-export type Trip = { mode: string; emoji: string; label: string; path: { x: number; z: number }[]; startedAt: number; duration: number; itemId?: string | null };
+export type Trip = {
+  mode: string; emoji: string; label: string; path: { x: number; z: number }[]; startedAt: number; duration: number; itemId?: string | null;
+  /** a flight leg: 'up' rolls down the runway and climbs out, 'down' descends onto it; altitude follows progress */
+  fly?: 'up' | 'down';
+  /** paint for the aircraft's tail (the destination's colour) */
+  tint?: string;
+  /** the aircraft flies this country's livery */
+  country?: CountryId;
+  /** called once when the trip ends */
+  onDone?: () => void;
+};
+/** A flight between countries in progress (components/life/flight.ts drives it). */
+/** Your boarding pass, from a check-in desk (the token is the server's signed pass). */
+export type BoardingPass = { token: string; from: CountryId; to: CountryId; cabin: CabinId; number: string };
+/** Where you are in the airport and what you hold. `sheet` is the desk you are using. */
+export type AirportState = { pass: BoardingPass | null; cleared: boolean; sheet: 'checkin' | 'gate' | 'jet' | null; zone: 'outside' | 'checkin' | 'gate' | 'arrivals' };
+export type Flight = { phase: 'boarding' | 'takeoff' | 'cruise' | 'landing' | 'arriving' | 'arrived'; from: CountryId; to: CountryId; cabin: CabinId; number: string; at: number };
 export type ChatLine = { id: string; from: string; text: string; at: number; x: number; z: number };
 export type Toast = { id: string; text: string; kind: string; at: number };
 export type ResidentMsg = { role: 'user' | 'assistant'; content: string };
@@ -27,6 +44,8 @@ export type LifeMe = {
   id: string; handle: string; name: string; avatarUrl: string | null; bags: number; status: string; statusUntil: string | null;
   vibes: number; clout: number; gas: number; mood: string; moodEmoji: string; look: Look | null; lookPending: boolean;
   citizen: Citizenship;
+  /** the country you are in right now, and your home country */
+  location?: CountryId; home?: CountryId;
 };
 export type WalletData = {
   address: string;
@@ -124,6 +143,10 @@ export type WorldState = {
   setCrowds: (c: Crowd[]) => void;
   pushCrowdNotices: (n: CrowdNotice[]) => void;
   dropCrowdNotice: (id: string) => void;
+  flight: Flight | null;
+  setFlight: (f: Flight | null) => void;
+  airport: AirportState;
+  patchAirport: (p: Partial<AirportState>) => void;
 };
 
 export const useWorld = create<WorldState>((set) => ({
@@ -157,6 +180,8 @@ export const useWorld = create<WorldState>((set) => ({
   residentChats: {},
   crowds: [],
   crowdNotices: [],
+  flight: null,
+  airport: { pass: null, cleared: false, sheet: null, zone: 'outside' },
   setModel: (model, skyline, me) => set({ model, skyline, me }),
   select: (selected) => set({ selected, ...(selected ? { selectedPeer: null, selectedVenue: null, selectedResident: null } : {}) }),
   setLit: (ids) => set({ lit: new Set(ids) }),
@@ -207,4 +232,6 @@ export const useWorld = create<WorldState>((set) => ({
   pushCrowdNotices: (n) => set((s) => ({ crowdNotices: [...s.crowdNotices.filter((x) => !n.some((y) => y.id === x.id)), ...n].slice(-3) })),
   dropCrowdNotice: (id) => set((s) => ({ crowdNotices: s.crowdNotices.filter((x) => x.id !== id) })),
   pushResidentChat: (id, m) => set((s) => ({ residentChats: { ...s.residentChats, [id]: [...(s.residentChats[id] ?? []).slice(-29), m] } })),
+  setFlight: (flight) => set({ flight }),
+  patchAirport: (p) => set((s) => ({ airport: { ...s.airport, ...p } })),
 }));

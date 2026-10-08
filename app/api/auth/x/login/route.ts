@@ -6,9 +6,9 @@ export const dynamic = 'force-dynamic';
 
 // Start the X sign-in. Never a blank page: any failure redirects home with the real reason.
 export async function GET(req: NextRequest) {
-  const returnTo = req.nextUrl.searchParams.get('returnTo') ?? '/my-world';
+  const returnTo = req.nextUrl.searchParams.get('returnTo') ?? '/play';
   // Only allow same-origin relative return paths.
-  const safe = returnTo.startsWith('/') && !returnTo.startsWith('//') ? returnTo : '/my-world';
+  const safe = returnTo.startsWith('/') && !returnTo.startsWith('//') ? returnTo : '/play';
   const a = req.nextUrl.searchParams.get('access');
   const access: LoginAccess | undefined = a === 'followers' || a === 'public' || a === 'invite' ? a : undefined;
   const home = new URL('/', req.nextUrl.origin);

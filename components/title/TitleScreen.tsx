@@ -29,11 +29,11 @@ export function TitleScreen({ backdropHandle, signedInHandle, authError, liveWor
       <Backdrop handle={backdropHandle} />
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/45" />
 
-      <div className="absolute inset-0 flex flex-col items-center justify-center px-4">
+      <div className="absolute inset-0 flex flex-col items-center justify-center px-4 pb-24 sm:pb-0">
         {screen === 'menu' && (
           <Menu
             onEnter={() => setScreen('enter')}
-            onBuild={() => (signedInHandle ? (location.href = '/my-world') : setScreen('build'))}
+            onBuild={() => (signedInHandle ? (location.href = '/play') : setScreen('build'))}
             signedInHandle={signedInHandle}
             authError={authError}
             configured={configured}
@@ -44,28 +44,32 @@ export function TitleScreen({ backdropHandle, signedInHandle, authError, liveWor
         {screen === 'build' && <BuildPanel onCancel={() => setScreen('menu')} configured={configured} />}
       </div>
 
-      {/* corners */}
-      <div className="absolute bottom-4 left-4 flex items-center gap-3 text-sm">
-        <Link className="rounded-full chrome px-3 py-1.5 text-white/85 hover:text-white" href="/how">
-          How a world grows
-        </Link>
-        <Link className="rounded-full chrome px-3 py-1.5 text-white/85 hover:text-white" href="/explore">
-          Explore
-        </Link>
-        <Link className="rounded-full chrome px-3 py-1.5 text-white/85 hover:text-white" href="/status">
-          Status
-        </Link>
-      </div>
-      <div className="absolute bottom-4 right-4 max-w-xs text-right text-[11px] leading-4 text-white/55">
-        {backdropHandle ? (
-          <span>
-            Behind this menu: the real world of <span className="text-white/80">@{backdropHandle}</span> (the operator), live.
+      {/* corners; on phones they stack below the menu instead of overlapping each other */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 flex flex-col items-center gap-2 p-3 sm:flex-row sm:items-end sm:justify-between sm:p-4">
+        <div className="pointer-events-auto flex flex-wrap items-center justify-center gap-2 text-xs sm:gap-3 sm:text-sm">
+          <Link className="rounded-full chrome px-3 py-1.5 text-white/85 hover:text-white" href="/how">
+            How a world grows
+          </Link>
+          <Link className="rounded-full chrome px-3 py-1.5 text-white/85 hover:text-white" href="/explore">
+            Explore
+          </Link>
+          <Link className="rounded-full chrome px-3 py-1.5 text-white/85 hover:text-white" href="/status">
+            Status
+          </Link>
+        </div>
+        <div className="max-w-xs text-center text-[10px] leading-4 text-white/55 sm:text-right sm:text-[11px]">
+          <span className="hidden sm:inline">
+            {backdropHandle ? (
+              <>
+                Behind this menu: the real world of <span className="text-white/80">@{backdropHandle}</span> (the operator), live.
+              </>
+            ) : (
+              <>No showcase world yet — the first world on this deployment is the operator&apos;s own.</>
+            )}
+            <br />
           </span>
-        ) : (
-          <span>No showcase world yet — the first world on this deployment is the operator&apos;s own.</span>
-        )}
-        <br />
-        <span className="num">{liveWorlds}</span> {liveWorlds === 1 ? 'world' : 'worlds'} live · unofficial fan project, not affiliated with X Corp.
+          <span className="num">{liveWorlds}</span> {liveWorlds === 1 ? 'world' : 'worlds'} live · unofficial fan project, not affiliated with X Corp.
+        </div>
       </div>
     </div>
   );
@@ -257,7 +261,7 @@ function BuildPanel({ onCancel, configured }: { onCancel: () => void; configured
       </button>
       <p className="-mt-1 text-xs text-white/55">{cur.desc}</p>
       <div className="mt-1 grid grid-cols-2 gap-3">
-        <a className={`btn !py-3 text-base ${configured ? '' : 'pointer-events-none opacity-50'}`} href={`/api/auth/x/login?returnTo=${encodeURIComponent('/my-world')}&access=${access}`}>
+        <a className={`btn !py-3 text-base ${configured ? '' : 'pointer-events-none opacity-50'}`} href={`/api/auth/x/login?returnTo=${encodeURIComponent('/play')}&access=${access}`}>
           <XMark /> Sign in with X
         </a>
         <button className="btn-ghost !py-3 text-base" onClick={onCancel}>

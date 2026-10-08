@@ -406,7 +406,7 @@ export function buildWorld(rowsIn: StructureRow[], opts: BuildOptions): WorldGeo
 
 // Top surfaces of the ground layers City.tsx draws, so walkers stand on them instead of on y = 0.
 const ASPHALT_TOP = 0.04;
-const SIDEWALK_TOP = 0.2;
+export const SIDEWALK_TOP = 0.2;
 const BLOCK_TOP = 0.26;
 const LOT_TOP = 0.28;
 const COUNTRYSIDE_TOP = -0.05;

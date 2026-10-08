@@ -9,7 +9,7 @@ export function XMark({ className = 'h-4 w-4' }: { className?: string }) {
   );
 }
 
-export function SignInButton({ returnTo = '/my-world', label = 'Sign in with X' }: { returnTo?: string; label?: string }) {
+export function SignInButton({ returnTo = '/play', label = 'Sign in with X' }: { returnTo?: string; label?: string }) {
   return (
     <a className="btn" href={`/api/auth/x/login?returnTo=${encodeURIComponent(returnTo)}`}>
       <XMark /> {label}
@@ -29,11 +29,11 @@ export function Header({ user }: { user: SessionUser | null }) {
           <Link className="btn-ghost !px-3 !py-1.5" href="/how">How it grows</Link>
           <Link className="btn-ghost !px-3 !py-1.5" href="/status">Status</Link>
           {user ? (
-            <Link className="btn !px-3 !py-1.5" href="/my-world">
+            <Link className="btn !px-3 !py-1.5" href="/play">
               @{user.handle}
             </Link>
           ) : (
-            <a className="btn !px-3 !py-1.5" href="/api/auth/x/login?returnTo=/my-world">
+            <a className="btn !px-3 !py-1.5" href="/api/auth/x/login?returnTo=/play">
               <XMark /> Sign in
             </a>
           )}

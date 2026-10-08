@@ -17,11 +17,37 @@ export function StatBars({ inline = false, atHome = false }: { inline?: boolean;
   const riding = useWorld((s) => (atHome ? null : s.riding));
   const doing = useWorld((s) => s.doing);
   const [open, setOpen] = useState<StatKey | null>(null);
+  const narrow = useNarrow();
+  const [unfolded, setUnfolded] = useState(false);
   if (!me) return null;
   // the line only says what you are doing while you are doing it
   const live = !!me.statusUntil && Date.parse(me.statusUntil) > Date.now();
   const move = doing && ACTIVITIES.find((a) => a.id === doing.id);
   const status = riding ? `${riding.emoji} riding the ${riding.name}` : live ? me.status : move ? move.line : IDLE_STATUS;
+  // on phones the panel folds into one chip so it doesn't cover a third of the screen; tap to open it
+  if (narrow && !unfolded) {
+    return (
+      <button
+        className={`pointer-events-auto flex items-center gap-2 rounded-full chrome py-1 pl-1 pr-3 text-xs ${inline ? '' : 'absolute left-3 top-16 z-10'}`}
+        onClick={() => setUnfolded(true)}
+        aria-label="Show your stats and moves"
+      >
+        {me.avatarUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={me.avatarUrl} alt="" className="h-6 w-6 rounded-full" />
+        ) : (
+          <span className="h-6 w-6 rounded-full bg-white/10" />
+        )}
+        {STAT_ORDER.map((k) => (
+          <span key={k} className="num flex items-center gap-0.5 whitespace-nowrap" title={STATS[k].name}>
+            {STATS[k].emoji}
+            <span style={{ color: k === 'gas' && me[k] < TIRED ? '#F97316' : STATS[k].color }}>{me[k]}</span>
+          </span>
+        ))}
+        <span className="text-white/50">▾</span>
+      </button>
+    );
+  }
   return (
     <div className={`pointer-events-auto w-52 rounded-2xl chrome p-3 text-xs ${inline ? '' : 'absolute left-3 top-16 z-10'}`}>
       <div className="mb-2 flex items-center gap-2">
@@ -35,6 +61,11 @@ export function StatBars({ inline = false, atHome = false }: { inline?: boolean;
           <div className="truncate font-semibold">@{me.handle}</div>
           <div className="truncate text-white/55">{status}</div>
         </div>
+        {narrow && (
+          <button className="ml-auto rounded-full px-1.5 py-0.5 text-white/60 hover:bg-white/10" onClick={() => setUnfolded(false)} aria-label="Fold your stats away">
+            ▴
+          </button>
+        )}
       </div>
       {STAT_ORDER.map((k) => {
         const st = STATS[k];
@@ -66,6 +97,19 @@ export function StatBars({ inline = false, atHome = false }: { inline?: boolean;
       {!riding && <Moves gas={me.gas} />}
     </div>
   );
+}
+
+/** Phone-width screens, where the full panel would cover too much of the world. */
+function useNarrow() {
+  const [narrow, setNarrow] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 640px)');
+    const on = () => setNarrow(mq.matches);
+    on();
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, []);
+  return narrow;
 }
 
 function Moves({ gas }: { gas: number }) {

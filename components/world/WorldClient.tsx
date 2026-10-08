@@ -17,6 +17,7 @@ import { ResidentCard } from '@/components/life/ResidentCard';
 import { VenueCard } from '@/components/life/VenueCard';
 import { CityMap, TripBanner } from '@/components/life/CityMap';
 import { VenueMusic } from '@/components/life/VenueMusic';
+import { Welcome } from '@/components/life/Welcome';
 import { useLife } from '@/components/life/useLife';
 import { enterVenue } from '@/components/life/travel';
 import { placeVenues } from '@/lib/life/venues';
@@ -115,7 +116,7 @@ export function WorldClient({ handle, spawnPostId, embed, backdrop }: { handle: 
           <h1 className="text-lg font-semibold">No world here</h1>
           <p className="mt-2 text-white/60">{payload.error} A world exists only once its owner signs in with X.</p>
           <div className="mt-4">
-            <SignInButton returnTo="/my-world" label="Build yours" />
+            <SignInButton returnTo="/play" label="Build yours" />
           </div>
         </div>
       </Shell>
@@ -181,7 +182,7 @@ export function WorldClient({ handle, spawnPostId, embed, backdrop }: { handle: 
           <TopHUD online={online} handle={model.handle} />
           {lookPending && (
             <a
-              className="pointer-events-auto absolute left-1/2 top-16 z-20 -translate-x-1/2 rounded-full bg-x px-4 py-1.5 text-sm font-semibold text-white shadow-lg hover:brightness-110"
+              className="pointer-events-auto absolute left-1/2 top-16 z-20 -translate-x-1/2 max-sm:left-auto max-sm:right-3 max-sm:translate-x-0 rounded-full bg-x px-4 py-1.5 text-sm font-semibold text-white shadow-lg hover:brightness-110"
               href={`/create?next=${encodeURIComponent(`/w/${model.handle}`)}`}
             >
               👕 Pick your look
@@ -210,7 +211,8 @@ export function WorldClient({ handle, spawnPostId, embed, backdrop }: { handle: 
               })()}
             </button>
           )}
-          <div className="pointer-events-none absolute right-3 top-16 z-30 flex w-[min(80vw,320px)] flex-col gap-2">
+          {/* on phones toasts drop below the folded stat chip instead of covering it */}
+          <div className="pointer-events-none absolute right-3 top-16 z-30 flex w-[min(80vw,320px)] flex-col gap-2 max-sm:left-3 max-sm:top-28 max-sm:w-auto">
             {toasts.map((t) => (
               <div key={t.id} className="rounded-2xl chrome px-3 py-2 text-sm shadow-lg">
                 {t.text}
@@ -218,7 +220,7 @@ export function WorldClient({ handle, spawnPostId, embed, backdrop }: { handle: 
             ))}
           </div>
           <button
-            className="pointer-events-auto absolute bottom-32 right-3 z-20 rounded-full chrome px-4 py-2 text-sm font-semibold hover:bg-white/10"
+            className="pointer-events-auto absolute bottom-32 right-3 z-20 [@media(any-pointer:coarse)]:bottom-72 rounded-full chrome px-4 py-2 text-sm font-semibold hover:bg-white/10"
             onClick={() => useWorld.getState().setMapOpen(true)}
           >
             🗺️ Map
@@ -230,6 +232,7 @@ export function WorldClient({ handle, spawnPostId, embed, backdrop }: { handle: 
           )}
           <HUD model={model} online={online} canAct={!!me} sendChat={sendChat} chatAvailable={model.chatEnabled && connected} />
           <TouchSticks />
+          {!embed && <Welcome />}
           {!embed && (
             <div className="pointer-events-none absolute left-3 top-3 z-10 hidden text-xs text-white/50 sm:block [@media(hover:none)]:hidden">WASD to walk · drag to look · tap a structure</div>
           )}
@@ -239,7 +242,7 @@ export function WorldClient({ handle, spawnPostId, embed, backdrop }: { handle: 
       )}
       <a
         href="/"
-        className="absolute right-3 top-3 z-10 rounded-full chrome px-3 py-1 text-xs text-white/70 hover:text-white"
+        className={`absolute right-3 top-3 z-10 rounded-full chrome px-3 py-1 text-xs text-white/70 hover:text-white ${admitted ? 'max-sm:hidden' : ''}`}
         target={embed ? '_blank' : undefined}
         rel="noopener noreferrer"
       >

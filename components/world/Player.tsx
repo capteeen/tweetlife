@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { useFrame, useThree } from '@react-three/fiber';
 import type { Block, CityGrid, Placed } from '@/lib/world/geometry';
 import { useWorld } from './store';
-import { BLOCK_D, ROAD, SIDEWALK, surfaceY } from '@/lib/world/geometry';
+import { BLOCK_D, BLOCK_W, SIDEWALK, SIDEWALK_TOP, surfaceY } from '@/lib/world/geometry';
 import { sticks } from './TouchSticks';
 import { Figure } from './Figure';
 import { Vehicle, riderOffset } from './Vehicle';
@@ -28,8 +28,10 @@ const CAM_HEIGHT = 4;
 
 type Spawn = { x: number; z: number; rot: number; depth: number } | null;
 
-// Without a deep link the visitor starts on the road north of the oldest block, facing the city centre.
-const DEFAULT_SPAWN = { x: 0, z: -(BLOCK_D / 2 + SIDEWALK + ROAD / 2) };
+// Without a deep link the visitor starts on the sidewalk at the north-east corner of the oldest block, with the
+// camera out over the open crossing looking back at them and the city behind: never in a lane, never behind a tower.
+const DEFAULT_SPAWN = { x: BLOCK_W / 2 + SIDEWALK / 2, z: -(BLOCK_D / 2 + SIDEWALK / 2) };
+const DEFAULT_YAW = (Math.PI * 3) / 4;
 
 /** w/d along the obstacle's own axes; `rot` turns it like a venue (walls of walk-in venues). */
 type Obstacle = { x: number; z: number; w: number; d: number; rot?: number };
@@ -52,9 +54,15 @@ export function Player({ structures, blocks, grid, boundaryRadius, contentRadius
   const { camera, gl } = useThree();
   const group = useRef<THREE.Group>(null);
   const pos = useRef(new THREE.Vector3(DEFAULT_SPAWN.x, 0, DEFAULT_SPAWN.z));
-  const yaw = useRef(Math.PI); // camera orbit yaw; PI = camera north of the player, looking south into the city
-  const pitch = useRef(0.62);
-  const facing = useRef(0);
+  const yaw = useRef(DEFAULT_YAW); // camera orbit yaw; PI = camera north of the player, looking south into the city
+  const pitch = useRef(0.45);
+  const facing = useRef(DEFAULT_YAW); // face the camera on arrival
+  const { scene } = useThree();
+  const blockers = useRef<{ list: THREE.Mesh[]; at: number }>({ list: [], at: -1 });
+  // how far back the camera may sit right now: pulled in at once when something blocks the view, eased back out
+  const camDist = useRef(CAM_DIST);
+  const camFrame = useRef(0);
+  const camFree = useRef(CAM_DIST);
   const keys = useRef<Record<string, boolean>>({});
   const drag = useRef<{ x: number; y: number; id: number } | null>(null);
   const setPlayerPos = useWorld((s) => s.setPlayerPos);
@@ -72,6 +80,17 @@ export function Player({ structures, blocks, grid, boundaryRadius, contentRadius
   const walked = useRef({ walk: 0, sprint: 0, sending: false });
 
   // Spawn: stand a few units away from the deep-linked structure, facing it.
+  // the default spot can still have a lot or a venue on it in a small world: step to the nearest open ground
+  const placed = useRef(false);
+  useEffect(() => {
+    // once: a world still building reloads its structures every few seconds, and that mustn't yank you back here
+    if (spawn || placed.current) return;
+    placed.current = true;
+    const free = freeSpotNear(structures, obstacles, DEFAULT_SPAWN.x, DEFAULT_SPAWN.z, boundaryRadius, 'walk', airport);
+    pos.current.set(free.x, 0, free.z);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [structures, obstacles, boundaryRadius, airport]);
+
   useEffect(() => {
     if (!teleport) return;
     const free = freeSpotNear(structures, obstacles, teleport.x, teleport.z, boundaryRadius, 'walk', airport);
@@ -81,12 +100,20 @@ export function Player({ structures, blocks, grid, boundaryRadius, contentRadius
 
   useEffect(() => {
     if (!spawn) return;
-    // stand on the sidewalk in front of the building, camera behind so the building fills the view
+    // stand on the sidewalk in front of the building (not out in the lane), camera behind so the building fills the view
     const face = spawn.rot === 0 ? 1 : -1;
-    const free = freeSpotNear(structures, obstacles, spawn.x, spawn.z + face * (spawn.depth / 2 + 4.5), boundaryRadius, 'walk', airport);
+    let front = spawn.depth / 2 + 4.5;
+    for (let t = spawn.depth / 2 + 1; t <= spawn.depth / 2 + 9; t += 0.5) {
+      const z = spawn.z + face * t;
+      if (surfaceY(blocks, grid, spawn.x, z, boundaryRadius) === SIDEWALK_TOP && !blockedAt(structures, obstacles, spawn.x, z, boundaryRadius, 'walk', airport)) {
+        front = t + 0.5;
+        break;
+      }
+    }
+    const free = freeSpotNear(structures, obstacles, spawn.x, spawn.z + face * front, boundaryRadius, 'walk', airport);
     pos.current.set(free.x, 0, free.z);
     yaw.current = Math.atan2(pos.current.x - spawn.x, pos.current.z - spawn.z);
-  }, [spawn, structures, obstacles, boundaryRadius, airport]);
+  }, [spawn, structures, obstacles, boundaryRadius, airport, blocks, grid]);
 
   useEffect(() => {
     const el = gl.domElement;
@@ -235,15 +262,32 @@ export function Player({ structures, blocks, grid, boundaryRadius, contentRadius
       if (tr) nearest = null; // no "Enter" prompts for places you pass on a ride
       if (nearest !== useWorld.getState().nearVenue) setNearVenue(nearest);
     }
-    // camera orbit, pulled in when it would sit inside a building
+    // camera orbit, pulled in when it would sit inside a building or when anything (a tower, a tree, a venue wall)
+    // stands between it and the player
     let dist = CAM_DIST * (tr && tr.mode !== 'walk' ? rideCamera(tr.mode) : riding?.kind === 'plane' ? 2.2 : riding ? 1.3 : 1);
-    let cx = 0, cy = 0, cz = 0;
+    const dir = new THREE.Vector3(Math.sin(yaw.current) * Math.cos(pitch.current), Math.sin(pitch.current), Math.cos(yaw.current) * Math.cos(pitch.current));
+    const head = new THREE.Vector3(pos.current.x, pos.current.y + 1.3, pos.current.z);
     for (; dist >= 2.5; dist -= 0.75) {
-      cx = pos.current.x + Math.sin(yaw.current) * Math.cos(pitch.current) * dist;
-      cz = pos.current.z + Math.cos(yaw.current) * Math.cos(pitch.current) * dist;
-      cy = pos.current.y + 1.2 + Math.sin(pitch.current) * dist + CAM_HEIGHT * 0.2;
+      const cx = pos.current.x + dir.x * dist, cz = pos.current.z + dir.z * dist;
+      const cy = pos.current.y + 1.2 + dir.y * dist + CAM_HEIGHT * 0.2;
       if (!insideBuilding(structures, cx, cy, cz)) break;
     }
+    // line of sight from the head back to the camera, several times a second; the list of things that could
+    // block it is gathered from the scene once a second
+    if (camFrame.current++ % 4 === 0) {
+      const b = blockers.current;
+      if (state.clock.elapsedTime - b.at > 1) {
+        b.list = gatherBlockers(scene, group.current);
+        b.at = state.clock.elapsedTime;
+      }
+      const hit = clearDistance(b.list, head, dir, dist);
+      camFree.current = hit >= dist ? dist : Math.max(1.6, hit - 0.6);
+    }
+    const want = Math.min(dist, camFree.current);
+    camDist.current = want < camDist.current ? want : camDist.current + (want - camDist.current) * Math.min(1, d * 1.5);
+    const cd = camDist.current;
+    const cx = pos.current.x + dir.x * cd, cz = pos.current.z + dir.z * cd;
+    const cy = pos.current.y + 1.2 + dir.y * cd + CAM_HEIGHT * 0.2 * Math.min(1, cd / CAM_DIST);
     camera.position.lerp(new THREE.Vector3(cx, cy, cz), 1 - Math.pow(0.001, d));
     camera.lookAt(pos.current.x, pos.current.y + 1.3, pos.current.z);
 
@@ -312,6 +356,75 @@ function freeSpotNear(structures: Placed[], obstacles: Obstacle[], x: number, z:
     }
   }
   return { x, z };
+}
+
+const tmpM = new THREE.Matrix4();
+const tmpW = new THREE.Matrix4();
+const tmpBox = new THREE.Box3();
+const tmpSize = new THREE.Vector3();
+
+/** Meshes that could stand between the camera and the player: visible, solid, not the player's own figure, vehicle,
+ *  balloons or name tag. Instanced sets bigger than a city's worth of props are building detail, which the masses cover. */
+function gatherBlockers(scene: THREE.Scene, self: THREE.Object3D | null) {
+  const out: THREE.Mesh[] = [];
+  const walk = (o: THREE.Object3D) => {
+    if (!o.visible || o === self) return;
+    const m = o as THREE.Mesh;
+    if (m.isMesh && m.geometry) {
+      const mat = m.material as THREE.Material | THREE.Material[];
+      const see = !Array.isArray(mat) && ((mat.transparent && mat.opacity < 0.6) || (mat as { isTroikaTextMaterial?: boolean }).isTroikaTextMaterial);
+      const inst = m as THREE.InstancedMesh;
+      if (!see && !(inst.isInstancedMesh && inst.count > 1500)) {
+        if (!m.geometry.boundingBox) m.geometry.computeBoundingBox();
+        out.push(m);
+      }
+    }
+    for (const c of o.children) walk(c);
+  };
+  walk(scene);
+  return out;
+}
+
+/** Where the segment from `o` along `d` first enters the box, or Infinity. A box the head is already inside (the sky,
+ *  the ground, a room you're standing in) doesn't count, and neither does anything smaller than about a person. */
+function enters(b: THREE.Box3, o: THREE.Vector3, d: THREE.Vector3) {
+  if (b.containsPoint(o)) return Infinity;
+  b.getSize(tmpSize);
+  if (Math.max(tmpSize.x, tmpSize.y, tmpSize.z) < 1.2) return Infinity;
+  let t0 = 0, t1 = Infinity;
+  for (const k of ['x', 'y', 'z'] as const) {
+    if (Math.abs(d[k]) < 1e-6) {
+      if (o[k] < b.min[k] || o[k] > b.max[k]) return Infinity;
+      continue;
+    }
+    let a = (b.min[k] - o[k]) / d[k], c = (b.max[k] - o[k]) / d[k];
+    if (a > c) [a, c] = [c, a];
+    t0 = Math.max(t0, a);
+    t1 = Math.min(t1, c);
+    if (t0 > t1) return Infinity;
+  }
+  return t0;
+}
+
+/** Distance from the head to the first thing in the way of the camera, or `max` when the view is clear.
+ *  Boxes, not triangles: cheap enough to run a few times a second over the whole city. */
+function clearDistance(list: THREE.Mesh[], head: THREE.Vector3, dir: THREE.Vector3, max: number) {
+  let best = max;
+  for (const m of list) {
+    const geo = m.geometry.boundingBox;
+    if (!geo) continue;
+    const inst = m as THREE.InstancedMesh;
+    if (inst.isInstancedMesh) {
+      for (let i = 0; i < inst.count; i++) {
+        inst.getMatrixAt(i, tmpM);
+        tmpW.multiplyMatrices(m.matrixWorld, tmpM);
+        best = Math.min(best, enters(tmpBox.copy(geo).applyMatrix4(tmpW), head, dir));
+      }
+    } else {
+      best = Math.min(best, enters(tmpBox.copy(geo).applyMatrix4(m.matrixWorld), head, dir));
+    }
+  }
+  return best;
 }
 
 /** Camera placement check: inside a building's volume. */

@@ -1,20 +1,31 @@
 'use client';
 import { Suspense, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { HAIR, HAIR_STYLES, PANTS, SHIRT, SHIRT_ALT, SHOES, SKIN, randomLook, type Look } from '@/lib/life/look';
+import { ACCENT, BOTTOMS, EXTRAS, EYEWEAR, HAIR, HAIR_STYLES, HATS, PANTS, SHIRT, SHIRT_ALT, SHOE_STYLES, SHOES, SKIN, TOPS, randomLook, type Look } from '@/lib/life/look';
 
 const Preview = dynamic(() => import('./Preview').then((m) => m.Preview), { ssr: false });
 
-// Sign-up step: pick a body, skin tone, face, hair and clothes, with the figure updating live in 3D.
+// Sign-up step: pick a body, skin tone, face, hair, clothes and accessories, with the figure updating live in 3D.
 
-type Tab = 'body' | 'face' | 'hair' | 'top' | 'bottom';
+type Tab = 'body' | 'face' | 'hair' | 'top' | 'bottom' | 'shoes' | 'extras';
 const TABS: { id: Tab; label: string }[] = [
   { id: 'body', label: 'Body' },
   { id: 'face', label: 'Skin & face' },
   { id: 'hair', label: 'Hair' },
   { id: 'top', label: 'Top' },
   { id: 'bottom', label: 'Bottom' },
+  { id: 'shoes', label: 'Shoes' },
+  { id: 'extras', label: 'Extras' },
 ];
+
+const TOP_NAMES: Record<Look['top'], string> = { tee: 'T-shirt', hoodie: 'Hoodie', shirt: 'Button-up', blazer: 'Blazer', crop: 'Crop top', jersey: 'Jersey', tank: 'Tank top', dress: 'Dress' };
+const BOTTOM_NAMES: Record<Look['bottom'], string> = { pants: 'Trousers', jeans: 'Jeans', joggers: 'Joggers', cargo: 'Cargos', shorts: 'Shorts', skirt: 'Skirt' };
+const SHOE_NAMES: Record<Look['shoeStyle'], string> = { sneakers: 'Sneakers', boots: 'Boots', slides: 'Slides', heels: 'Heels' };
+const HAT_NAMES: Record<Look['hat'], string> = { none: 'None', cap: 'Cap', beanie: 'Beanie' };
+const EYEWEAR_NAMES: Record<Look['eyewear'], string> = { none: 'None', glasses: 'Glasses', shades: 'Shades' };
+const EXTRA_NAMES: Record<Look['extras'][number], string> = { chain: 'Gold chain', watch: 'Watch', backpack: 'Backpack' };
+/** What the top's second colour is called, when the top has one. */
+const ACCENT_NAME: Partial<Record<Look['top'], string>> = { blazer: 'Shirt underneath', jersey: 'Trim and number', hoodie: 'Drawstrings', shirt: 'Buttons' };
 
 const HAIR_NAMES: Record<Look['hairStyle'], string> = {
   crop: 'Short',
@@ -25,7 +36,7 @@ const HAIR_NAMES: Record<Look['hairStyle'], string> = {
   bun: 'Bun',
   ponytail: 'Ponytail',
   long: 'Long',
-  cap: 'Cap',
+  cap: 'Short', // the old cap hairstyle; it is a hat now (see withCapAsHat)
   bald: 'Bald',
 };
 
@@ -54,7 +65,7 @@ export function AvatarCreator({ handle, initial, next, firstTime }: { handle: st
     <main className="fixed inset-0 flex flex-col bg-base text-white md:flex-row">
       <section className="relative h-[46vh] shrink-0 md:h-auto md:flex-1" style={{ background: 'radial-gradient(ellipse at 50% 35%, #2a3b5c 0%, #141a28 60%, #0B0E14 100%)' }}>
         <Suspense fallback={null}>
-          <Preview look={look} focus={tab === 'face' || tab === 'hair' ? 'head' : 'body'} />
+          <Preview look={look} focus={tab === 'face' || tab === 'hair' ? 'head' : tab === 'shoes' ? 'feet' : 'body'} />
         </Suspense>
         <div className="pointer-events-none absolute left-4 top-4">
           <p className="text-xs uppercase tracking-wider text-white/50">{firstTime ? 'Last step · Pick your look' : 'Your look'}</p>
@@ -64,7 +75,7 @@ export function AvatarCreator({ handle, initial, next, firstTime }: { handle: st
       </section>
 
       <section className="flex min-h-0 flex-1 flex-col md:w-[420px] md:flex-none md:border-l md:border-white/10">
-        <nav className="flex gap-1 overflow-x-auto px-3 pt-3" role="tablist">
+        <nav className="flex flex-wrap gap-1 px-3 pt-3" role="tablist">
           {TABS.map((t) => (
             <button
               key={t.id}
@@ -121,7 +132,7 @@ export function AvatarCreator({ handle, initial, next, firstTime }: { handle: st
           {tab === 'hair' && (
             <>
               <Group title="Style">
-                <Choices value={look.hairStyle} options={HAIR_STYLES.map((v) => ({ v, label: HAIR_NAMES[v] }))} onPick={(v) => set('hairStyle', v)} />
+                <Choices value={look.hairStyle} options={HAIR_STYLES.filter((v) => v !== 'cap').map((v) => ({ v, label: HAIR_NAMES[v] }))} onPick={(v) => set('hairStyle', v)} />
               </Group>
               <Group title="Colour">
                 <Swatches colors={HAIR} value={look.hair} onPick={(v) => set('hair', v)} />
@@ -130,59 +141,91 @@ export function AvatarCreator({ handle, initial, next, firstTime }: { handle: st
           )}
           {tab === 'top' && (
             <>
+              <Group title="Style">
+                <Choices value={look.top} options={TOPS.map((v) => ({ v, label: TOP_NAMES[v] }))} onPick={(v) => set('top', v)} />
+              </Group>
               <Group title="Colour">
                 <Swatches colors={SHIRT} value={look.shirt} onPick={(v) => set('shirt', v)} />
               </Group>
-              <Group title="Sleeves">
-                <Choices
-                  value={look.sleeves}
-                  options={[
-                    { v: 'short', label: 'Short' },
-                    { v: 'long', label: 'Long' },
-                  ]}
-                  onPick={(v) => set('sleeves', v)}
-                  wide
-                />
-              </Group>
-              <Group title="Pattern">
-                <Choices
-                  value={look.pattern}
-                  options={[
-                    { v: 'solid', label: 'Plain' },
-                    { v: 'stripes', label: 'Stripes' },
-                    { v: 'yoke', label: 'Two-tone' },
-                  ]}
-                  onPick={(v) => set('pattern', v)}
-                  wide
-                />
-              </Group>
-              {look.pattern !== 'solid' && (
-                <Group title="Accent">
+              {look.top !== 'hoodie' && look.top !== 'blazer' && look.top !== 'tank' && (
+                <Group title="Sleeves">
+                  <Choices
+                    value={look.sleeves}
+                    options={[
+                      { v: 'short', label: 'Short' },
+                      { v: 'long', label: 'Long' },
+                    ]}
+                    onPick={(v) => set('sleeves', v)}
+                    wide
+                  />
+                </Group>
+              )}
+              {look.top !== 'blazer' && (
+                <Group title="Pattern">
+                  <Choices
+                    value={look.pattern}
+                    options={[
+                      { v: 'solid', label: 'Plain' },
+                      { v: 'stripes', label: 'Stripes' },
+                      { v: 'yoke', label: 'Two-tone' },
+                    ]}
+                    onPick={(v) => set('pattern', v)}
+                    wide
+                  />
+                </Group>
+              )}
+              {(look.pattern !== 'solid' || ACCENT_NAME[look.top]) && (
+                <Group title={look.pattern !== 'solid' && look.top !== 'blazer' ? 'Accent' : ACCENT_NAME[look.top]!}>
                   <Swatches colors={SHIRT_ALT} value={look.shirtAlt} onPick={(v) => set('shirtAlt', v)} />
                 </Group>
               )}
             </>
           )}
-          {tab === 'bottom' && (
+          {tab === 'bottom' &&
+            (look.top === 'dress' ? (
+              <p className="rounded-xl border border-white/10 bg-white/5 p-3 text-sm text-white/70">
+                Your dress covers this. Pick a top other than the dress to wear trousers, jeans, a skirt and more.
+              </p>
+            ) : (
+              <>
+                <Group title="Style">
+                  <Choices value={look.bottom} options={BOTTOMS.map((v) => ({ v, label: BOTTOM_NAMES[v] }))} onPick={(v) => set('bottom', v)} />
+                </Group>
+                <Group title="Colour">
+                  <Swatches colors={PANTS} value={look.pants} onPick={(v) => set('pants', v)} />
+                </Group>
+              </>
+            ))}
+          {tab === 'shoes' && (
             <>
               <Group title="Style">
-                <Choices
-                  value={look.bottom}
-                  options={[
-                    { v: 'pants', label: 'Trousers' },
-                    { v: 'shorts', label: 'Shorts' },
-                    { v: 'skirt', label: 'Skirt' },
-                  ]}
-                  onPick={(v) => set('bottom', v)}
-                  wide
-                />
+                <Choices value={look.shoeStyle} options={SHOE_STYLES.map((v) => ({ v, label: SHOE_NAMES[v] }))} onPick={(v) => set('shoeStyle', v)} wide />
               </Group>
               <Group title="Colour">
-                <Swatches colors={PANTS} value={look.pants} onPick={(v) => set('pants', v)} />
-              </Group>
-              <Group title="Shoes">
                 <Swatches colors={SHOES} value={look.shoes} onPick={(v) => set('shoes', v)} />
               </Group>
+            </>
+          )}
+          {tab === 'extras' && (
+            <>
+              <Group title="Hat">
+                <Choices value={look.hat} options={HATS.map((v) => ({ v, label: HAT_NAMES[v] }))} onPick={(v) => set('hat', v)} wide />
+              </Group>
+              <Group title="Eyewear">
+                <Choices value={look.eyewear} options={EYEWEAR.map((v) => ({ v, label: EYEWEAR_NAMES[v] }))} onPick={(v) => set('eyewear', v)} wide />
+              </Group>
+              <Group title="Extras">
+                <Toggles
+                  value={look.extras}
+                  options={EXTRAS.map((v) => ({ v, label: EXTRA_NAMES[v] }))}
+                  onChange={(v) => set('extras', v)}
+                />
+              </Group>
+              {(look.hat !== 'none' || look.extras.includes('backpack')) && (
+                <Group title={look.hat !== 'none' && look.extras.includes('backpack') ? 'Hat and backpack colour' : look.hat !== 'none' ? 'Hat colour' : 'Backpack colour'}>
+                  <Swatches colors={ACCENT} value={look.accent} onPick={(v) => set('accent', v)} />
+                </Group>
+              )}
             </>
           )}
         </div>
@@ -232,6 +275,26 @@ function Choices<T extends string>({ value, options, onPick, wide }: { value: T;
           {o.label}
         </button>
       ))}
+    </div>
+  );
+}
+
+function Toggles<T extends string>({ value, options, onChange }: { value: T[]; options: { v: T; label: string }[]; onChange: (v: T[]) => void }) {
+  return (
+    <div className="grid grid-cols-3 gap-2">
+      {options.map((o) => {
+        const on = value.includes(o.v);
+        return (
+          <button
+            key={o.v}
+            aria-pressed={on}
+            className={`rounded-xl border px-3 py-2.5 text-sm transition ${on ? 'border-x bg-x/20 font-semibold' : 'border-white/10 bg-white/5 hover:bg-white/10'}`}
+            onClick={() => onChange(on ? value.filter((x) => x !== o.v) : [...value, o.v])}
+          >
+            {o.label}
+          </button>
+        );
+      })}
     </div>
   );
 }

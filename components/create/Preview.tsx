@@ -8,11 +8,12 @@ import { Figure } from '@/components/world/Figure';
 import type { Look } from '@/lib/life/look';
 
 // The creator's live preview: the same figure the world draws, on a turntable. The camera moves in on the
-// head while skin, face or hair is being picked.
+// head while skin, face or hair is being picked, and down to the feet for shoes.
 
 const SHOTS = {
   body: { pos: new THREE.Vector3(0, 1.25, 3.6), target: new THREE.Vector3(0, 0.95, 0) },
   head: { pos: new THREE.Vector3(0, 1.62, 1.9), target: new THREE.Vector3(0, 1.48, 0) },
+  feet: { pos: new THREE.Vector3(0, 0.95, 2.7), target: new THREE.Vector3(0, 0.42, 0) },
 };
 
 function Rig({ focus }: { focus: keyof typeof SHOTS }) {
@@ -67,7 +68,7 @@ function CameraFill() {
 }
 const FILL_LIFT = new THREE.Vector3(0, 0.6, 0);
 
-export function Preview({ look, focus }: { look: Look; focus: 'body' | 'head' }) {
+export function Preview({ look, focus }: { look: Look; focus: keyof typeof SHOTS }) {
   const speed = useRef(0);
   return (
     <Canvas shadows camera={{ position: SHOTS.body.pos.toArray(), fov: 35 }} dpr={[1, 2]} gl={{ antialias: true, alpha: true, preserveDrawingBuffer: true }}>

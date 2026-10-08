@@ -5,14 +5,15 @@ import { useFrame } from '@react-three/fiber';
 import { Billboard, Text } from '@react-three/drei';
 
 import { hashString } from '@/lib/world/seed';
-import { lookFor, type Look } from '@/lib/life/look';
+import { lookFor, withCapAsHat, type Look } from '@/lib/life/look';
 import { applyTired, poseActivity, settle, type FigureAct, type Rig } from './figureMoves';
 import { applyPose, poseKey, type HomePose } from './figurePoses';
-// Self-hosted label font (Inter, SIL OFL) so no label ever fetches from a CDN.
-const FONT = '/fonts/inter-600.woff';
+import { ball, capsule, geo, headGeo, headShell, MID, MID_SHADOW, NEAR, smallBall } from './figureGeo';
+import { armWear, Backpack, Belt, Chain, cloth, Eyewear, FONT, ForearmWear, HeadWear, HipWear, legWear, Shoe, ShinWear, ThighWear, TopWear, UpperArmWear, type Fit } from './FigureOutfit';
 
 // A low-poly person. Appearance is the player's chosen look when there is one, otherwise seeded from the handle so a
 // visitor looks the same everywhere; limbs swing in a walk cycle while moving. Shared by the player, other visitors and residents.
+// Clothes (tops, bottoms, shoes, accessories) are drawn by FigureOutfit.tsx on the same joints.
 
 export type { Look } from '@/lib/life/look';
 export { lookFor } from '@/lib/life/look';
@@ -36,68 +37,8 @@ type Props = {
   tiredRef?: React.MutableRefObject<number>;
 };
 
-// Geometry is built once per distinct size and shared by every figure in the world.
-const GEO = new Map<string, THREE.BufferGeometry>();
-function geo<T extends THREE.BufferGeometry>(key: string, make: () => T): T {
-  let g = GEO.get(key);
-  if (!g) GEO.set(key, (g = make()));
-  return g as T;
-}
-const q = (n: number) => n.toFixed(3);
-const capsule = (r: number, len: number) => geo(`cap|${q(r)}|${q(len)}`, () => new THREE.CapsuleGeometry(r, len, 4, 10));
-const ball = () => geo('ball', () => new THREE.SphereGeometry(1, 16, 12));
-const smallBall = () => geo('ball-s', () => new THREE.SphereGeometry(1, 10, 8));
-// Torso silhouette as radius over height (0 = waist, 1 = base of the neck): narrow waist, fuller chest, sloped shoulders.
-// The female profile has fuller hips, a narrower waist and narrower shoulders.
-const TORSO: Record<Look['body'], [number, number][]> = {
-  male: [[0, 0.16], [0.12, 0.155], [0.35, 0.15], [0.6, 0.172], [0.8, 0.19], [0.9, 0.185], [0.97, 0.14], [1, 0.07]],
-  female: [[0, 0.178], [0.12, 0.168], [0.38, 0.136], [0.6, 0.155], [0.8, 0.165], [0.9, 0.158], [0.97, 0.122], [1, 0.064]],
-};
-function torsoR(body: Look['body'], t: number) {
-  const P = TORSO[body];
-  for (let i = 1; i < P.length; i++) {
-    const [t0, r0] = P[i - 1], [t1, r1] = P[i];
-    if (t <= t1) return r0 + ((r1 - r0) * (t - t0)) / (t1 - t0);
-  }
-  return P[P.length - 1][1];
-}
-/** A lathe of the torso profile between t0 and t1, `inflate` pushes it out (for stripes and yokes over the shirt). */
-const torso = (body: Look['body'], t0: number, t1: number, inflate = 1) =>
-  geo(`torso|${body}|${q(t0)}|${q(t1)}|${q(inflate)}`, () => {
-    const pts: THREE.Vector2[] = [];
-    const closeTop = t1 >= 1, closeBottom = t0 <= 0;
-    if (closeBottom) pts.push(new THREE.Vector2(0.0001, t0));
-    for (let i = 0; i <= 10; i++) {
-      const t = t0 + ((t1 - t0) * i) / 10;
-      pts.push(new THREE.Vector2(torsoR(body, t) * inflate, t));
-    }
-    if (closeTop) pts.push(new THREE.Vector2(0.0001, t1));
-    return new THREE.LatheGeometry(pts, 18);
-  });
-
-// Head as a lathe: round cranium tapering to the jaw and chin, so the face has no seams.
-const HEAD: [number, number][] = [[-0.138, 0.0001], [-0.132, 0.03], [-0.115, 0.058], [-0.085, 0.083], [-0.045, 0.102], [0, 0.111], [0.045, 0.112], [0.085, 0.102], [0.115, 0.08], [0.135, 0.045], [0.142, 0.0001]];
-const headGeo = () =>
-  geo('head', () => {
-    const curve = new THREE.SplineCurve(HEAD.map(([y, r]) => new THREE.Vector2(r, y)));
-    return new THREE.LatheGeometry(curve.getPoints(24), 20);
-  });
-
-/** Hair or a cap: the head's own outline, pushed out and cut off at a hairline. `back` keeps only the back half (the nape). */
-const headShell = (yMin: number, inflate: number, back = false) =>
-  geo(`shell|${q(yMin)}|${q(inflate)}|${back}`, () => {
-    const curve = new THREE.SplineCurve(HEAD.map(([y, r]) => new THREE.Vector2(r, y)));
-    const pts = curve.getPoints(48).filter((v) => v.y >= yMin);
-    return new THREE.LatheGeometry(
-      pts.map((v) => new THREE.Vector2(Math.max(0.0001, v.x * inflate), v.y * (1 + (inflate - 1) * 0.6))),
-      20,
-      back ? Math.PI * 0.5 - 0.25 : 0,
-      back ? Math.PI + 0.5 : Math.PI * 2,
-    );
-  });
-
 export function Figure({ seed, look: chosen, speedRef, label, labelColor = '#FFFFFF', dim = false, alwaysWalk = false, actRef, tiredRef, slumpRef }: Props) {
-  const look = useMemo(() => chosen ?? lookFor(seed), [chosen, seed]);
+  const look = useMemo(() => withCapAsHat(chosen ?? lookFor(seed)), [chosen, seed]);
   const lArm = useRef<THREE.Group>(null);
   const rArm = useRef<THREE.Group>(null);
   const lElbow = useRef<THREE.Group>(null);
@@ -118,6 +59,8 @@ export function Figure({ seed, look: chosen, speedRef, label, labelColor = '#FFF
   const eyes = useRef<(THREE.Group | null)[]>([null, null]);
   const blink = useRef(2 + (hashString(seed) % 30) / 10);
   const root = useRef<THREE.Group>(null);
+  const skirt = useRef<THREE.Group>(null);
+  const pack = useRef<THREE.Group>(null);
   const lod = useRef({ level: -1, tick: 0 });
 
   // Rekt (a rug just popped): shoulders roll forward and the head drops, on top of whatever pose is playing.
@@ -168,7 +111,10 @@ export function Figure({ seed, look: chosen, speedRef, label, labelColor = '#FFF
     for (const e of eyes.current) if (e) e.scale.y = blink.current < 0 ? 0.12 : 1;
 
     // everyday moves and tiredness, layered over the walk (components/world/figureMoves.ts)
-    if (!actRef && !tiredRef) return slumpOver(false);
+    if (!actRef && !tiredRef) {
+      if (skirt.current && lLeg.current && rLeg.current) swingSkirt(skirt.current, lLeg.current, rLeg.current);
+      return slumpOver(false);
+    }
     const rig: Rig = {
       body: body.current, chest: chest.current, head: head.current, lArm: lArm.current, rArm: rArm.current, lElbow: lElbow.current, rElbow: rElbow.current,
       lLeg: lLeg.current, rLeg: rLeg.current, lKnee: lKnee.current, rKnee: rKnee.current, phone: phone.current, eyes: eyes.current, hipY,
@@ -186,6 +132,9 @@ export function Figure({ seed, look: chosen, speedRef, label, labelColor = '#FFF
     if (typeof m.act === 'string') poseActivity(rig, m.act, m.t, smoothW(m.w));
     else if (m.act) applyPose(rig, m.act, m.t, smoothW(m.w));
     slumpOver(true);
+    // The backpack comes off for furniture; a skirt or dress swings forward over the thighs when they lift (sitting).
+    if (pack.current) pack.current.visible = !(m.act && typeof m.act !== 'string' && m.w > 0.5);
+    if (skirt.current && lLeg.current && rLeg.current) swingSkirt(skirt.current, lLeg.current, rLeg.current);
   });
 
   const fem = look.body === 'female';
@@ -201,10 +150,9 @@ export function Figure({ seed, look: chosen, speedRef, label, labelColor = '#FFF
   const shoulderY = hipY + torsoH;
   const thigh = legLen * 0.5;
   const shin = legLen * 0.5;
-  const sleeve = look.sleeves === 'long' ? look.shirt : look.skin;
-  // Shorts (knee length) show the shins; a skirt shows the legs and hangs from the hips on its own.
-  const thighColor = look.bottom === 'skirt' ? look.skin : look.pants;
-  const shinColor = look.bottom === 'pants' ? look.pants : look.skin;
+  const fit: Fit = { look, W, torsoH, thigh, shin, dim, seed };
+  const arm = armWear(look);
+  const leg = legWear(look);
   const shoulderX = (fem ? 0.165 : 0.19) * W + 0.03;
   const armR = fem ? 0.9 : 1;
 
@@ -214,71 +162,51 @@ export function Figure({ seed, look: chosen, speedRef, label, labelColor = '#FFF
         {/* legs: pivot at hip, bend at knee */}
         {[-1, 1].map((side) => (
           <group key={side} ref={side < 0 ? lLeg : rLeg} position={[side * 0.085 * W, hipY, 0]}>
-            <mesh position={[0, -thigh * 0.5, 0]} geometry={capsule(0.075 * W, thigh - 0.1)} castShadow userData={MID_SHADOW}>
-              {mat(thighColor)}
+            <mesh position={[0, -thigh * 0.5, 0]} geometry={capsule(leg.thighR * W, thigh - 0.1)} castShadow userData={MID_SHADOW}>
+              {cloth(fit, leg.thigh, { map: leg.thigh === look.skin ? undefined : leg.map })}
             </mesh>
+            <ThighWear fit={fit} side={side} />
 
             <group ref={side < 0 ? lKnee : rKnee} position={[0, -thigh, 0]}>
-              <mesh position={[0, -shin * 0.47, 0]} geometry={capsule((look.bottom === 'pants' ? 0.058 : 0.052) * W, shin - 0.1)} castShadow userData={MID_SHADOW}>
-                {mat(shinColor)}
+              <mesh position={[0, -shin * 0.47, 0]} geometry={capsule(leg.shinR * W, shin - 0.1)} castShadow userData={MID_SHADOW}>
+                {cloth(fit, leg.shin, { map: leg.shin === look.skin ? undefined : leg.map })}
               </mesh>
-              <mesh position={[0, -shin + 0.045, 0.045]} scale={[0.062 * W, 0.05, 0.13]} geometry={ball()} castShadow userData={MID}>
-                {mat(look.shoes, 0.55)}
-              </mesh>
+              <ShinWear fit={fit} side={side} />
+              <Shoe fit={fit} />
             </group>
           </group>
         ))}
         {/* pelvis */}
         <mesh position={[0, hipY + 0.03, 0]} scale={[(fem ? 0.168 : 0.155) * W, 0.11, 0.098]} geometry={ball()} castShadow userData={MID_SHADOW}>
-          {mat(look.pants)}
+          {cloth(fit, leg.pelvis, { map: leg.map })}
         </mesh>
-        {look.bottom === 'skirt' && (
-          <mesh position={[0, hipY - thigh * 0.45, 0]} scale={[W, 1, 0.8]} geometry={geo(`skirt|${q(thigh)}`, () => new THREE.CylinderGeometry(0.19, 0.28, thigh * 1.05, 20, 1, true))} castShadow>
-            <meshStandardMaterial color={look.pants} roughness={0.8} side={THREE.DoubleSide} transparent={dim} opacity={op} />
-          </mesh>
-        )}
+        <HipWear ref={skirt} fit={fit} hipY={hipY} />
         <group ref={chest} position={[0, hipY, 0]}>
-          {/* torso: a lathed body, flattened front to back */}
-          <group scale={[W, torsoH, 0.62]}>
-            <mesh geometry={torso(look.body, 0, 1)} castShadow userData={MID_SHADOW}>
-              {mat(look.shirt)}
-            </mesh>
-            {look.pattern === 'stripes' &&
-              [0.2, 0.45, 0.7].map((f) => (
-                <mesh key={f} geometry={torso(look.body, f, f + 0.08, 1.02)} userData={NEAR}>
-                  {mat(look.shirtAlt)}
-                </mesh>
-              ))}
-            {look.pattern === 'yoke' && (
-              <mesh geometry={torso(look.body, 0.74, 0.985, 1.02)} userData={NEAR}>
-                {mat(look.shirtAlt)}
-              </mesh>
-            )}
-          </group>
-          {fem &&
-            [-1, 1].map((side) => (
-              <mesh key={side} position={[side * 0.062 * W, torsoH * 0.64, 0.05]} scale={[0.062 * W, 0.055, 0.05]} geometry={ball()} userData={NEAR}>
-                {mat(look.shirt)}
-              </mesh>
-            ))}
+          {/* torso and top: a lathed body, flattened front to back, dressed in FigureOutfit.tsx */}
+          <TopWear fit={fit} />
+          <Belt fit={fit} />
+          <Chain fit={fit} />
+          <Backpack ref={pack} fit={fit} />
           {/* arms: pivot at shoulder, bend at elbow */}
           {[-1, 1].map((side) => (
             <group key={side} ref={side < 0 ? lArm : rArm} position={[side * shoulderX, torsoH - 0.07, 0]} scale={[armR, 1, armR]}>
-              <mesh position={[side * -0.012, -0.01, 0]} scale={[0.06, 0.058, 0.062]} geometry={smallBall()} userData={NEAR}>
-                {mat(look.shirt)}
+              <mesh position={[side * -0.012, -0.01, 0]} scale={[0.06 * arm.shoulderScale, 0.058 * arm.shoulderScale, 0.062 * arm.shoulderScale]} geometry={smallBall()} userData={NEAR}>
+                {mat(arm.shoulder)}
               </mesh>
-              <mesh position={[0, -0.14, 0]} geometry={capsule(0.05, 0.2)} castShadow>
-                {mat(sleeve)}
+              <mesh position={[0, -0.14, 0]} geometry={capsule(arm.upperR, 0.2)} castShadow>
+                {mat(arm.upper)}
               </mesh>
-              {look.sleeves === 'short' && (
-                <mesh position={[0, -0.06, 0]} geometry={capsule(0.058, 0.08)} userData={NEAR}>
+              {arm.short && (
+                <mesh position={[0, -0.06, 0]} geometry={capsule(arm.short.r, arm.short.len)} userData={NEAR}>
                   {mat(look.shirt)}
                 </mesh>
               )}
+              <UpperArmWear fit={fit} />
               <group ref={side < 0 ? lElbow : rElbow} position={[0, -0.28, 0]}>
-                <mesh position={[0, -0.12, 0]} geometry={capsule(0.042, 0.19)} castShadow>
-                  {mat(sleeve)}
+                <mesh position={[0, -0.12, 0]} geometry={capsule(arm.foreR, 0.19)} castShadow>
+                  {mat(arm.fore)}
                 </mesh>
+                <ForearmWear fit={fit} side={side} />
                 <mesh position={[0, -0.28, 0.005]} scale={[0.035, 0.06, 0.045]} geometry={smallBall()} userData={NEAR}>
                   {skin()}
                 </mesh>
@@ -343,6 +271,8 @@ export function Figure({ seed, look: chosen, speedRef, label, labelColor = '#FFF
             </mesh>
             </group>
             <Hair look={look} dim={dim} />
+            <HeadWear fit={fit} />
+            <Eyewear fit={fit} />
           </group>
         </group>
       </group>
@@ -360,12 +290,24 @@ export function Figure({ seed, look: chosen, speedRef, label, labelColor = '#FFF
 
 const smoothW = (w: number) => w * w * (3 - 2 * w);
 
-// Level of detail. A figure is ~40 meshes up close, which is a lot of draw calls once a city has dozens of people in view.
-// Beyond NEAR_D the face, hands and small hair pieces are hidden and only the body, legs and head cast shadows;
-// beyond MID_D the shoes and neck go too and nothing casts a shadow. Meshes say how far they stay drawn with `userData`.
-const NEAR = { lod: 0 }; // drawn up close only
-const MID = { lod: 1 }; // drawn up close and at middle distance
-const MID_SHADOW = { lod: 2, shadow: 1 }; // always drawn, casts a shadow up to middle distance
+/**
+ * A skirt or dress is two halves hung from the hips. The front follows the thighs forward (a little while walking,
+ * along them when seated) and widens when the knees part; the back tucks under when sitting.
+ */
+function swingSkirt(skirt: THREE.Object3D, l: THREE.Object3D, r: THREE.Object3D) {
+  const [front, back] = skirt.children;
+  const fl = -l.rotation.x, fr = -r.rotation.x; // forward thigh angles
+  const avg = Math.max(0, (fl + fr) / 2);
+  const seated = Math.min(1, avg / 1.4);
+  const spread = Math.min(1, Math.abs(l.rotation.z - r.rotation.z) / 1.4);
+  front.rotation.x = -Math.min(1.4, 0.75 * avg + 0.35 * Math.max(0, fl, fr));
+  front.scale.set(1 - 0.25 * seated + 0.5 * spread, 1 - 0.15 * seated, 1);
+  back.rotation.x = 0.35 * Math.max(0, -fl, -fr) * (1 - seated);
+  back.scale.set(1, 1 - 0.7 * seated, 1);
+}
+
+// Level of detail (tags in figureGeo.ts). Beyond NEAR_D the face, hands and small details are hidden and only the body,
+// legs and head cast shadows; beyond MID_D the shoes and neck go too and nothing casts a shadow.
 const NEAR_D = 22, MID_D = 55, HYST = 3;
 const castsShadow = new WeakMap<THREE.Object3D, boolean>();
 const tmpPos = new THREE.Vector3();
@@ -392,7 +334,9 @@ function applyLod(root: THREE.Object3D, camera: THREE.Camera, st: { level: numbe
 // Locs hang around the sides and back: [angle around the head (0 = front), length].
 const LOCS: [number, number][] = [-2.9, -2.5, -2.1, -1.7, -1.35, 1.35, 1.7, 2.1, 2.5, 2.9, Math.PI].map((a, i) => [a, 0.16 + (i % 3) * 0.03]);
 
+/** The hair. Under a hat (FigureOutfit.tsx) an afro or bun is tucked away; hair that hangs below it still shows. */
 function Hair({ look, dim }: { look: Look; dim: boolean }) {
+  const hat = look.hat !== 'none';
   const m = (color: string) => <meshStandardMaterial color={color} roughness={0.9} side={THREE.DoubleSide} transparent={dim} opacity={dim ? 0.75 : 1} />;
   // The hairline tilts up at the front; the nape comes down to the ears at the back.
   const crop = (color = look.hair) => (
@@ -409,6 +353,7 @@ function Hair({ look, dim }: { look: Look; dim: boolean }) {
     case 'bald':
       return null;
     case 'crop':
+    case 'cap': // a hat now (withCapAsHat), drawn over short hair
       return crop();
     case 'buzz':
       return (
@@ -441,6 +386,7 @@ function Hair({ look, dim }: { look: Look; dim: boolean }) {
         </>
       );
     case 'afro':
+      if (hat) return crop();
       return (
         <>
           {crop()}
@@ -450,6 +396,7 @@ function Hair({ look, dim }: { look: Look; dim: boolean }) {
         </>
       );
     case 'bun':
+      if (hat) return crop();
       return (
         <>
           {crop()}
@@ -476,19 +423,5 @@ function Hair({ look, dim }: { look: Look; dim: boolean }) {
           )}
         </>
       );
-    case 'cap': {
-      const capColor = look.shirtAlt === '#FFFFFF' ? look.pants : look.shirtAlt;
-      return (
-        <>
-          {crop()}
-          <mesh position={[0, 0.008, -0.004]} rotation={[-0.12, 0, 0]} scale={[1, 1, 1.1]} geometry={headShell(0.045, 1.11)}>
-            {m(capColor)}
-          </mesh>
-          <mesh position={[0, 0.07, 0.1]} rotation={[0.12, 0, 0]} scale={[1.05, 1, 0.95]} geometry={geo('brim', () => new THREE.CylinderGeometry(0.1, 0.1, 0.012, 18, 1, false, -Math.PI * 0.5, Math.PI))}>
-            {m(capColor)}
-          </mesh>
-        </>
-      );
-    }
   }
 }

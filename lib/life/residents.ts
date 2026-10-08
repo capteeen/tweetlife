@@ -47,6 +47,12 @@ const L = (l: Partial<Look> & Pick<Look, 'body' | 'skin' | 'hairStyle' | 'shirt'
   shoes: '#0B0E14',
   height: 1,
   build: 1,
+  top: 'tee',
+  shoeStyle: 'sneakers',
+  hat: 'none',
+  eyewear: 'none',
+  extras: [],
+  accent: '#0B0E14',
   ...l,
 });
 
@@ -57,7 +63,7 @@ export const RESIDENTS: Resident[] = [
     tag: 'Club Moon promoter',
     persona: 'Tunde runs promo for Club Moon. Loud, generous, always selling the VIP table and the next big night. Knows every DJ in the city.',
     voice: 'Hype man energy. Pidgin sprinkled in ("omo", "e choke", "no wahala"). Calls people "my guy" or "boss".',
-    look: L({ body: 'male', skin: '#4A2C1D', hairStyle: 'crop', shirt: '#E63946', shirtAlt: '#0B0E14', pattern: 'yoke', pants: '#0B0E14', shoes: '#FFFFFF', height: 1.06, build: 1.1 }),
+    look: L({ body: 'male', skin: '#4A2C1D', hairStyle: 'crop', shirt: '#E63946', shirtAlt: '#0B0E14', pattern: 'solid', pants: '#0B0E14', shoes: '#FFFFFF', height: 1.06, build: 1.1, top: 'blazer', bottom: 'pants', shoeStyle: 'sneakers', eyewear: 'shades', extras: ['chain', 'watch'] }),
     route: [
       { venue: 'club', doing: 'dance', seconds: 70 },
       { venue: 'bar', doing: 'booth', seconds: 45 },
@@ -78,7 +84,7 @@ export const RESIDENTS: Resident[] = [
     tag: 'Lounge regular, knows all the gist',
     persona: 'Amaka is at the Degen Lounge most evenings. She knows everybody\'s business: who got rugged, who bought a jet, who is pretending to be rich. Warm but nosy.',
     voice: 'Gossipy and playful. Loves "gist", "abeg", "see ehn". Asks you questions back.',
-    look: L({ body: 'female', skin: '#8D5A3C', eyes: 'almond', hairStyle: 'braids', hair: '#1A120D', shirt: '#8338EC', shirtAlt: '#FFD089', pattern: 'stripes', bottom: 'skirt', pants: '#0B0E14', shoes: '#E63946', height: 0.98, build: 0.95 }),
+    look: L({ body: 'female', skin: '#8D5A3C', eyes: 'almond', hairStyle: 'braids', hair: '#1A120D', shirt: '#8338EC', shirtAlt: '#FFD089', pattern: 'stripes', bottom: 'skirt', pants: '#0B0E14', shoes: '#E63946', height: 0.98, build: 0.95, top: 'dress', shoeStyle: 'heels', extras: ['watch'] }),
     route: [
       { venue: 'bar', doing: 'stool', seconds: 80 },
       { venue: 'club', doing: 'dance', seconds: 40 },
@@ -99,7 +105,7 @@ export const RESIDENTS: Resident[] = [
     tag: 'Iron Trenches Gym trainer',
     persona: 'Kemi trains people at the Iron Trenches Gym. Disciplined, encouraging, a little bossy. Believes gas (energy) is everything and suya is fine after leg day.',
     voice: 'Short, motivating, coach-like. Uses "Let\'s go!", "one more rep". Never mean.',
-    look: L({ body: 'female', skin: '#5C3A25', hairStyle: 'ponytail', hair: '#0E0B09', shirt: '#06D6A0', shirtAlt: '#0B0E14', sleeves: 'short', bottom: 'shorts', pants: '#0B0E14', shoes: '#FFFFFF', height: 1.04, build: 1.02 }),
+    look: L({ body: 'female', skin: '#5C3A25', hairStyle: 'ponytail', hair: '#0E0B09', shirt: '#06D6A0', shirtAlt: '#0B0E14', sleeves: 'short', bottom: 'joggers', pants: '#0B0E14', shoes: '#FFFFFF', height: 1.04, build: 1.02, top: 'tank', extras: ['watch'] }),
     route: [
       { venue: 'gym', doing: 'yoga', seconds: 60 },
       { venue: 'gym', doing: 'treadmill', seconds: 45 },
@@ -120,7 +126,7 @@ export const RESIDENTS: Resident[] = [
     tag: 'Trenches degen',
     persona: 'Zee lives in the Trenches Coin Shop, trading memecoins with bags. Has been rugged many times and is still optimistic. Talks charts and "alpha" but never gives real financial advice.',
     voice: 'Crypto Twitter slang: "ser", "gm", "wagmi", "ngmi", "send it", "rug". Jokes about losses.',
-    look: L({ body: 'male', skin: '#C08A63', hairStyle: 'cap', hair: '#3F2A1C', shirt: '#0B0E14', shirtAlt: '#FFD089', pattern: 'stripes', sleeves: 'long', pants: '#4B5563', shoes: '#FFBE0B', height: 0.97, build: 0.92 }),
+    look: L({ body: 'male', skin: '#C08A63', hairStyle: 'crop', hair: '#3F2A1C', shirt: '#0B0E14', shirtAlt: '#FFD089', pattern: 'solid', sleeves: 'long', pants: '#4B5563', shoes: '#FFBE0B', height: 0.97, build: 0.92, top: 'hoodie', bottom: 'cargo', shoeStyle: 'slides', hat: 'cap', accent: '#E63946', extras: ['chain'] }),
     route: [
       { venue: 'exchange', doing: 'counter', seconds: 90 },
       { venue: 'bank', doing: 'hangout', seconds: 25 },
@@ -141,7 +147,7 @@ export const RESIDENTS: Resident[] = [
     tag: 'Clout chaser, selfie queen',
     persona: 'Bisola is an influencer who wants clout more than anything. Always taking selfies, judging outfits, asking you to follow her. Funny and vain in a lovable way.',
     voice: 'Bubbly, dramatic, emoji-friendly. "Babe", "it\'s giving", "omg".',
-    look: L({ body: 'female', skin: '#A66E4B', eyes: 'almond', hairStyle: 'long', hair: '#7A5230', shirt: '#FF5D8F', shirtAlt: '#FFFFFF', bottom: 'skirt', pants: '#FFFFFF', shoes: '#FFFFFF', height: 1.0, build: 0.92 }),
+    look: L({ body: 'female', skin: '#A66E4B', eyes: 'almond', hairStyle: 'long', hair: '#7A5230', shirt: '#FF5D8F', shirtAlt: '#FFFFFF', bottom: 'skirt', pants: '#FFFFFF', shoes: '#FFFFFF', height: 1.0, build: 0.92, top: 'crop', eyewear: 'shades', shoeStyle: 'heels' }),
     route: [
       { venue: 'club', doing: 'selfie', seconds: 45 },
       { venue: 'barber', doing: 'hangout', seconds: 25 },
@@ -162,7 +168,7 @@ export const RESIDENTS: Resident[] = [
     tag: 'Hustle Hub grinder',
     persona: 'Chidi works shifts at the Hustle Hub and is always counting bags. Practical, a bit tired, dreams of buying a car from the dealership. Complains about NEPA cutting light.',
     voice: 'Down-to-earth, dry humour, money-minded. "Bros", "na wa", "hustle no dey sleep".',
-    look: L({ body: 'male', skin: '#3B2219', hairStyle: 'buzz', shirt: '#F4F1DE', shirtAlt: '#BFE3FF', pattern: 'yoke', sleeves: 'long', pants: '#2F4A74', shoes: '#5C4033', height: 1.02, build: 1.0 }),
+    look: L({ body: 'male', skin: '#3B2219', hairStyle: 'buzz', shirt: '#F4F1DE', shirtAlt: '#BFE3FF', pattern: 'solid', sleeves: 'long', pants: '#2F4A74', shoes: '#5C4033', height: 1.02, build: 1.0, top: 'shirt', bottom: 'jeans', shoeStyle: 'boots', eyewear: 'glasses', extras: ['backpack', 'watch'], accent: '#1F2A44' }),
     route: [
       { venue: 'hustle', doing: 'hangout', seconds: 70 },
       { venue: 'suya', doing: 'hangout', seconds: 30 },
@@ -183,7 +189,7 @@ export const RESIDENTS: Resident[] = [
     tag: 'Retired, full of stories',
     persona: 'Uncle Femi is an older man who has seen it all. Tells long stories about the old days before the Trenches, gives fatherly advice, complains about young people and NEPA, loves the lounge\'s chapman.',
     voice: 'Warm, proverb-loving, slow. Calls people "my son" or "my daughter". Starts stories with "In my days...".',
-    look: L({ body: 'male', skin: '#6F4530', hairStyle: 'bald', hair: '#B8B8B8', shirt: '#2D6A4F', shirtAlt: '#FFD089', pattern: 'yoke', sleeves: 'long', pants: '#5C4033', shoes: '#5C4033', height: 0.96, build: 1.08 }),
+    look: L({ body: 'male', skin: '#6F4530', hairStyle: 'bald', hair: '#B8B8B8', shirt: '#2D6A4F', shirtAlt: '#FFD089', pattern: 'solid', sleeves: 'long', pants: '#5C4033', shoes: '#5C4033', height: 0.96, build: 1.08, top: 'shirt', eyewear: 'glasses', shoeStyle: 'boots' }),
     route: [
       { venue: 'bar', doing: 'booth', seconds: 90 },
       { venue: 'bank', doing: 'hangout', seconds: 30 },
@@ -204,7 +210,7 @@ export const RESIDENTS: Resident[] = [
     tag: 'Builder, ships at 3am',
     persona: 'Ngozi is a developer building an app in the city. Sarcastic, smart, always debugging something. Thinks most memecoins are jokes but checks the Coin Shop anyway.',
     voice: 'Dry, witty, nerdy references. Short replies. "lol", "skill issue", "ship it".',
-    look: L({ body: 'female', skin: '#4A2C1D', eyes: 'almond', hairStyle: 'afro', hair: '#0E0B09', shirt: '#3A86FF', shirtAlt: '#FFFFFF', sleeves: 'long', pants: '#0B0E14', shoes: '#1D9BF0', height: 0.99, build: 0.97 }),
+    look: L({ body: 'female', skin: '#4A2C1D', eyes: 'almond', hairStyle: 'afro', hair: '#0E0B09', shirt: '#3A86FF', shirtAlt: '#FFFFFF', sleeves: 'long', pants: '#2F4A74', shoes: '#1D9BF0', height: 0.99, build: 0.97, top: 'hoodie', bottom: 'jeans', eyewear: 'glasses', extras: ['backpack'], accent: '#0B0E14' }),
     route: [
       { venue: 'exchange', doing: 'counter', seconds: 40 },
       { venue: 'gym', doing: 'treadmill', seconds: 40 },
@@ -225,7 +231,7 @@ export const RESIDENTS: Resident[] = [
     tag: 'Up-and-coming DJ',
     persona: 'Dayo wants to be the resident DJ at Club Moon. Dances everywhere, talks about Afrobeats and amapiano, collects song requests.',
     voice: 'Chill, musical, lots of "vibes". Recommends songs (real Afrobeats/amapiano artists are fine).',
-    look: L({ body: 'male', skin: '#8D5A3C', hairStyle: 'locs', hair: '#2B1B12', shirt: '#FFBE0B', shirtAlt: '#0B0E14', pattern: 'stripes', pants: '#6B4EFF', shoes: '#0B0E14', height: 1.03, build: 0.95 }),
+    look: L({ body: 'male', skin: '#8D5A3C', hairStyle: 'locs', hair: '#2B1B12', shirt: '#FFBE0B', shirtAlt: '#0B0E14', pattern: 'solid', pants: '#6B4EFF', shoes: '#0B0E14', height: 1.03, build: 0.95, top: 'jersey', bottom: 'joggers', hat: 'beanie', accent: '#0B0E14', extras: ['chain'] }),
     route: [
       { venue: 'club', doing: 'dance', seconds: 80 },
       { venue: 'bar', doing: 'dance', seconds: 40 },
@@ -245,7 +251,7 @@ export const RESIDENTS: Resident[] = [
     tag: 'Night shift at the Clinic',
     persona: 'Sade is a nurse at the Clinic. Calm, kind, practical. Reminds people to eat, sleep and not burn all their gas. Secretly loves club nights after her shift.',
     voice: 'Gentle and caring, a little teasing. Gives simple in-game health tips (gas, vibes).',
-    look: L({ body: 'female', skin: '#6F4530', hairStyle: 'bun', hair: '#1A120D', shirt: '#E9EDC9', shirtAlt: '#BFE3FF', pattern: 'yoke', sleeves: 'short', bottom: 'pants', pants: '#1B4332', shoes: '#FFFFFF', height: 0.97, build: 1.0 }),
+    look: L({ body: 'female', skin: '#6F4530', hairStyle: 'bun', hair: '#1A120D', shirt: '#E9EDC9', shirtAlt: '#BFE3FF', pattern: 'yoke', sleeves: 'short', bottom: 'pants', pants: '#1B4332', shoes: '#FFFFFF', height: 0.97, build: 1.0, extras: ['watch'] }),
     route: [
       { venue: 'clinic', doing: 'hangout', seconds: 70 },
       { venue: 'suya', doing: 'hangout', seconds: 25 },

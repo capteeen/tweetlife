@@ -1,4 +1,4 @@
-import { BLOCK_D, PITCH_X, PITCH_Z, SIDEWALK } from './geometry';
+import { BLOCK_D, LOT_W, PITCH_X, PITCH_Z, SIDEWALK } from './geometry';
 import type { CountryId } from './countries';
 
 // Each country is one shared map in one coordinate frame. The capital (venue ring, ring road, airport,
@@ -55,8 +55,9 @@ export function plotRect(slot: number): PlotRect {
 /** Where a visitor arrives at a plot: on the south sidewalk of its centre block, facing it. Shaped like a
  * Player spawn (a "structure" to stand in front of). */
 export function plotEntrance(slot: number) {
-  const r = plotRect(slot);
-  return { x: r.x, z: r.z + BLOCK_D / 2 - 1, rot: 0, depth: 0, front: { x: r.x, z: r.z + BLOCK_D / 2 + SIDEWALK / 2 } };
+  // half a lot off the centre line: in front of a door, between the street trees planted on lot boundaries
+  const r = plotRect(slot), x = r.x + LOT_W / 2;
+  return { x, z: r.z + BLOCK_D / 2 - 1, rot: 0, depth: 0, front: { x, z: r.z + BLOCK_D / 2 + SIDEWALK / 2 } };
 }
 
 /** Which plot slot covers (x, z), or null outside the grid of plots that exist (`count` slots). */

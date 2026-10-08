@@ -357,7 +357,7 @@ function HowItWorks() {
   const steps = [
     { n: '1', icon: <XMark className="h-6 w-6" />, title: 'Sign in with X', body: 'Read-only access to your posts, profile and follows. We never post for you.' },
     { n: '2', icon: <BubbleLogo className="h-9 w-9" />, title: 'Your posts rise as buildings', body: 'Every post a building, likes make it taller, quiet months stay empty lots. Nothing is invented.' },
-    { n: '3', icon: <span className="text-2xl">🚶</span>, title: 'Live in it, bring friends', body: 'Walk in as yourself. Share the link and your followers can walk the streets with you.' },
+    { n: '3', icon: <span className="text-2xl">🚶</span>, title: 'Live in it, bring friends', body: 'Walk in as yourself. Everyone in your country shares one city, and your posts are your block on its streets.' },
   ];
   return (
     <section id="how" className="relative -mt-6 rounded-t-[28px] bg-white px-5 pb-16 pt-14 sm:px-8 md:pt-20">
@@ -413,7 +413,12 @@ function Countries() {
       </div>
       <div className="relative mx-auto mt-2 grid max-w-6xl gap-4 md:grid-cols-3 md:gap-5">
         {COUNTRY_LIST.map((c) => (
-          <article key={c.id} className="relative overflow-hidden rounded-3xl bg-white p-5 shadow-[0_8px_30px_rgba(15,39,71,0.08)] ring-1 ring-[#0F2747]/5">
+          <a
+            key={c.id}
+            href={`/c/${c.id}`}
+            onClick={() => ui('coin')}
+            className="group relative block overflow-hidden rounded-3xl bg-white p-5 shadow-[0_8px_30px_rgba(15,39,71,0.08)] ring-1 ring-[#0F2747]/5 transition hover:-translate-y-0.5 hover:shadow-[0_12px_36px_rgba(15,39,71,0.14)]"
+          >
             <span className="absolute inset-x-0 top-0 h-1.5" style={{ background: `linear-gradient(90deg, ${c.theme.gradient[0]}, ${c.theme.gradient[1]})` }} aria-hidden />
             <div className="flex items-center gap-3">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -430,7 +435,8 @@ function Countries() {
             </div>
             <p className="mt-3 text-[15px] italic leading-6 text-[#0F2747]">&ldquo;{c.motto}&rdquo;</p>
             <p className="mt-1 text-sm text-[#4A5B73]">President {c.president}</p>
-          </article>
+            <span className="mt-3 inline-block text-sm font-bold text-[#1D9BF0] group-hover:underline">Visit {c.capital} →</span>
+          </a>
         ))}
       </div>
     </section>
@@ -586,7 +592,7 @@ function EnterPanel({ onCancel, featured }: { onCancel: () => void; featured: st
         placeholder="@handle"
         className="!rounded-2xl !border-[#D5E3F2] !bg-[#F4F9FF] !px-4 !py-3 !text-lg !text-[#0F2747] placeholder:text-[#9AABC0]"
       />
-      <p className="text-xs leading-5 text-[#7A8AA0]">A world exists once its owner has signed in and built it. Followers walk in; everyone else sees it from the boundary.</p>
+      <p className="text-xs leading-5 text-[#7A8AA0]">A world exists once its owner has signed in and built it. You arrive on the street outside their block, in their country&rsquo;s capital. Followers-only posts ask you to follow to read them.</p>
       {picks.length > 0 && (
         <div className="text-left">
           <div className="mb-1.5 text-xs font-bold uppercase tracking-wider text-[#7A8AA0]">Open to everyone</div>

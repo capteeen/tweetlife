@@ -1,6 +1,8 @@
 import type { Stats } from './stats';
 import type { ActivityId } from './activities';
 import { WALK_IN } from '@/lib/world/interiors';
+import { COUNTRIES, countryOf } from '@/lib/world/countries';
+import { GOVERNMENTS } from './government';
 import { SPARE_SLOTS, airportLayout, districtOf, slotAngle, venueRingRadius } from '@/lib/world/layout';
 import { districtName, themeOf } from '@/lib/world/cityThemes';
 
@@ -89,6 +91,15 @@ export const VENUES: Venue[] = [
   { id: 'dealership', name: 'Dealership', emoji: '🚗', color: '#FFD166', blurb: 'Keke to Lambo.', actions: [], app: 'market', marketKind: 'car' },
   { id: 'marina', name: 'Marina', emoji: '⚓', color: '#6FA8C7', blurb: 'Boats. Leave the shore.', actions: [], app: 'market', marketKind: 'boat' },
   { id: 'airport', name: 'Airport', emoji: '✈️', color: '#BFE3FF', blurb: 'Fly to another country from the departures board. Own a jet and every flight is free.', actions: [], app: 'market', marketKind: 'plane' },
+  {
+    // the country's government house (lib/life/government.ts): its sign, address and rules follow the country
+    id: 'capitol', name: 'Government House', emoji: '🏛️', color: '#C9A227', blurb: 'The president, the cabinet and today\'s address.',
+    actions: [
+      { id: 'stipend', label: 'Collect your citizen stipend', emoji: '🪪', bags: 0, me: {}, cooldown: 86400, line: 'collected their stipend' },
+      { id: 'handshake', label: 'Shake the president\'s hand', emoji: '🤝', bags: 0, me: { clout: +4, vibes: +2 }, cooldown: 3600, line: 'shook the president\'s hand 🤝' },
+      { id: 'townhall', label: 'Sit in on the town hall', emoji: '🗳️', bags: 0, me: { vibes: +6, clout: +2, gas: -2 }, nearby: { vibes: +2 }, cooldown: 1800, line: 'spoke up at the town hall 🗳️' },
+    ],
+  },
   { id: 'exchange', name: 'Trenches Coin Shop', emoji: '🪙', color: '#06D6A0', blurb: 'Live memecoins over the counter. Buy with bags, watch them float on your hand.', actions: [], app: 'trenches' },
 ];
 
@@ -112,14 +123,16 @@ export const VENUE_H = 6;
  * Venues sit in districts on a ring just outside the city, facing the centre (see lib/world/layout.ts).
  * The airport is the terminal on the airport island. `boundaryRadius` defaults to the smallest a world gets.
  * `country` only renames venues and districts (Club Moon is Club Yellow in BNB City); ids and places stay.
+ * The government house takes that country's name and colours (lib/life/government.ts).
  */
 export function placeVenues(contentRadius: number, boundaryRadius = contentRadius + 36, country?: string | null): PlacedVenue[] {
   const r = venueRingRadius(contentRadius);
   const names = themeOf(country).venues;
+  const gov = GOVERNMENTS[countryOf(country).id];
   const spare = [...SPARE_SLOTS];
   let extra = 0;
   return VENUES.map((base) => {
-    const v = names[base.id] ? { ...base, name: names[base.id].name, emoji: names[base.id].emoji ?? base.emoji } : base;
+    let v = names[base.id] ? { ...base, name: names[base.id].name, emoji: names[base.id].emoji ?? base.emoji } : base;
     if (v.id === 'airport') {
       const t = airportLayout(contentRadius, boundaryRadius).terminal;
       return { ...v, x: t.x, z: t.z, rot: -Math.PI / 2, w: t.w, d: t.d, h: 7, district: 'Airport island', custom: true };
@@ -131,6 +144,7 @@ export function placeVenues(contentRadius: number, boundaryRadius = contentRadiu
     const a = slot === undefined ? slotAngle(extra++ * 2 + 1) : slotAngle(slot);
     const x = Math.cos(a) * rr, z = Math.sin(a) * rr;
     const k = WALK_IN[v.id];
+    if (v.id === 'capitol') v = { ...v, name: gov.house, blurb: gov.blurb, color: COUNTRIES[gov.country].theme.primary };
     return { ...v, x, z, rot: Math.atan2(-x, -z), w: k?.w ?? VENUE_W, d: k?.d ?? VENUE_D, h: k?.h ?? VENUE_H, district: dd ? districtName(dd.id, dd.name, country) : 'Downtown', walkIn: !!k };
   });
 }

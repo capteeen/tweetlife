@@ -4,6 +4,7 @@ import { bad, requirePlayer } from '@/lib/life/auth';
 import { residentById, residentPrompt } from '@/lib/life/residents';
 import { cannedReply, deepseekReply, takeQuota } from '@/lib/life/residentChat';
 import { chatAffinity } from '@/lib/life/loveServer';
+import { talkingPoints } from '@/lib/life/suggestions';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,6 +47,8 @@ export async function POST(req: NextRequest) {
     gas: p.gas,
     vibes: p.vibes,
     clout: p.clout,
+    // a government knows what its citizens have been asking for
+    points: who.office && who.country ? await talkingPoints(who.country).catch(() => []) : [],
   });
   const reply = await deepseekReply(system, b.messages.slice(-10));
   return NextResponse.json(reply ? { reply, source: 'ai', affinity } : { reply: cannedReply(who, said), source: 'canned', affinity });

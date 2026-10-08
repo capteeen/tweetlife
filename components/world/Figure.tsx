@@ -8,8 +8,8 @@ import { hashString } from '@/lib/world/seed';
 import { lookFor, withCapAsHat, type Look } from '@/lib/life/look';
 import { applyTired, poseActivity, settle, type FigureAct, type Rig } from './figureMoves';
 import { applyPose, poseKey, type HomePose } from './figurePoses';
-import { ball, capsule, geo, headGeo, headShell, MID, MID_SHADOW, NEAR, smallBall } from './figureGeo';
-import { armWear, Backpack, Belt, Chain, cloth, Eyewear, FONT, ForearmWear, HeadWear, HipWear, legWear, Shoe, ShinWear, ThighWear, TopWear, UpperArmWear, type Fit } from './FigureOutfit';
+import { ball, capsule, geo, headGeo, headShell, MID, MID_SHADOW, NEAR, onTorso, smallBall, torsoPatch } from './figureGeo';
+import { armWear, Backpack, Belt, Chain, cloth, DEPTH, Eyewear, FONT, ForearmWear, HeadWear, HipWear, legWear, Shoe, ShinWear, ThighWear, TopWear, UpperArmWear, type Fit } from './FigureOutfit';
 
 // A low-poly person. Appearance is the player's chosen look when there is one, otherwise seeded from the handle so a
 // visitor looks the same everywhere; limbs swing in a walk cycle while moving. Shared by the player, other visitors and residents.
@@ -31,13 +31,15 @@ type Props = {
   alwaysWalk?: boolean;
   /** 0 = upright, 1 = slumped (after a rug). Read each frame. */
   slumpRef?: React.MutableRefObject<number>;
+  /** a presidential sash across the chest, in these two colours */
+  sash?: [string, string];
   /** an everyday move to play (dance, stretch...) or a furniture pose (sit, sleep...), or null. Read each frame. */
   actRef?: React.MutableRefObject<FigureAct | HomePose | null>;
   /** 0 = fresh, 1 = exhausted: slower steps and a slouch. Read each frame. */
   tiredRef?: React.MutableRefObject<number>;
 };
 
-export function Figure({ seed, look: chosen, speedRef, label, labelColor = '#FFFFFF', dim = false, alwaysWalk = false, actRef, tiredRef, slumpRef }: Props) {
+export function Figure({ seed, look: chosen, speedRef, label, labelColor = '#FFFFFF', dim = false, alwaysWalk = false, actRef, tiredRef, slumpRef, sash }: Props) {
   const look = useMemo(() => withCapAsHat(chosen ?? lookFor(seed)), [chosen, seed]);
   const lArm = useRef<THREE.Group>(null);
   const rArm = useRef<THREE.Group>(null);
@@ -187,6 +189,30 @@ export function Figure({ seed, look: chosen, speedRef, label, labelColor = '#FFF
           <Belt fit={fit} />
           <Chain fit={fit} />
           <Backpack ref={pack} fit={fit} />
+          {sash && (
+            // a presidential sash: a band laid on the torso from one shoulder across to the opposite hip, front and
+            // back, with a gold medal where it crosses the chest
+            <group scale={[W, torsoH, DEPTH]}>
+              {[0, 1].map((back) => {
+                const c = (t: number) => (back ? -Math.PI - 1.0 : 1.0) + (back ? 2.0 : -2.0) * ((t - 0.06) / 0.88);
+                return (
+                  <group key={back}>
+                    <mesh geometry={torsoPatch(`sash${back}`, look.body, 0.06, 0.94, (t) => c(t) - 0.2, (t) => c(t) + 0.2, 1.1)} userData={MID}>
+                      {cloth(fit, sash[0], { r: 0.45, side: THREE.DoubleSide })}
+                    </mesh>
+                    <mesh geometry={torsoPatch(`sash-stripe${back}`, look.body, 0.06, 0.94, (t) => c(t) - 0.05, (t) => c(t) + 0.05, 1.112)} userData={NEAR}>
+                      {cloth(fit, sash[1], { r: 0.45, side: THREE.DoubleSide })}
+                    </mesh>
+                  </group>
+                );
+              })}
+            </group>
+          )}
+          {sash && (
+            <mesh position={onTorso(look.body, -0.25, 0.55, 1.13, W, torsoH, DEPTH)} rotation={[0, -0.25, 0]} geometry={geo('medal', () => new THREE.CylinderGeometry(0.032, 0.032, 0.012, 20).rotateX(Math.PI / 2))} userData={NEAR}>
+              <meshStandardMaterial color="#E3B341" metalness={0.85} roughness={0.25} />
+            </mesh>
+          )}
           {/* arms: pivot at shoulder, bend at elbow */}
           {[-1, 1].map((side) => (
             <group key={side} ref={side < 0 ? lArm : rArm} position={[side * shoulderX, torsoH - 0.07, 0]} scale={[armR, 1, armR]}>

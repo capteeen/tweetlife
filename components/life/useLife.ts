@@ -6,6 +6,7 @@ import { ITEMS, type Item } from '@/lib/life/market';
 import type { Furniture, FurnitureAction, PowerState } from '@/lib/life/home';
 import type { Holding } from '@/lib/life/coins';
 import { refreshBalloons } from '@/components/world/Balloons';
+import { currentCountryId } from '@/components/world/country';
 
 // Client side of the life layer: load the player's data, perform actions, keep the store in sync.
 
@@ -76,7 +77,7 @@ export const lifeActions = {
     await refreshLife();
   },
   async venue(venueId: string, actionId: string, nearby: string[], sendSocial: SocialSend) {
-    const r = await j<{ ok: true; lifted: number; toast: { text: string; delta: unknown } | null }>('/api/life/venue', { method: 'POST', body: JSON.stringify({ venueId, actionId, nearby }) });
+    const r = await j<{ ok: true; lifted: number; toast: { text: string; delta: unknown } | null }>('/api/life/venue', { method: 'POST', body: JSON.stringify({ venueId, actionId, nearby, country: currentCountryId() }) });
     if (r.toast) sendSocial({ kind: 'venue', text: r.toast.text, delta: r.toast.delta });
     await refreshLife();
     return r;
@@ -91,9 +92,9 @@ export const lifeActions = {
     return r;
   },
   async sellCoin(mint: string, fraction: number) {
-    const r = await j<{ ok: true; symbol: string; bags: number; pnl: number }>('/api/life/coins', { method: 'POST', body: JSON.stringify({ op: 'sell', mint, fraction }) });
+    const r = await j<{ ok: true; symbol: string; bags: number; pnl: number; tax?: number }>('/api/life/coins', { method: 'POST', body: JSON.stringify({ op: 'sell', mint, fraction, country: currentCountryId() }) });
     await refreshLife();
-    useWorld.getState().pushToast(`🪙 Sold $${r.symbol} for ${r.bags} bags (${r.pnl >= 0 ? '+' : ''}${r.pnl})`, 'market');
+    useWorld.getState().pushToast(`🪙 Sold $${r.symbol} for ${r.bags} bags (${r.pnl >= 0 ? '+' : ''}${r.pnl})${r.tax ? ` after ${r.tax} bags tax` : ''}`, 'market');
     return r;
   },
   async travel(mode: string, to: string) {

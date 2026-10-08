@@ -1,4 +1,7 @@
-// Walk-in venues: open-roofed buildings you can walk into (the club, the lounge, the gym, the coin shop).
+import { capitolSolids } from './capitol';
+
+// Walk-in venues: open-roofed buildings you can walk into (the club, the lounge, the gym, the coin shop, the
+// government house).
 // Footprints are in the venue's own frame: x across the front, z towards the door (+z faces the city centre).
 
 export type WalkIn = { w: number; d: number; h: number; door: number };
@@ -8,6 +11,7 @@ export const WALK_IN: Record<string, WalkIn> = {
   bar: { w: 12, d: 10, h: 4, door: 4 },
   gym: { w: 14, d: 12, h: 4.2, door: 5 },
   exchange: { w: 12, d: 10, h: 4.2, door: 4.5 },
+  capitol: { w: 16, d: 13, h: 5.2, door: 5 },
 };
 
 export const WALL = 0.4;
@@ -30,10 +34,13 @@ export function wallsOf(k: WalkIn): { x: number; z: number; w: number; d: number
   ];
 }
 
-/** The same walls in world space, each with the venue's rotation (for collisions). */
+/** Furniture inside a walk-in venue that you can't walk through, in the venue's frame. */
+const SOLIDS: Record<string, () => { x: number; z: number; w: number; d: number }[]> = { capitol: capitolSolids };
+
+/** The same walls (and solid furniture) in world space, each with the venue's rotation (for collisions). */
 export function worldWalls(v: { id: string; x: number; z: number; rot: number }) {
   const k = WALK_IN[v.id];
   if (!k) return [];
   const c = Math.cos(v.rot), s = Math.sin(v.rot);
-  return wallsOf(k).map((r) => ({ x: v.x + r.x * c + r.z * s, z: v.z - r.x * s + r.z * c, w: r.w, d: r.d, rot: v.rot }));
+  return [...wallsOf(k), ...(SOLIDS[v.id]?.() ?? [])].map((r) => ({ x: v.x + r.x * c + r.z * s, z: v.z - r.x * s + r.z * c, w: r.w, d: r.d, rot: v.rot }));
 }

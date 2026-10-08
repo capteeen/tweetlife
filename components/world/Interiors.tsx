@@ -10,11 +10,13 @@ import type { FigureAct } from './figureMoves';
 import { Figure } from './Figure';
 import { beat } from './clubAudio';
 import { DistanceDetail } from './DistanceDetail';
+import { Capitol } from './Capitol';
 
 // Walk-in venues, open to the sky so the camera can follow you in: Club Moon (dance floor, DJ, moving
 // lights, mirror ball), the Degen Lounge (bar, booths, slow lights), the gym (racks, benches, treadmills,
-// mats) and the Trenches Coin Shop (counter, live ticker, coin balloons). Built in the venue's own frame,
-// door at +z facing the city.
+// mats), the Trenches Coin Shop (counter, live ticker, coin balloons) and the government house (desk, flags,
+// podium with today's address, cabinet table, columns and a dome, all in the country's colours). Built in the
+// venue's own frame, door at +z facing the city.
 
 const FONT = '/fonts/inter-600.woff';
 const tmp = new THREE.Object3D();
@@ -44,6 +46,7 @@ export function WalkInVenue({ v, near, onClick }: { v: PlacedVenue; near: boolea
         {v.id === 'bar' && <Lounge k={k} />}
         {v.id === 'gym' && <Gym k={k} />}
         {v.id === 'exchange' && <CoinShop k={k} />}
+        {v.id === 'capitol' && <Capitol k={k} y={FLOOR_Y} />}
       </DistanceDetail>
     </group>
   );
@@ -54,6 +57,7 @@ const SHELL: Record<string, { wall: string; floor: string }> = {
   bar: { wall: '#2A1F3D', floor: '#3A2A22' },
   gym: { wall: '#E8ECEF', floor: '#3B4048' },
   exchange: { wall: '#10302A', floor: '#D9DED8' },
+  capitol: { wall: '#EFEAE0', floor: '#D8D0C0' },
 };
 
 const FRONT_H = 1.3;
@@ -523,3 +527,4 @@ function CoinShop({ k }: { k: WalkIn }) {
     </group>
   );
 }
+

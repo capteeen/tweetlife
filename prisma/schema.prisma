@@ -268,23 +268,27 @@ model Player {
   nationality String?
   /// The country the player is in right now (lib/world/countries.ts id). Null = at home. Set by flights.
   location    String?
+  /// The guided first day (lib/life/firstDay.ts): "active" for new players, then "done" or "skipped".
+  /// Null = never offered (players from before it existed); they can start it from Settings.
+  firstDay    String?
   lastTickAt  DateTime  @default(now())
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  wallet     Wallet?
-  walletTxs  WalletTx[]
-  txs        BagTx[]
-  questDays  QuestDay[]
-  sent       Interaction[]   @relation("sent")
-  received   Interaction[]   @relation("received")
-  assets     Asset[]
-  paperCoins PaperCoin[]
-  jobs       JobRecord[]
-  bonds      Bond[]          @relation("bonds")
-  bondedTo   Bond[]          @relation("bondedTo")
-  loveSent   SocialRequest[] @relation("loveSent")
-  loveGot    SocialRequest[] @relation("loveGot")
+  wallet        Wallet?
+  walletTxs     WalletTx[]
+  txs           BagTx[]
+  questDays     QuestDay[]
+  sent          Interaction[]   @relation("sent")
+  received      Interaction[]   @relation("received")
+  assets        Asset[]
+  paperCoins    PaperCoin[]
+  jobs          JobRecord[]
+  bonds         Bond[]          @relation("bonds")
+  bondedTo      Bond[]          @relation("bondedTo")
+  loveSent      SocialRequest[] @relation("loveSent")
+  loveGot       SocialRequest[] @relation("loveGot")
+  firstDaySteps FirstDayStep[]
 }
 
 model BagTx {
@@ -453,4 +457,15 @@ model SocialRequest {
   @@index([toId, status])
   @@index([fromId, status])
   @@index([fromId, toId, kind])
+}
+
+/// A step of the guided first day the player finished. One row per step, so its reward is paid exactly once.
+model FirstDayStep {
+  playerId String
+  player   Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  step     String // passport | ride | furniture | shift | coin | finish
+  reward   Int
+  at       DateTime @default(now())
+
+  @@id([playerId, step])
 }

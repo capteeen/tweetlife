@@ -13,6 +13,7 @@ import { DEFAULT_COUNTRY, type CountryId } from '@/lib/world/countries';
 import type { FigureAct } from './figureMoves';
 import type { JobBoard, JobId } from '@/lib/life/jobs';
 import type { CabinId } from '@/lib/life/flights';
+import type { FirstDayView } from '@/lib/life/firstDaySteps';
 
 /** An everyday activity in progress (dance, stretch...): the avatar plays it until `until` or until you move. */
 export type Doing = { id: ActivityId; until: number } | null;
@@ -41,7 +42,7 @@ export type Flight = { phase: 'boarding' | 'takeoff' | 'cruise' | 'landing' | 'a
 export type ChatLine = { id: string; from: string; text: string; at: number; x: number; z: number };
 export type Toast = { id: string; text: string; kind: string; at: number };
 export type ResidentMsg = { role: 'user' | 'assistant'; content: string };
-export type PhoneApp = 'home' | 'trenches' | 'wallet' | 'solana' | 'hustle' | 'jobs' | 'market' | 'garage' | 'house' | 'rich' | 'gist' | 'map' | 'guestbook' | 'settings' | 'id' | 'love';
+export type PhoneApp = 'home' | 'trenches' | 'wallet' | 'solana' | 'hustle' | 'jobs' | 'market' | 'garage' | 'house' | 'rich' | 'gist' | 'map' | 'guestbook' | 'settings' | 'id' | 'love' | 'wardrobe';
 export type MarketKind = 'car' | 'boat' | 'plane' | 'home' | null;
 
 export type LifeMe = {
@@ -71,6 +72,8 @@ export type LifeData = {
   netWorth?: number;
   quests?: { day: string; quests: { id: string; title: string; emoji: string; target: number; reward: number; progress: number; done: boolean; claimed: boolean }[]; resetsAt: string };
   txs?: { id: string; kind: string; amount: number; note: string; at: string }[];
+  /** the guided first day (lib/life/firstDaySteps.ts) */
+  firstDay?: FirstDayView;
 };
 type Me = { id: string; handle: string; isOwner: boolean } | null;
 
@@ -96,7 +99,8 @@ export type WorldState = {
   selectedVenue: PlacedVenue | null;
   nearVenue: string | null;
   riding: Item | null;
-  teleport: { x: number; z: number } | null;
+  /** jump the player here; `yaw` (optional) turns the camera too, same convention as a spawn */
+  teleport: { x: number; z: number; yaw?: number } | null;
   trip: Trip | null;
   mapOpen: boolean;
   toasts: Toast[];
@@ -118,6 +122,8 @@ export type WorldState = {
   crowds: Crowd[];
   /** someone you follow just posted and their crowd is gathering */
   crowdNotices: CrowdNotice[];
+  /** where the first-day guide is pointing (a beacon in the world), or null */
+  guide: { x: number; z: number; label: string } | null;
 
   setModel: (m: WorldModel, skyline: boolean, me: Me) => void;
   setCountry: (c: CountryId) => void;
@@ -142,7 +148,7 @@ export type WorldState = {
   selectVenue: (v: PlacedVenue | null) => void;
   setNearVenue: (id: string | null) => void;
   setRiding: (i: Item | null) => void;
-  setTeleport: (t: { x: number; z: number } | null) => void;
+  setTeleport: (t: { x: number; z: number; yaw?: number } | null) => void;
   setTrip: (t: Trip | null) => void;
   setMapOpen: (v: boolean) => void;
   pushToast: (text: string, kind?: string) => void;
@@ -162,6 +168,7 @@ export type WorldState = {
   setFlight: (f: Flight | null) => void;
   airport: AirportState;
   patchAirport: (p: Partial<AirportState>) => void;
+  setGuide: (g: { x: number; z: number; label: string } | null) => void;
 };
 
 export const useWorld = create<WorldState>((set) => ({
@@ -201,6 +208,7 @@ export const useWorld = create<WorldState>((set) => ({
   crowdNotices: [],
   flight: null,
   airport: { pass: null, cleared: false, sheet: null, zone: 'outside' },
+  guide: null,
   setModel: (model, skyline, me) => set({ model, skyline, me }),
   select: (selected) => set({ selected, ...(selected ? { selectedPeer: null, selectedVenue: null, selectedResident: null } : {}) }),
   setLit: (ids) => set({ lit: new Set(ids) }),
@@ -254,6 +262,7 @@ export const useWorld = create<WorldState>((set) => ({
   setCrowds: (crowds) => set({ crowds }),
   pushCrowdNotices: (n) => set((s) => ({ crowdNotices: [...s.crowdNotices.filter((x) => !n.some((y) => y.id === x.id)), ...n].slice(-3) })),
   dropCrowdNotice: (id) => set((s) => ({ crowdNotices: s.crowdNotices.filter((x) => x.id !== id) })),
+  setGuide: (guide) => set({ guide }),
   pushResidentChat: (id, m) => set((s) => ({ residentChats: { ...s.residentChats, [id]: [...(s.residentChats[id] ?? []).slice(-29), m] } })),
   setFlight: (flight) => set({ flight }),
   patchAirport: (p) => set((s) => ({ airport: { ...s.airport, ...p } })),

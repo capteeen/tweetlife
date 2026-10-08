@@ -3,14 +3,15 @@
 // resident inside a wall) or if anyone would stand below the floor they're on (the club's dance floor, venue
 // floors, plazas). Run: npm run check:world
 import { buildWorld, type StructureRow, type StructureKind } from '../lib/world/geometry';
-import { terrainOf, groundAt, venueFloorAt, toVenueFrame } from '../lib/world/ground';
+import { terrainOf, groundAt, venueFloorAt, toVenueFrame, taxiLinks, HANGAR_FLOOR } from '../lib/world/ground';
+import { airportSpots, arrivalStand, footprint, privateStand, PLANE_SIZE } from '../lib/world/aircraft';
 import { placementSite, placementConflict, zoneAt, type Site } from '../lib/world/placement';
 import { cityTrees, palmSpots, streetFurniture, PROP_R, TREE_R } from '../lib/world/scatter';
 import { DANCE_FLOOR, FLOOR_Y, WALK_IN } from '../lib/world/interiors';
 import { TERMINAL_FLOOR } from '../lib/world/terminal';
 import { RING_ROAD_W, billboardSpots, inRect } from '../lib/world/layout';
 import { RESIDENTS } from '../lib/life/residents';
-import { COUNTRIES } from '../lib/world/countries';
+import { COUNTRIES, COUNTRY_IDS } from '../lib/world/countries';
 import { themeOf } from '../lib/world/cityThemes';
 import { buildRoutes } from '../components/world/residentPaths';
 import { aroundRect, sidewalkLoop } from '../lib/world/sidewalks';
@@ -212,6 +213,33 @@ function check(c: Case) {
     const tr = t.airport.terminal;
     const y = groundAt(t, tr.x, tr.z);
     if (y !== TERMINAL_FLOOR) fail(w, `terminal floor gives ${y}, the hall floor is at ${TERMINAL_FLOOR}`);
+  }
+  // 9. parked planes: on the apron (or the hangar floor), clear of each other, the flights stands, the taxiway,
+  // the runway and the terminal, in every country's line-up
+  if (t.hasCity) {
+    const ap = t.airport;
+    const apron = groundAt(t, ap.apron.x, ap.apron.z);
+    const overlaps = (a: { x: number; z: number; w: number; d: number }, b: { x: number; z: number; w: number; d: number }) =>
+      Math.abs(a.x - b.x) < (a.w + b.w) / 2 && Math.abs(a.z - b.z) < (a.d + b.d) / 2;
+    // the painted boxes round the two flights stands (AirportStand.tsx), with room for the plane that parks there
+    const stands = [privateStand(ap), arrivalStand(ap)].map((p) => ({ x: p.x, z: p.z, w: 16, d: Math.max(14, PLANE_SIZE.airliner.span) }));
+    for (const home of COUNTRY_IDS) {
+      const spots = airportSpots(ap, home);
+      const planes = [...spots.gates, ...spots.others];
+      const boxes = planes.map(footprint);
+      boxes.push({ x: spots.heliPad.x, z: spots.heliPad.z, w: PLANE_SIZE.heli.span, d: PLANE_SIZE.heli.span });
+      boxes.forEach((b, i) => {
+        const at = `${home}: parked plane ${i} at ${fmt(b.x, b.z)}`;
+        placed++;
+        for (const [dx, dz] of [[0, 0], [-1, -1], [-1, 1], [1, -1], [1, 1]]) {
+          const y = groundAt(t, b.x + (dx * (b.w - 1)) / 2, b.z + (dz * (b.d - 1)) / 2);
+          if (y !== apron && y !== HANGAR_FLOOR) fail(w, `${at} has a corner off the apron (ground ${y})`);
+        }
+        for (let j = i + 1; j < boxes.length; j++) if (overlaps(b, boxes[j])) fail(w, `${at} overlaps parked plane ${j}`);
+        stands.forEach((s, k) => overlaps(b, s) && fail(w, `${at} is on the ${k ? 'arrival' : 'private'} stand`));
+        for (const r of [ap.taxiway, ap.runway, ap.terminal, ...taxiLinks(ap)]) if (overlaps(b, r)) fail(w, `${at} overlaps the taxiway, runway or terminal`);
+      });
+    }
   }
   return placed;
 }

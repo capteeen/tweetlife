@@ -43,7 +43,7 @@ jobs:
       - uses: actions/setup-node@v4
         if: steps.secrets.outputs.ok == 'true'
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
           cache-dependency-path: presence/package-lock.json
       - name: Install

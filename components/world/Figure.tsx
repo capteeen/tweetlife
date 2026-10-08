@@ -31,13 +31,15 @@ type Props = {
   alwaysWalk?: boolean;
   /** 0 = upright, 1 = slumped (after a rug). Read each frame. */
   slumpRef?: React.MutableRefObject<number>;
+  /** a presidential sash across the chest, in these two colours */
+  sash?: [string, string];
   /** an everyday move to play (dance, stretch...) or a furniture pose (sit, sleep...), or null. Read each frame. */
   actRef?: React.MutableRefObject<FigureAct | HomePose | null>;
   /** 0 = fresh, 1 = exhausted: slower steps and a slouch. Read each frame. */
   tiredRef?: React.MutableRefObject<number>;
 };
 
-export function Figure({ seed, look: chosen, speedRef, label, labelColor = '#FFFFFF', dim = false, alwaysWalk = false, actRef, tiredRef, slumpRef }: Props) {
+export function Figure({ seed, look: chosen, speedRef, label, labelColor = '#FFFFFF', dim = false, alwaysWalk = false, actRef, tiredRef, slumpRef, sash }: Props) {
   const look = useMemo(() => withCapAsHat(chosen ?? lookFor(seed)), [chosen, seed]);
   const lArm = useRef<THREE.Group>(null);
   const rArm = useRef<THREE.Group>(null);
@@ -187,6 +189,26 @@ export function Figure({ seed, look: chosen, speedRef, label, labelColor = '#FFF
           <Belt fit={fit} />
           <Chain fit={fit} />
           <Backpack ref={pack} fit={fit} />
+          {sash &&
+            [1, -1].map((f) => {
+              // shoulder to opposite hip, front and back
+              const dx = 0.25 * W, dy = 0.7 * torsoH;
+              return (
+                <group key={f} position={[0, torsoH * 0.5, f * (fem ? 0.1 : 0.112)]} rotation={[0, 0, -f * Math.atan2(dx, dy)]}>
+                  <mesh geometry={geo('sash', () => new THREE.BoxGeometry(1, 1, 1))} scale={[0.075, Math.hypot(dx, dy) + 0.04, 0.014]}>
+                    {mat(sash[0], 0.5)}
+                  </mesh>
+                  <mesh geometry={geo('sash', () => new THREE.BoxGeometry(1, 1, 1))} scale={[0.022, Math.hypot(dx, dy) + 0.045, 0.018]}>
+                    {mat(sash[1], 0.5)}
+                  </mesh>
+                  {f > 0 && (
+                    <mesh position={[0, 0.02, 0.012]} scale={[0.03, 0.03, 0.012]} geometry={smallBall()}>
+                      <meshStandardMaterial color="#C9A227" metalness={0.8} roughness={0.3} />
+                    </mesh>
+                  )}
+                </group>
+              );
+            })}
           {/* arms: pivot at shoulder, bend at elbow */}
           {[-1, 1].map((side) => (
             <group key={side} ref={side < 0 ? lArm : rArm} position={[side * shoulderX, torsoH - 0.07, 0]} scale={[armR, 1, armR]}>

@@ -1,4 +1,5 @@
-// Walk-in venues: open-roofed buildings you can walk into (the club, the lounge, the gym, the coin shop).
+// Walk-in venues: open-roofed buildings you can walk into (the club, the lounge, the gym, the coin shop, the
+// government house).
 // Footprints are in the venue's own frame: x across the front, z towards the door (+z faces the city centre).
 
 export type WalkIn = { w: number; d: number; h: number; door: number };
@@ -8,6 +9,7 @@ export const WALK_IN: Record<string, WalkIn> = {
   bar: { w: 12, d: 10, h: 4, door: 4 },
   gym: { w: 14, d: 12, h: 4.2, door: 5 },
   exchange: { w: 12, d: 10, h: 4.2, door: 4.5 },
+  capitol: { w: 16, d: 13, h: 5.2, door: 5 },
 };
 
 export const WALL = 0.4;

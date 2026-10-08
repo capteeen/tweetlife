@@ -3,7 +3,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
-import { RESIDENTS, type Resident } from '@/lib/life/residents';
+import { castFor, type Resident } from '@/lib/life/residents';
+import { useCountry } from './country';
+import { COUNTRIES } from '@/lib/world/countries';
+import { todaysAddress } from '@/lib/life/government';
 import { placeVenues } from '@/lib/life/venues';
 import type { Block, CityGrid } from '@/lib/world/geometry';
 import { surfaceY } from '@/lib/world/ground';
@@ -23,20 +26,34 @@ const BUBBLE_MS = 7000;
 
 export function CityResidents({ contentRadius, boundaryRadius, blocks, grid, interactive }: { contentRadius: number; boundaryRadius: number; blocks: Block[]; grid: CityGrid; interactive: boolean }) {
   const venues = useMemo(() => placeVenues(contentRadius, boundaryRadius), [contentRadius, boundaryRadius]);
+  const country = useCountry();
+  const cast = useMemo(() => castFor(country), [country]);
   const routes = useMemo(() => {
-    const all = buildRoutes(RESIDENTS, venues, contentRadius);
-    return RESIDENTS.map((r, i) => ({ r, route: all[i] }));
-  }, [venues, contentRadius]);
+    const all = buildRoutes(cast, venues, contentRadius);
+    return cast.map((r, i) => ({ r, route: all[i] }));
+  }, [cast, venues, contentRadius]);
 
   // passing remarks: now and then, someone near you says one of their lines
   useEffect(() => {
     if (!interactive) return;
     const last = new Map<string, number>();
+    let greeted = false;
     const id = setInterval(() => {
       const s = useWorld.getState();
-      if (document.hidden || Math.random() < 0.4) return;
+      if (document.hidden) return;
       const me = s.playerPos;
-      const near = RESIDENTS.filter((r) => {
+      // walk up to the president and they open with a line from today's address
+      const pres = cast.find((r) => r.office === 'president');
+      const pp = pres && residentPos.get(pres.id);
+      if (pres && pp && !greeted && pres.id !== s.selectedResident && Math.hypot(pp.x - me.x, pp.z - me.z) < 9) {
+        greeted = true;
+        last.set(pres.id, Date.now());
+        const line = todaysAddress(country).text.split(/(?<=[.!?])\s/)[0];
+        s.residentSay(pres.id, line.length > 90 ? line.slice(0, 87).replace(/\s+\S*$/, '') + '…' : line);
+        return;
+      }
+      if (Math.random() < 0.4) return;
+      const near = cast.filter((r) => {
         const p = residentPos.get(r.id);
         return p && r.id !== s.selectedResident && Math.hypot(p.x - me.x, p.z - me.z) < 14 && Date.now() - (last.get(r.id) ?? 0) > 35000;
       });
@@ -46,7 +63,7 @@ export function CityResidents({ contentRadius, boundaryRadius, blocks, grid, int
       s.residentSay(r.id, r.ambient[Math.floor(Math.random() * r.ambient.length)]);
     }, 4000);
     return () => clearInterval(id);
-  }, [interactive]);
+  }, [interactive, cast, country]);
 
   return (
     <>
@@ -65,6 +82,8 @@ function NamedResident({ r, route, blocks, grid, boundaryRadius, interactive }: 
   const selectResident = useWorld((s) => s.selectResident);
   const selected = useWorld((s) => s.selectedResident === r.id);
   const say = useWorld((s) => s.residentSays[r.id]);
+  // presidents wear a sash in their country's colours
+  const sash = useMemo<[string, string] | undefined>(() => (r.office === 'president' && r.country ? [COUNTRIES[r.country].theme.primary, COUNTRIES[r.country].theme.secondary] : undefined), [r]);
 
   useFrame((_, dt) => {
     const g = ref.current;
@@ -105,7 +124,7 @@ function NamedResident({ r, route, blocks, grid, boundaryRadius, interactive }: 
         selectResident(r.id);
       }}
     >
-      <Figure seed={`resident:${r.id}`} look={r.look} speedRef={speed} actRef={act} label={r.name} labelColor={selected ? '#FFD166' : '#FFE8B0'} />
+      <Figure seed={`resident:${r.id}`} look={r.look} speedRef={speed} actRef={act} label={r.name} labelColor={selected ? '#FFD166' : '#FFE8B0'} sash={sash} />
       {say && <Bubble key={say.at} at={say.at} text={say.text} />}
     </group>
   );

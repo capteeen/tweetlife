@@ -54,6 +54,17 @@ const SPOTS: Record<string, Partial<Record<ResidentDoing, Spot[]>>> = {
       { x: 2.0, z: -0.9, rot: -Math.PI / 2, act: 'pushups' },
     ],
   },
+  // government house (components/world/Interiors.tsx Capitol): desk at the back, podium front-left, cabinet table right
+  capitol: {
+    desk: [{ x: 0, z: -5.15, rot: 0, act: chair('idle', 0.72), via: [2.4, -5.0] }],
+    podium: [{ x: -4.6, z: -3.3, rot: 0.25, act: stand('cheer') }],
+    cabinet: [
+      { x: 3.45, z: -2.4, rot: Math.PI / 2, act: chair('read', 0.6), via: [2.9, 1.2] },
+      { x: 5.75, z: -1.0, rot: -Math.PI / 2, act: chair('write', 0.6), via: [6.5, 1.2] },
+      { x: 3.45, z: -0.6, rot: Math.PI / 2, act: chair('idle', 0.6), via: [2.9, 1.2] },
+      { x: 5.75, z: -2.4, rot: -Math.PI / 2, act: chair('phone', 0.6), via: [6.5, 1.2] },
+    ],
+  },
   exchange: {
     counter: [-1.6, 0.4, 2.2].map((x) => ({ x, z: -1.2, rot: Math.PI, act: stand('phone') })),
     selfie: [

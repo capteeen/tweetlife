@@ -1,7 +1,8 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useWorld, type ResidentMsg } from '@/components/world/store';
-import { RESIDENTS, doingLabel, residentById } from '@/lib/life/residents';
+import { castFor, doingLabel, residentById } from '@/lib/life/residents';
+import { useCountry } from '@/components/world/country';
 import { placeVenues } from '@/lib/life/venues';
 import { buildRoutes, poseAt } from '@/components/world/residentPaths';
 import { SocialMenu } from './SocialMenu';
@@ -12,6 +13,7 @@ import type { SocialSend } from './useLife';
 // /api/life/residents/chat). Their latest line also pops up over their head.
 
 const STARTERS = ['How far? 👋', 'What\'s happening here?', 'Any gist?', 'How do I get more bags?'];
+const GOV_STARTERS = ['Good day, your excellency 🫡', 'What\'s today\'s address?', 'What are the national rules?', 'How do I get my stipend?'];
 
 export function ResidentCard({ sendSocial }: { sendSocial: SocialSend }) {
   const id = useWorld((s) => s.selectedResident);
@@ -24,15 +26,17 @@ export function ResidentCard({ sendSocial }: { sendSocial: SocialSend }) {
   const [err, setErr] = useState<string | null>(null);
   const list = useRef<HTMLDivElement>(null);
   const r = id ? residentById(id) : null;
+  const country = useCountry();
 
   const doing = useMemo(() => {
     if (!r || !geometry) return '';
-    const venues = placeVenues(geometry.contentRadius, geometry.boundaryRadius, useWorld.getState().country);
-    const route = buildRoutes(RESIDENTS, venues, geometry.contentRadius)[RESIDENTS.indexOf(r)];
+    const venues = placeVenues(geometry.contentRadius, geometry.boundaryRadius, country);
+    const cast = castFor(country);
+    const route = buildRoutes(cast, venues, geometry.contentRadius)[cast.indexOf(r)];
     if (!route) return '';
     const p = poseAt(route, Date.now() / 1000);
     return doingLabel(p.stop, p.venue?.name ?? null);
-  }, [r, geometry]);
+  }, [r, geometry, country]);
 
   useEffect(() => {
     setErr(null);
@@ -73,7 +77,7 @@ export function ResidentCard({ sendSocial }: { sendSocial: SocialSend }) {
     }
   };
 
-  const first = r.name.replace(/^(Big|Coach|Uncle|DJ|Nurse) /, '');
+  const first = r.name.replace(/^(Big|Coach|Uncle|DJ|Nurse|Minister|President) /, '');
   return (
     <div className="pointer-events-auto absolute bottom-20 left-1/2 z-30 flex max-h-[78vh] w-[min(94vw,520px)] -translate-x-1/2 flex-col overflow-y-auto rounded-3xl chrome p-4 sm:p-5">
       <div className="flex items-start justify-between gap-3">
@@ -113,7 +117,7 @@ export function ResidentCard({ sendSocial }: { sendSocial: SocialSend }) {
         <>
           {!chat?.length && (
             <div className="mt-3 flex flex-wrap gap-2">
-              {STARTERS.map((s) => (
+              {(r.office ? GOV_STARTERS : STARTERS).map((s) => (
                 <button key={s} disabled={busy} onClick={() => send(s)} className="rounded-full bg-white/5 px-3 py-1.5 text-xs font-medium hover:bg-white/10 disabled:opacity-50">
                   {s}
                 </button>

@@ -15,7 +15,11 @@ const schema = z.object({
   X_GLOBAL_BURST: z.coerce.number().int().positive().default(5),
   X_USER_RATE_PER_SEC: z.coerce.number().positive().default(0.5),
   X_USER_BURST: z.coerce.number().int().positive().default(3),
+  // A first build stops as soon as the player's plot is full (lib/x/ingest.ts); this is only the outer limit.
   X_FIRST_BUILD_MAX_POSTS: z.coerce.number().int().positive().max(3200).default(3200),
+  // Estimated X spend per UTC day, in dollars. At 80% optional calls (metrics refresh, follower lists, automatic
+  // post checks) stop; at 100% every X call waits for midnight UTC. 0 turns the cap off.
+  X_DAILY_SPEND_CAP_USD: z.coerce.number().nonnegative().default(5),
 
   DATABASE_URL: z.string().min(1),
   REDIS_URL: z.string().min(1),

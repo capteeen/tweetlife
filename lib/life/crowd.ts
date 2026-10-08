@@ -12,13 +12,16 @@ import { structureRows } from '../x/ingest';
 // they get a notice with a way to join instead. Posting earns nothing (no bags, no stats): X's developer terms bar
 // apps from rewarding people for posting, and the game depends on X API access.
 //
-// X budget: the follower list is one call, cached for a day (and kept for a month as a fallback when X refuses or
-// the monthly budget runs low). Checking for a new post is one call, at most once per CHECK_GAP_S per player.
+// X budget: X bills every follower a list returns ($0.010 each), so the list is the newest FOLLOWERS_FETCH followers
+// (a crowd is at most 20), fetched at most once every FOLLOWERS_FRESH_S and kept for a month as a fallback when X
+// refuses or the budget runs low. Checking for a new post is one call, at most once per CHECK_GAP_S per player, and
+// bills only posts newer than the newest we have.
 
 export const CROWD_MINUTES = 20;
 /** Only posts this fresh bring a crowd; an old post found by a late sync doesn't. */
 const FRESH_HOURS = 24;
-const FOLLOWERS_FRESH_S = 24 * 3600;
+const FOLLOWERS_FETCH = 40;
+const FOLLOWERS_FRESH_S = 3 * 24 * 3600;
 const FOLLOWERS_KEEP_S = 30 * 24 * 3600;
 export const CHECK_GAP_S = 120;
 const NOTICE_KEEP = 10;
@@ -67,7 +70,7 @@ function sample<T>(list: T[], n: number, seed: string): T[] {
   return [...list].map((v, i) => ({ v, k: hash(`${seed}#${i}`) })).sort((a, b) => a.k - b.k).slice(0, n).map((x) => x.v);
 }
 
-/** The owner's newest followers: from the day's cache, else one X call, else the last saved list. */
+/** The owner's newest followers: from the cache while fresh, else one X call, else the last saved list. */
 export async function followersOf(owner: User): Promise<{ list: CrowdFollower[]; source: Crowd['source'] }> {
   const raw = await redis().get(kFollowers(owner.id)).catch(() => null);
   const saved = raw ? (JSON.parse(raw) as { at: number; list: CrowdFollower[] }) : null;
@@ -77,7 +80,7 @@ export async function followersOf(owner: User): Promise<{ list: CrowdFollower[];
   if (budget?.level === 'ok') {
     try {
       const { token } = await accessTokenFor(owner);
-      const users = await getFollowers({ accessToken: token, userId: owner.id, maxWaitMs: 8000 }, owner.id);
+      const users = await getFollowers({ accessToken: token, userId: owner.id, maxWaitMs: 8000 }, owner.id, FOLLOWERS_FETCH);
       const list = users.map((u) => ({
         id: u.id,
         handle: u.username,

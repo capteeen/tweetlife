@@ -31,7 +31,8 @@ export async function GET(req: NextRequest) {
 
   try {
     const tokens = await exchangeCode(code, login.verifier);
-    const me = await getMe({ accessToken: tokens.access_token, userId: null, maxWaitMs: 15_000 });
+    // signing in always works, even on a day the X budget is used up (one user read)
+    const me = await getMe({ accessToken: tokens.access_token, userId: null, maxWaitMs: 15_000, ignoreBudget: true });
 
     const user = await db.user.upsert({
       where: { id: me.id },

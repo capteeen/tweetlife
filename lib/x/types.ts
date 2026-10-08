@@ -5,6 +5,8 @@ export type XUser = {
   name: string;
   username: string;
   created_at?: string;
+  /** Relationship to the signed-in user (only with that user's token): 'following' = they follow this account. */
+  connection_status?: string[];
   profile_image_url?: string;
   public_metrics?: {
     followers_count: number;
@@ -69,7 +71,7 @@ export class XApiError extends Error {
 
 export class BudgetExhaustedError extends Error {
   constructor() {
-    super('Monthly X API call budget exhausted');
+    super('X API budget used up (daily spend cap or monthly calls)');
     this.name = 'BudgetExhaustedError';
   }
 }

@@ -1,4 +1,4 @@
-import type { IngestRun, RunKind } from '@prisma/client';
+import type { IngestRun, RunKind, StructureKind } from '@prisma/client';
 import { db } from '../db';
 import { env } from '../env';
 import { redis } from '../redis';
@@ -7,12 +7,21 @@ import { accessTokenFor } from './oauth';
 import { classifyTweet } from '../world/classify';
 import type { XMedia, XTweet } from './types';
 import { crowdForNewPosts } from '../life/crowd';
+import { PLOT_LOTS } from '../world/country-map';
 
 // Ingestion: turn the owner's real timeline into Structure rows, one page at a time,
 // so the world is walkable while the rest of the history is still arriving.
 
 const PAGE_SIZE = 100;
+/** Posts that stand on a plot of their own. Lamps (reposts) and sheds (replies to others) attach to a neighbour. */
+const NOT_STANDING: StructureKind[] = ['lantern', 'outbuilding'];
+/** A sync after a long absence reads at most one page of new posts; X bills every post read. */
+const INCREMENTAL_MAX_POSTS = PAGE_SIZE;
 const WORKER_MAX_WAIT = 10 * 60 * 1000;
+/** Metrics are re-read for posts this recent. Likes and reposts mostly land in a post's first days. */
+const METRICS_DAYS = 7;
+/** The profile (follower count, avatar) is re-read at most this often; each read is billed. */
+const PROFILE_EVERY_S = 20 * 3600;
 
 export type Progress = { postsWritten: number; pagesFetched: number; calls: number };
 
@@ -60,6 +69,14 @@ async function ownerContext(worldId: string) {
   return { world, user, ctx: { accessToken: token, userId: user.id, maxWaitMs: WORKER_MAX_WAIT } };
 }
 
+/** Refresh profile metrics (followers, post count, avatar) at most once per PROFILE_EVERY_S. One user read. */
+async function syncProfileDaily(worldId: string) {
+  const fresh = await redis().set(`profile:synced:${worldId}`, '1', 'EX', PROFILE_EVERY_S, 'NX').catch(() => 'OK');
+  if (!fresh) return false;
+  await syncProfile(worldId);
+  return true;
+}
+
 /** Refresh profile metrics (followers, post count, avatar). One call. */
 export async function syncProfile(worldId: string) {
   const { world, ctx } = await ownerContext(worldId);
@@ -98,16 +115,16 @@ export async function ingestTimeline(run: IngestRun, kind: Extract<RunKind, 'fir
 
   await db.world.update({ where: { id: world.id }, data: { ingestState: 'building', ingestError: null } });
 
-  // Profile first (once per run): followers_count sets the boundary; also confirms the token works before we page.
-  if (run.pagesFetched === 0) {
-    await syncProfile(world.id);
-    progress.calls++;
-  }
+  // Profile first (once per run, at most once a day): followers_count sets the boundary; also confirms the token works.
+  if (run.pagesFetched === 0 && (await syncProfileDaily(world.id))) progress.calls++;
 
   let paginationToken: string | undefined;
   let newestSeen: string | null = world.newestPostId;
   let oldestSeen: string | null = world.oldestPostId;
   const existing = await db.structure.count({ where: { worldId: world.id } });
+  // X bills $0.005 for every post read, so a first build stops once the player's plot is full: the country map shows
+  // a player's best PLOT_LOTS posts, and reading further back would only change which ones, not how the plot looks.
+  let standing = await db.structure.count({ where: { worldId: world.id, kind: { notIn: NOT_STANDING } } });
 
   // First build resumes below our oldest known post if a previous attempt was interrupted.
   const untilId = kind === 'first_build' && oldestSeen ? oldestSeen : undefined;
@@ -128,6 +145,7 @@ export async function ingestTimeline(run: IngestRun, kind: Extract<RunKind, 'fir
     if (rows.length) {
       const res = await db.structure.createMany({ data: rows, skipDuplicates: true });
       progress.postsWritten += res.count;
+      standing += rows.filter((r) => !NOT_STANDING.includes(r.kind)).length;
     }
     if (page.newestId && (!newestSeen || BigInt(page.newestId) > BigInt(newestSeen))) newestSeen = page.newestId;
     if (page.oldestId && (!oldestSeen || BigInt(page.oldestId) < BigInt(oldestSeen))) oldestSeen = page.oldestId;
@@ -142,7 +160,8 @@ export async function ingestTimeline(run: IngestRun, kind: Extract<RunKind, 'fir
 
     const total = existing + progress.postsWritten;
     if (!page.nextToken || page.tweets.length === 0) break;
-    if (kind === 'first_build' && total >= maxPosts) break;
+    if (kind === 'first_build' && (total >= maxPosts || standing >= PLOT_LOTS)) break;
+    if (kind === 'incremental' && progress.postsWritten >= INCREMENTAL_MAX_POSTS) break;
     paginationToken = page.nextToken;
     if (opts.deadline && Date.now() > opts.deadline) return { ...progress, done: false };
   }
@@ -157,12 +176,12 @@ export async function ingestTimeline(run: IngestRun, kind: Extract<RunKind, 'fir
   return { ...progress, done: true };
 }
 
-/** Nightly: re-read metrics for posts from the last 30 days, 100 ids per call. */
+/** Nightly: re-read metrics for posts from the last METRICS_DAYS days, 100 ids per call. Lamps (reposts) don't use them. */
 export async function refreshRecentMetrics(run: IngestRun) {
   const { world, ctx } = await ownerContext(run.worldId);
-  const since = new Date(Date.now() - 30 * 24 * 3600 * 1000);
+  const since = new Date(Date.now() - METRICS_DAYS * 24 * 3600 * 1000);
   const recent = await db.structure.findMany({
-    where: { worldId: world.id, postedAt: { gte: since } },
+    where: { worldId: world.id, postedAt: { gte: since }, kind: { not: 'lantern' } },
     select: { id: true, postId: true },
   });
   const progress: Progress = { postsWritten: 0, pagesFetched: 0, calls: 0 };
@@ -191,8 +210,7 @@ export async function refreshRecentMetrics(run: IngestRun) {
     }
     await db.ingestRun.update({ where: { id: run.id }, data: { ...progress } });
   }
-  await syncProfile(world.id);
-  progress.calls++;
+  if (await syncProfileDaily(world.id)) progress.calls++;
   await db.world.update({ where: { id: world.id }, data: { lastSyncAt: new Date() } });
   return { ...progress, done: true };
 }

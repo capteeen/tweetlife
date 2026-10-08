@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { friendlySolanaError } from '@/lib/solana/errors';
 import { z } from 'zod';
 import { PublicKey } from '@solana/web3.js';
 import { db } from '@/lib/db';
@@ -49,7 +50,7 @@ export async function POST(req: NextRequest) {
     }
     return NextResponse.json({ ok: true, signature: sig, url: explorerUrl(sig), toast: user ? { to: user.handle, kind: 'send_sol', text: `@${r.user.handle} sent you ${sol} SOL${note ? `: ${note}` : ''}` } : null });
   } catch (e) {
-    return bad(`Transaction failed: ${(e as Error).message.slice(0, 200)}`, 502);
+    return bad(friendlySolanaError(e, 'The send did not go through. Your SOL is still in your wallet.'), 502);
   } finally {
     await redis().del(`wallet:lock:${r.user.id}`).catch(() => {});
   }

@@ -3,6 +3,7 @@ import { db } from '../db';
 import { applyDrift, moodOf, type Stats } from './stats';
 import { ensureWallet } from '../solana/wallet';
 import { parseLook } from './look';
+import { IDLE_STATUS } from './statNames';
 import { STARTER_KIT, furnitureById } from './home';
 
 // Player profiles for the life layer. Everyone who signs in gets one with a welcome of 10,000 bags —
@@ -43,7 +44,9 @@ export async function setStats(id: string, s: Stats) {
 export function profileView(p: Player, handle: string, name: string, avatarUrl: string | null) {
   const stats: Stats = { vibes: p.vibes, clout: p.clout, gas: p.gas };
   const m = moodOf(stats);
-  return { id: p.id, handle, name, avatarUrl, bags: p.bags, status: p.status, ...stats, mood: m.mood, moodEmoji: m.emoji, look: parseLook(p.look), lookPending: p.lookPending };
+  // a status line is only true while its activity lasts; afterwards you are just around
+  const live = p.statusUntil && p.statusUntil.getTime() > Date.now();
+  return { id: p.id, handle, name, avatarUrl, bags: p.bags, status: live ? p.status : IDLE_STATUS, statusUntil: live ? p.statusUntil!.toISOString() : null, ...stats, mood: m.mood, moodEmoji: m.emoji, look: parseLook(p.look), lookPending: p.lookPending };
 }
 
 /** Rich list: bank balance + assets, in bags. (Real SOL is private and never ranked.) */

@@ -43,9 +43,8 @@ export function CityMap() {
     const c = ref.current;
     if (!c || !g || !layout) return;
     const R = g.boundaryRadius;
-    // portrait phones fit the mainland across; the airport is a pan (or the Airport chip) away
-    const portrait = c.clientHeight > c.clientWidth * 1.2;
-    const x0 = -R - 6, x1 = portrait ? R + 6 : layout.ap.island.x + layout.ap.island.w / 2 + 6, z0 = -R - 6, z1 = R + 6;
+    // the whole city, airport island included, so a first look shows everywhere you can go
+    const x0 = -R - 4, x1 = layout.ap.island.x + layout.ap.island.w / 2 + 4, z0 = -R - 4, z1 = R + 4;
     const s = Math.min(c.clientWidth / (x1 - x0), c.clientHeight / (z1 - z0));
     view.current = { cx: (x0 + x1) / 2, cz: (z0 + z1) / 2, s };
   };
@@ -298,8 +297,11 @@ export function CityMap() {
     }
     // venue pins
     if (f.venues && hasCity) {
-      for (const vn of layout.venues) {
-        const px = sx(vn.x), pz = sz(vn.z);
+      // pins first, then a name under each on a pill. Names never cover a pin or another name; zoomed out,
+      // the ones that would wait until you zoom in.
+      const pins = layout.venues.map((vn) => ({ vn, px: sx(vn.x), pz: sz(vn.z) }));
+      const taken = pins.map(({ px, pz }) => ({ x0: px - 14, y0: pz - 14, x1: px + 14, y1: pz + 14 }));
+      for (const { vn, px, pz } of pins) {
         ctx.fillStyle = '#FFFFFF';
         ctx.shadowColor = 'rgba(0,0,0,0.3)';
         ctx.shadowBlur = 6;
@@ -315,14 +317,21 @@ export function CityMap() {
         ctx.textBaseline = 'middle';
         ctx.fillStyle = '#000';
         ctx.fillText(vn.emoji, px, pz + 1);
-        if (s > 3.2) {
-          ctx.font = '600 11px Inter, system-ui, sans-serif';
-          ctx.fillStyle = '#FFFFFF';
-          ctx.shadowColor = 'rgba(0,0,0,0.6)';
-          ctx.shadowBlur = 3;
-          ctx.fillText(vn.name, px, pz + 24);
-          ctx.shadowBlur = 0;
-        }
+      }
+      ctx.font = '600 11px Inter, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      for (const { vn, px, pz } of pins) {
+        const tw = ctx.measureText(vn.name).width;
+        const box = { x0: px - tw / 2 - 5, y0: pz + 16, x1: px + tw / 2 + 5, y1: pz + 31 };
+        if (taken.some((b) => b.x0 < box.x1 && box.x0 < b.x1 && b.y0 < box.y1 && box.y0 < b.y1)) continue;
+        taken.push(box);
+        ctx.fillStyle = 'rgba(11,14,20,0.72)';
+        ctx.beginPath();
+        ctx.roundRect(box.x0, box.y0, box.x1 - box.x0, box.y1 - box.y0, 7);
+        ctx.fill();
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillText(vn.name, px, pz + 24);
       }
     }
     // neighbours
@@ -453,7 +462,7 @@ export function CityMap() {
     <button
       key={key}
       onClick={() => setFilters((f) => ({ ...f, [key]: !f[key] }))}
-      className={`whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-medium transition ${filters[key] ? 'bg-white text-black' : 'bg-white/10 text-white/70 hover:bg-white/20'}`}
+      className={`shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium transition sm:px-3 sm:py-1.5 sm:text-sm ${filters[key] ? 'bg-white text-black' : 'bg-white/10 text-white/70 hover:bg-white/20'}`}
     >
       {label}
     </button>
@@ -464,19 +473,19 @@ export function CityMap() {
 
   return (
     <div className="pointer-events-auto fixed inset-0 z-40 flex flex-col bg-black/40 backdrop-blur-sm">
-      <div className="flex items-center gap-2 px-3 pt-3">
-        <div className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto rounded-full chrome p-1.5">
-          <span className="flex items-center whitespace-nowrap px-2 text-sm font-semibold">🗺️ @{model.handle}&apos;s city</span>
+      <div className="flex items-start gap-2 px-3 pt-3">
+        <div className="flex min-w-0 flex-1 flex-wrap gap-1.5 rounded-3xl chrome p-1.5 sm:flex-nowrap sm:overflow-x-auto sm:rounded-full">
+          <span className="hidden shrink-0 items-center whitespace-nowrap px-2 text-sm font-semibold sm:flex">🗺️ @{model.handle}&apos;s city</span>
           {chip('venues', '🏙️ Venues')}
           {chip('neighbours', '🧍 Neighbours')}
           {chip('billboards', '🪧 Billboards')}
-          <button className="whitespace-nowrap rounded-full bg-white/10 px-3 py-1.5 text-sm font-medium text-white/80 hover:bg-white/20" onClick={() => layout && jump(layout.ap.island.x, 0, 4)}>
+          <button className="shrink-0 whitespace-nowrap rounded-full bg-white/10 px-2.5 py-1 text-xs font-medium sm:px-3 sm:py-1.5 sm:text-sm text-white/80 hover:bg-white/20" onClick={() => layout && jump(layout.ap.island.x, 0, 4)}>
             ✈️ Airport
           </button>
-          <button className="whitespace-nowrap rounded-full bg-white/10 px-3 py-1.5 text-sm font-medium text-white/80 hover:bg-white/20" onClick={() => jump(useWorld.getState().playerPos.x, useWorld.getState().playerPos.z, 5)}>
+          <button className="shrink-0 whitespace-nowrap rounded-full bg-white/10 px-2.5 py-1 text-xs font-medium sm:px-3 sm:py-1.5 sm:text-sm text-white/80 hover:bg-white/20" onClick={() => jump(useWorld.getState().playerPos.x, useWorld.getState().playerPos.z, 5)}>
             📍 Me
           </button>
-          <button className="whitespace-nowrap rounded-full bg-white/10 px-3 py-1.5 text-sm font-medium text-white/80 hover:bg-white/20" onClick={fit}>
+          <button className="shrink-0 whitespace-nowrap rounded-full bg-white/10 px-2.5 py-1 text-xs font-medium sm:px-3 sm:py-1.5 sm:text-sm text-white/80 hover:bg-white/20" onClick={fit}>
             ⤢ All
           </button>
         </div>

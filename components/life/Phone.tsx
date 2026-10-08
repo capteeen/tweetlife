@@ -8,7 +8,11 @@ import { ITEMS } from '@/lib/life/market';
 import { FURNITURE, SLOT_LABEL, furnitureById, resaleValue, type Slot } from '@/lib/life/home';
 import type { Token } from '@/lib/life/trenches';
 import { lifeActions, type SocialSend } from './useLife';
+import { ConfirmButton } from '@/components/ui/ConfirmButton';
 import { MapApp } from './MapApp';
+
+/** Buys at or above this many bags ask "Sure?" first. */
+const BIG_SPEND = 1000;
 
 // The phone: a grid of apps over the world. Everything here reads real data — live token prices,
 // your real holdings and ledger, real people on the rich list — with bags as in-world points.
@@ -433,8 +437,12 @@ function Hustle() {
               </span>
               {x.claimed ? (
                 <span className="text-[11px] text-white/40">claimed</span>
+              ) : !x.done ? (
+                <span className="cursor-not-allowed rounded-full bg-white/5 px-2 py-0.5 text-xs text-white/30" title="Finish it first">
+                  Claim
+                </span>
               ) : (
-                <button className="btn !px-2 !py-0.5 text-xs" disabled={!x.done || busy !== null} onClick={async () => { setBusy(x.id); try { await lifeActions.claim(x.id); } finally { setBusy(null); } }}>
+                <button className="btn !px-2 !py-0.5 text-xs" disabled={busy !== null} onClick={async () => { setBusy(x.id); try { await lifeActions.claim(x.id); } finally { setBusy(null); } }}>
                   Claim
                 </button>
               )}
@@ -493,13 +501,15 @@ function HomeShop() {
                   {have ? (
                     <span className="text-xs text-emerald-300">{have.stored ? 'stored' : 'in room'}</span>
                   ) : (
-                    <button
+                    <ConfirmButton
                       className="btn !px-3 !py-1.5 text-xs"
+                      confirm={f.price >= BIG_SPEND}
+                      ask={`Buy · ${fullNumber(f.price)}?`}
                       disabled={busy !== null || !life?.me || life.me.bags < f.price}
                       onClick={async () => { setBusy(f.id); setErr(null); try { await lifeActions.buyFurniture(f.id); } catch (e) { setErr((e as Error).message); } finally { setBusy(null); } }}
                     >
                       {fullNumber(f.price)}
-                    </button>
+                    </ConfirmButton>
                   )}
                 </li>
               );
@@ -536,9 +546,9 @@ function House() {
           </button>
         )}
         {a.paid > 0 && (
-          <button className="btn-ghost !px-2 !py-1 text-xs" disabled={busy !== null} onClick={() => run(a.itemId, () => lifeActions.sellFurniture(a.itemId))}>
+          <ConfirmButton className="btn-ghost !px-2 !py-1 text-xs" ask={`Sell for ${fullNumber(resaleValue(a.paid))}?`} disabled={busy !== null} onClick={() => run(a.itemId, () => lifeActions.sellFurniture(a.itemId))}>
             Sell {fullNumber(resaleValue(a.paid))}
-          </button>
+          </ConfirmButton>
         )}
       </li>
     );
@@ -591,13 +601,15 @@ function Vehicles({ kind }: { kind: MarketKind }) {
             {owned.has(i.id) ? (
               <span className="text-xs text-emerald-300">owned</span>
             ) : (
-              <button
+              <ConfirmButton
                 className="btn !px-3 !py-1.5 text-xs"
+                confirm={i.price >= BIG_SPEND}
+                ask={`Buy · ${fullNumber(i.price)}?`}
                 disabled={busy !== null || !life?.me || life.me.bags < i.price}
                 onClick={async () => { setBusy(i.id); setErr(null); try { await lifeActions.buy(i.id); } catch (e) { setErr((e as Error).message); } finally { setBusy(null); } }}
               >
                 {fullNumber(i.price)}
-              </button>
+              </ConfirmButton>
             )}
           </li>
         ))}

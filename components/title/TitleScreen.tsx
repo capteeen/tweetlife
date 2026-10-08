@@ -1,5 +1,5 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { buildWorld } from '@/lib/world/geometry';
@@ -40,7 +40,7 @@ export function TitleScreen({ backdropHandle, signedInHandle, authError, liveWor
             setupNotice={setupNotice}
           />
         )}
-        {screen === 'enter' && <EnterPanel onCancel={() => setScreen('menu')} />}
+        {screen === 'enter' && <EnterPanel onCancel={() => setScreen('menu')} featured={backdropHandle} />}
         {screen === 'build' && <BuildPanel onCancel={() => setScreen('menu')} configured={configured} />}
       </div>
 
@@ -149,7 +149,9 @@ function Menu({
         </MenuButton>
       </div>
       <p className="max-w-md text-center text-sm text-white/80 drop-shadow">
-        Sign in with X and your posting history becomes a city. Post the link — your followers walk around inside what you&apos;ve built.
+        {signedInHandle
+          ? 'Your city is built from your posts. Share the link so your followers can walk around inside it.'
+          : <>Sign in with X and your posting history becomes a city. Post the link — your followers walk around inside what you&apos;ve built.</>}
       </p>
     </div>
   );
@@ -164,8 +166,19 @@ function Panel({ title, children }: { title: string; children: React.ReactNode }
   );
 }
 
-function EnterPanel({ onCancel }: { onCancel: () => void }) {
+type Listed = { handle: string; name: string; avatarUrl: string | null; posts: number };
+
+function EnterPanel({ onCancel, featured }: { onCancel: () => void; featured: string | null }) {
   const [handle, setHandle] = useState('');
+  const [listed, setListed] = useState<Listed[] | null>(null);
+  useEffect(() => {
+    fetch('/api/explore').then((r) => r.json()).then((j) => setListed(j.worlds ?? [])).catch(() => setListed([]));
+  }, []);
+  // worlds open to anyone: the showcase world behind the menu, then the ones listed on Explore
+  const picks = [
+    ...(featured && !listed?.some((w) => w.handle.toLowerCase() === featured.toLowerCase()) ? [{ handle: featured, name: 'Showcase world', avatarUrl: null, posts: -1 }] : []),
+    ...(listed ?? []),
+  ];
   const clean = handle.trim().replace(/^@/, '').replace(/^https?:\/\/(x|twitter)\.com\//i, '').split(/[/?]/)[0];
   const go = () => {
     if (clean) location.href = `/w/${encodeURIComponent(clean)}`;
@@ -183,6 +196,35 @@ function EnterPanel({ onCancel }: { onCancel: () => void }) {
         className="!text-lg"
       />
       <p className="text-xs text-white/55">A world exists only once its owner has signed in and built it. Followers walk in; everyone else sees it from the boundary.</p>
+      {picks.length > 0 && (
+        <div className="text-left">
+          <div className="label mb-1.5">Open to everyone</div>
+          <ul className="flex max-h-48 flex-col gap-1.5 overflow-y-auto">
+            {picks.map((w) => (
+              <li key={w.handle}>
+                <a href={`/w/${encodeURIComponent(w.handle)}`} className="flex items-center gap-3 rounded-xl bg-white/5 px-3 py-2 hover:bg-white/10">
+                  {w.avatarUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={w.avatarUrl} alt="" className="h-7 w-7 rounded-full" />
+                  ) : (
+                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-sm">🏙️</span>
+                  )}
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-semibold">@{w.handle}</span>
+                    <span className="block truncate text-[11px] text-white/50">{w.posts >= 0 ? `${w.name} · ${w.posts} posts` : w.name}</span>
+                  </span>
+                  <span className="text-xs text-white/50">Walk in →</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {listed && picks.length === 0 && (
+        <p className="text-xs text-white/45">
+          No public worlds yet. <a className="underline" href="/explore">Explore</a> lists them as owners open up.
+        </p>
+      )}
       <div className="mt-1 grid grid-cols-2 gap-3">
         <button className="btn !py-3 text-base" onClick={go} disabled={!clean}>
           Enter

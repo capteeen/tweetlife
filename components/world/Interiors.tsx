@@ -536,7 +536,46 @@ const MARBLE = '#F4F0E8';
 const GOLD = '#C9A227';
 const WOOD = '#5A3B25';
 
-/** A flag on a pole: the coin's two colours with its ticker. */
+const logoCache = new Map<string, THREE.Texture>();
+/** The coin's official logo (Country.logo, an SVG) drawn onto a canvas texture, or null while it loads. */
+function useLogo(src: string) {
+  const [tex, setTex] = useState<THREE.Texture | null>(() => logoCache.get(src) ?? null);
+  useEffect(() => {
+    const hit = logoCache.get(src);
+    if (hit) return void setTex(hit);
+    let live = true;
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      c.width = c.height = 256;
+      c.getContext('2d')!.drawImage(img, 0, 0, 256, 256);
+      const t = new THREE.CanvasTexture(c);
+      t.colorSpace = THREE.SRGBColorSpace;
+      t.anisotropy = 4;
+      logoCache.set(src, t);
+      if (live) setTex(t);
+    };
+    img.src = src;
+    return () => {
+      live = false;
+    };
+  }, [src]);
+  return tex;
+}
+
+/** The logo on a square, transparent around its shape. */
+function Logo({ c, size, position }: { c: Country; size: number; position: [number, number, number] }) {
+  const tex = useLogo(c.logo);
+  if (!tex) return null;
+  return (
+    <mesh position={position}>
+      <planeGeometry args={[size, size]} />
+      <meshStandardMaterial map={tex} transparent alphaTest={0.05} emissive="#FFFFFF" emissiveMap={tex} emissiveIntensity={0.35} toneMapped={false} />
+    </mesh>
+  );
+}
+
+/** A flag on a pole: the coin's two colours with its logo. */
 function Flag({ c, position, dir = 1 }: { c: Country; position: [number, number, number]; dir?: 1 | -1 }) {
   const cloth = useRef<THREE.Group>(null);
   useFrame(({ clock }) => {
@@ -552,9 +591,11 @@ function Flag({ c, position, dir = 1 }: { c: Country; position: [number, number,
       <group ref={cloth} position={[dir * 0.04, 2.05, 0]}>
         {box([dir * 0.55, 0.18, 0], [1.1, 0.36, 0.03], c.theme.primary)}
         {box([dir * 0.55, -0.18, 0], [1.1, 0.36, 0.03], c.theme.secondary)}
-        <Text font={FONT} position={[dir * 0.55, 0, 0.025]} fontSize={0.22} color="#FFFFFF" anchorX="center" anchorY="middle" outlineWidth={0.012} outlineColor="#0B0E14">
-          {c.ticker}
-        </Text>
+        <mesh position={[dir * 0.55, 0, 0.02]}>
+          <circleGeometry args={[0.24, 24]} />
+          <meshStandardMaterial color={c.theme.ink} />
+        </mesh>
+        <Logo c={c} size={0.32} position={[dir * 0.55, 0, 0.03]} />
       </group>
     </group>
   );
@@ -623,10 +664,8 @@ function Capitol({ k }: { k: WalkIn }) {
           <circleGeometry args={[0.85, 40]} />
           <meshStandardMaterial color={c.theme.ink} />
         </mesh>
-        <Text font={FONT} position={[0, 0.18, 0.07]} fontSize={0.36} color={c.theme.accent} anchorX="center" anchorY="middle">
-          {c.ticker}
-        </Text>
-        <Text font={FONT} position={[0, -0.26, 0.07]} fontSize={0.11} color="#FFFFFF" anchorX="center" anchorY="middle" maxWidth={1.4} textAlign="center">
+        <Logo c={c} size={0.78} position={[0, 0.12, 0.07]} />
+        <Text font={FONT} position={[0, -0.5, 0.07]} fontSize={0.11} color="#FFFFFF" anchorX="center" anchorY="middle" maxWidth={1.4} textAlign="center">
           {`REPUBLIC OF ${c.name.toUpperCase()}`}
         </Text>
       </group>
@@ -647,7 +686,12 @@ function Capitol({ k }: { k: WalkIn }) {
         {box([0, 0, 0], [4.8, 2.6, 0.1], '#0B0E14')}
         {box([0, 0, 0.06], [4.6, 2.4, 0.02], c.theme.ink, { emissive: c.theme.ink, emissiveIntensity: 0.4 })}
         {box([0, 0.98, 0.075], [4.6, 0.44, 0.01], c.theme.primary, { emissive: c.theme.primary, emissiveIntensity: 0.8, toneMapped: false })}
-        <Text font={FONT} position={[0, 0.98, 0.09]} fontSize={0.2} color="#FFFFFF" anchorX="center" anchorY="middle">
+        <mesh position={[-2.0, 0.98, 0.085]}>
+          <circleGeometry args={[0.19, 24]} />
+          <meshStandardMaterial color={c.theme.ink} />
+        </mesh>
+        <Logo c={c} size={0.26} position={[-2.0, 0.98, 0.09]} />
+        <Text font={FONT} position={[0.15, 0.98, 0.09]} fontSize={0.19} color="#FFFFFF" anchorX="center" anchorY="middle">
           {closed ? 'CURFEW · NEPA HAS TAKEN LIGHT' : `TODAY'S ADDRESS · PRESIDENT ${c.president.toUpperCase()}`}
         </Text>
         <Text font={FONT} position={[0, 0.0, 0.09]} fontSize={0.2} lineHeight={1.25} color="#FFFFFF" anchorX="center" anchorY="middle" maxWidth={4.2} textAlign="center">

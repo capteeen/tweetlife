@@ -1,4 +1,4 @@
-import { COUNTRIES, DEFAULT_COUNTRY, isCountryId, type CountryId } from '../world/countries';
+import { COUNTRIES, DEFAULT_COUNTRY, countryOf, isCountryId, type CountryId } from '../world/countries';
 import { publicPower } from './home';
 
 // Each country's government: a government house in its city where the president and two ministers live
@@ -104,13 +104,9 @@ export function tradeTaxOn(id: CountryId, bags: number) {
 /** Read a country id sent by the client (the city you are standing in), falling back to the default. */
 export const countryParam = (v: unknown): CountryId => (isCountryId(v) ? v : DEFAULT_COUNTRY);
 
-/**
- * Which country a player is a citizen of. The nationality thread adds this to the player; until then everyone
- * is a citizen of the default country (Solana), which is where every existing player already lives.
- */
-export function citizenOf(p: object): CountryId {
-  const n = (p as { nationality?: unknown }).nationality;
-  return isCountryId(n) ? n : DEFAULT_COUNTRY;
+/** Which country a player is a citizen of: a Player row (server) or the client's `me` (its `citizen`). Unpicked = Solana. */
+export function citizenOf(p: { nationality?: string | null; citizen?: { country: string } | null }): CountryId {
+  return countryOf(p.citizen?.country ?? p.nationality).id;
 }
 
 export const pct = (x: number) => `${Math.round(x * 100)}%`;

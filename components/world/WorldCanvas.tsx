@@ -22,6 +22,7 @@ import { BalloonFeed } from './Balloons';
 import { Crowds } from './Crowd';
 import { AirportStand } from './AirportStand';
 import { Terminal } from './Terminal';
+import { GuideBeacon } from './GuideBeacon';
 import { useWorld } from './store';
 import { themeOf, themedPalette } from '@/lib/world/cityThemes';
 import { WorldSounds } from '@/components/audio/WorldSounds';
@@ -149,6 +150,7 @@ function Scene(props: SceneProps) {
           <BalloonFeed />
           <WorldSounds geometry={geometry} />
           {geometry.structures.length > 0 && <AirportStand contentRadius={geometry.contentRadius} boundaryRadius={R} />}
+          <GuideBeacon />
         </>
       )}
       {mode === 'boundary' && <BoundaryOrbit radius={R} landmark={geometry.structures.find((s) => s.isLandmark) ?? null} />}

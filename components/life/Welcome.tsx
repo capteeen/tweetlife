@@ -25,6 +25,14 @@ const CARDS = [
   },
 ] as const;
 
+/** The guided first day covers the same ground, so finishing or skipping it retires these cards too. */
+export function markWelcomeSeen() {
+  try {
+    localStorage.setItem(SEEN, '1');
+  } catch {}
+  window.dispatchEvent(new Event('tl-welcome-seen'));
+}
+
 export function showWelcomeAgain() {
   try {
     localStorage.removeItem(SEEN);
@@ -34,6 +42,8 @@ export function showWelcomeAgain() {
 
 export function Welcome() {
   const me = useWorld((s) => s.life?.me ?? null);
+  // a new player gets the guided first day (FirstDay.tsx) instead of these cards
+  const touring = useWorld((s) => s.life?.firstDay?.state === 'active');
   const openPhone = useWorld((s) => s.openPhone);
   const [open, setOpen] = useState(false);
   const [i, setI] = useState(0);
@@ -49,14 +59,19 @@ export function Welcome() {
         setOpen(true);
       }
     };
+    const seen = () => setOpen(false);
     if (me) check();
     window.addEventListener('tl-welcome', check);
-    return () => window.removeEventListener('tl-welcome', check);
+    window.addEventListener('tl-welcome-seen', seen);
+    return () => {
+      window.removeEventListener('tl-welcome', check);
+      window.removeEventListener('tl-welcome-seen', seen);
+    };
     // only the first time the player loads, not on every stat tick
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [!!me]);
 
-  if (!open || !me) return null;
+  if (!open || !me || touring) return null;
   const close = (thenPhone: boolean) => {
     try {
       localStorage.setItem(SEEN, '1');

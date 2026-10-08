@@ -5,6 +5,7 @@ import { profileView } from '@/lib/life/player';
 import { questBoard } from '@/lib/life/quests';
 import { ITEMS } from '@/lib/life/market';
 import { furnitureById } from '@/lib/life/home';
+import { firstDayView } from '@/lib/life/firstDay';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,10 +15,11 @@ export async function GET() {
   const r = await requirePlayer();
   if ('error' in r) return NextResponse.json({ me: null });
   const { user, player } = r;
-  const [quests, assets, txs] = await Promise.all([
+  const [quests, assets, txs, firstDay] = await Promise.all([
     questBoard(player.id),
     db.asset.findMany({ where: { playerId: player.id } }),
     db.bagTx.findMany({ where: { playerId: player.id }, orderBy: { at: 'desc' }, take: 30 }),
+    firstDayView(player.id, player.firstDay),
   ]);
   const vehicles = assets.filter((a) => a.slot == null && ITEMS.some((i) => i.id === a.itemId));
   const furniture = assets.filter((a) => a.slot != null && furnitureById(a.itemId));
@@ -30,6 +32,7 @@ export async function GET() {
       furniture: furniture.map((a) => ({ itemId: a.itemId, slot: a.slot!, paid: a.paid, stored: a.stored, acquiredAt: a.acquiredAt.toISOString() })),
       netWorth: player.bags + assetValue,
       quests,
+      firstDay,
       txs: txs.map((t) => ({ id: t.id, kind: t.kind, amount: t.amount, note: t.note, at: t.at.toISOString() })),
     },
     { headers: { 'cache-control': 'private, no-store' } },

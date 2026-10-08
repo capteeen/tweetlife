@@ -1,16 +1,17 @@
 import type { Metadata } from 'next';
 import { getUser } from '@/lib/session';
 import { ensurePlayer } from '@/lib/life/player';
-import { lookFor, parseLook } from '@/lib/life/look';
+import { lookFor, parseLook, randomLook } from '@/lib/life/look';
+import { citizenship } from '@/lib/life/citizen';
 import { SignInButton } from '@/components/ui/Chrome';
 import { CreateFlow } from '@/components/create/CreateFlow';
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'Create your look', robots: { index: false } };
 
-// Sign-up: nationality, then the avatar creator. New players land here straight after their first sign-in (see the X callback);
-// anyone can come back later from the phone's Settings to change their look.
-export default async function CreatePage({ searchParams }: { searchParams: { next?: string } }) {
+// Sign-up: new players land here straight after their first sign-in (see the X callback) and get the one-screen
+// creator. Anyone can come back later from the phone's Wardrobe (?wardrobe=1) for the full outfit picker.
+export default async function CreatePage({ searchParams }: { searchParams: { next?: string; wardrobe?: string } }) {
   const raw = searchParams.next ?? '';
   const next = raw.startsWith('/') && !raw.startsWith('//') ? raw : '/play';
   const user = await getUser();
@@ -28,7 +29,8 @@ export default async function CreatePage({ searchParams }: { searchParams: { nex
     );
   }
   const player = await ensurePlayer(user.id);
-  const initial = parseLook(player.look) ?? lookFor(user.handle);
+  // a brand-new player starts from a random outfit (Randomise rolls again); everyone else from their own look
+  const initial = parseLook(player.look) ?? (player.lookPending ? randomLook() : lookFor(user.handle));
   // a new player picks their country first; anyone else without one is asked here too (or once in the world)
   return (
     <CreateFlow
@@ -39,6 +41,8 @@ export default async function CreatePage({ searchParams }: { searchParams: { nex
       next={next}
       firstTime={player.lookPending}
       needsCountry={!player.nationality}
+      country={citizenship(player).country}
+      wardrobe={searchParams.wardrobe === '1'}
     />
   );
 }

@@ -8,6 +8,8 @@ import { Departures } from './Departures';
 import { airportLayout, inRect } from '@/lib/world/layout';
 import type { PlacedVenue } from '@/lib/life/venues';
 import { statDelta } from '@/lib/life/statNames';
+import { SHIFTS_PER_DAY, SHIFT_COST, SHIFT_SECONDS, jobsAt, levelOf, wageFor, type Job } from '@/lib/life/jobs';
+import { jobActions } from './jobs';
 import { citizenOf, curfew, governmentOf, pct, todaysAddress } from '@/lib/life/government';
 import { COUNTRIES } from '@/lib/world/countries';
 import { useCountry } from '@/components/world/country';
@@ -152,6 +154,7 @@ export function VenueCard({ sendSocial }: { sendSocial: SocialSend }) {
           ))}
         </div>
       )}
+      {me && <WorkHere venueId={venue.id} here={here} gas={me.gas} />}
       {me && here && venue.id === 'exchange' && <CoinCounter />}
       {me && !here && venue.id === 'exchange' && <p className="mt-2 text-xs text-white/50">Get to the counter to buy coins with bags.</p>}
       {me && !here && venue.actions.length > 0 && <p className="mt-2 text-xs text-white/50">Get there to do any of these.</p>}
@@ -162,6 +165,79 @@ export function VenueCard({ sendSocial }: { sendSocial: SocialSend }) {
         </div>
       )}
       {!here && door && <TravelPicker to={door} label={venue.name} />}
+    </div>
+  );
+}
+
+/** Jobs at this venue: start your shift if you work here, or see who's hiring. The Hustle Hub has the whole board. */
+function WorkHere({ venueId, here, gas }: { venueId: string; here: boolean; gas: number }) {
+  const board = useWorld((s) => s.jobs);
+  const openPhone = useWorld((s) => s.openPhone);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const jobs = jobsAt(venueId);
+  if (!jobs.length && venueId !== 'hustle') return null;
+  const start = async (job: Job) => {
+    setBusy(true);
+    setErr(null);
+    try {
+      await jobActions.start(job);
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const today = board?.shiftsToday ?? 0;
+  return (
+    <div className="mt-4 rounded-2xl bg-white/5 p-3">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-semibold uppercase tracking-wide text-white/50">Work</span>
+        {venueId === 'hustle' && (
+          <button className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold hover:bg-white/20" onClick={() => openPhone('jobs')}>
+            📋 Job board
+          </button>
+        )}
+      </div>
+      {venueId === 'hustle' && !board?.current && <p className="mt-1.5 text-xs text-white/60">Every job in town is on the board. Apply, then work shifts at the workplace.</p>}
+      {jobs.map((j) => {
+        const mine = board?.current === j.id;
+        const rec = board?.records.find((r) => r.jobId === j.id);
+        const level = levelOf(rec?.shifts ?? 0);
+        if (!mine) {
+          return (
+            <button key={j.id} className="mt-2 flex w-full items-center gap-3 rounded-xl bg-white/5 px-3 py-2 text-left hover:bg-white/10" onClick={() => openPhone('jobs', null, j.id)}>
+              <span className="text-xl">{j.emoji}</span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-semibold">Hiring: {j.title}</span>
+                <span className="block text-[11px] text-white/55">{wageFor(j, level)} bags a shift · tap to apply</span>
+              </span>
+            </button>
+          );
+        }
+        const tired = gas + (SHIFT_COST.gas ?? 0) < 0;
+        const full = today >= SHIFTS_PER_DAY;
+        const why = !here ? 'Get here to clock in.' : full ? `That’s ${SHIFTS_PER_DAY} shifts today. Back tomorrow.` : tired ? 'Too tired to work. Eat or rest first.' : null;
+        return (
+          <div key={j.id} className="mt-2">
+            <button
+              disabled={busy || !!why}
+              onClick={() => start(j)}
+              className="flex w-full items-center gap-3 rounded-xl bg-emerald-400 px-3 py-2.5 text-left text-[#0B0E14] transition hover:bg-emerald-300 disabled:bg-white/10 disabled:text-white/60"
+            >
+              <span className="text-xl">{j.emoji}</span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-bold">Start your shift · {j.levels[level - 1]}</span>
+                <span className="block text-[11px] opacity-75">
+                  {SHIFT_SECONDS}s · up to {wageFor(j, level)} bags · {statDelta(SHIFT_COST)} · {today}/{SHIFTS_PER_DAY} today
+                </span>
+              </span>
+            </button>
+            {why && <p className="mt-1 text-[11px] text-white/50">{why}</p>}
+          </div>
+        );
+      })}
+      {err && <p className="mt-2 text-xs text-amber-300">{err}</p>}
     </div>
   );
 }

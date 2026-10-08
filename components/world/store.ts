@@ -10,13 +10,17 @@ import type { ActivityId } from '@/lib/life/activities';
 import type { Citizenship } from '@/lib/life/citizen';
 import type { Crowd, CrowdNotice } from '@/lib/life/crowd';
 import { DEFAULT_COUNTRY, type CountryId } from '@/lib/world/countries';
+import type { FigureAct } from './figureMoves';
+import type { JobBoard, JobId } from '@/lib/life/jobs';
 import type { CabinId } from '@/lib/life/flights';
 import type { FirstDayView } from '@/lib/life/firstDaySteps';
 
 /** An everyday activity in progress (dance, stretch...): the avatar plays it until `until` or until you move. */
 export type Doing = { id: ActivityId; until: number } | null;
 
-export type Peer = { id: string; handle: string; x: number; z: number; yaw: number; at: number; ride?: string | null; act?: ActivityId | null };
+export type Peer = { id: string; handle: string; x: number; z: number; yaw: number; at: number; ride?: string | null; act?: FigureAct | null };
+/** A job shift in progress (lib/life/jobs.ts): `startedAt` and `endsAt` are local ms; `act` plays while you stand at your station. */
+export type Shift = { jobId: JobId; startedAt: number; endsAt: number; tasks: number; act: FigureAct | null; uniform: string; venueId: string; ride: string | null; face: number | null; cam: { yaw: number; pitch: number } | null };
 /** A ride in progress: the player follows `path` for `duration` seconds from `startedAt` (ms). */
 export type Trip = {
   mode: string; emoji: string; label: string; path: { x: number; z: number }[]; startedAt: number; duration: number; itemId?: string | null;
@@ -38,7 +42,7 @@ export type Flight = { phase: 'boarding' | 'takeoff' | 'cruise' | 'landing' | 'a
 export type ChatLine = { id: string; from: string; text: string; at: number; x: number; z: number };
 export type Toast = { id: string; text: string; kind: string; at: number };
 export type ResidentMsg = { role: 'user' | 'assistant'; content: string };
-export type PhoneApp = 'home' | 'trenches' | 'wallet' | 'solana' | 'hustle' | 'market' | 'garage' | 'house' | 'rich' | 'gist' | 'map' | 'guestbook' | 'settings' | 'id' | 'love' | 'wardrobe';
+export type PhoneApp = 'home' | 'trenches' | 'wallet' | 'solana' | 'hustle' | 'jobs' | 'market' | 'garage' | 'house' | 'rich' | 'gist' | 'map' | 'guestbook' | 'settings' | 'id' | 'love' | 'wardrobe';
 export type MarketKind = 'car' | 'boat' | 'plane' | 'home' | null;
 
 export type LifeMe = {
@@ -101,6 +105,13 @@ export type WorldState = {
   mapOpen: boolean;
   toasts: Toast[];
   doing: Doing;
+  /** the job board and your jobs (null until loaded or signed out) */
+  jobs: JobBoard | null;
+  shift: Shift | null;
+  /** swing the camera round to this yaw and pitch (then forget it): to look at you working at your station */
+  camAim: { yaw: number; pitch: number } | null;
+  /** turn your avatar to face this way (then forget it) */
+  faceAim: number | null;
   /** the named resident you are talking to (lib/life/residents.ts) */
   selectedResident: string | null;
   /** speech bubbles over residents' heads */
@@ -143,6 +154,10 @@ export type WorldState = {
   pushToast: (text: string, kind?: string) => void;
   dropToast: (id: string) => void;
   setDoing: (d: Doing) => void;
+  setJobs: (j: JobBoard | null) => void;
+  setShift: (s: Shift | null) => void;
+  setCamAim: (a: { yaw: number; pitch: number } | null) => void;
+  setFaceAim: (y: number | null) => void;
   selectResident: (id: string | null) => void;
   residentSay: (id: string, text: string) => void;
   pushResidentChat: (id: string, m: ResidentMsg) => void;
@@ -182,6 +197,10 @@ export const useWorld = create<WorldState>((set) => ({
   mapOpen: false,
   toasts: [],
   doing: null,
+  jobs: null,
+  shift: null,
+  camAim: null,
+  faceAim: null,
   selectedResident: null,
   residentSays: {},
   residentChats: {},
@@ -233,6 +252,10 @@ export const useWorld = create<WorldState>((set) => ({
   pushToast: (text, kind = 'info') => set((s) => ({ toasts: [...s.toasts.slice(-4), { id: Math.random().toString(36).slice(2), text, kind, at: Date.now() }] })),
   dropToast: (id) => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
   setDoing: (doing) => set({ doing }),
+  setJobs: (jobs) => set({ jobs }),
+  setShift: (shift) => set({ shift }),
+  setCamAim: (camAim) => set({ camAim }),
+  setFaceAim: (faceAim) => set({ faceAim }),
   selectResident: (selectedResident) =>
     set({ selectedResident, ...(selectedResident ? { selected: null, selectedPeer: null, selectedVenue: null } : {}) }),
   residentSay: (id, text) => set((s) => ({ residentSays: { ...s.residentSays, [id]: { text, at: Date.now() } } })),

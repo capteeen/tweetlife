@@ -5,7 +5,9 @@ import type * as THREE from 'three';
 // there toward a pose by `w` (0..1) so moves ease in and out. Kept apart from Figure.tsx so other animation
 // work (props in the hand, balloons) can change the figure without touching these.
 
-export type FigureAct = 'dance' | 'stretch' | 'rest' | 'pushups' | 'selfie' | 'cheer';
+export type FigureAct = 'dance' | 'stretch' | 'rest' | 'pushups' | 'selfie' | 'cheer' | WorkAct;
+/** On-shift moves for jobs (lib/life/jobs.ts): typing at a desk, pouring drinks, coaching, marshalling jets, examining. */
+export type WorkAct = 'type' | 'pour' | 'coach' | 'marshal' | 'examine';
 
 export type Rig = {
   body: THREE.Group | null;
@@ -56,7 +58,8 @@ export function applyTired(r: Rig, k: number, t: number) {
 /** Blend toward `act` at time `t` (seconds since it began) by weight `w`. */
 export function poseActivity(r: Rig, act: FigureAct, t: number, w: number) {
   if (w <= 0) return;
-  MOVES[act](r, t, w);
+  // a move this build doesn't know (an older client watching a newer one) just plays nothing
+  MOVES[act]?.(r, t, w);
 }
 
 const smooth = (x: number) => x * x * (3 - 2 * x);
@@ -168,5 +171,95 @@ const MOVES: Record<FigureAct, (r: Rig, t: number, w: number) => void> = {
     rot(r.head, 'y', 0.35, w);
     rot(r.head, 'z', snap === 1 ? 0.18 : -0.14, w);
     rot(r.body, 'z', snap === 1 ? -0.06 : 0.04, w);
+  },
+
+  // ---- work (lib/life/jobs.ts)
+
+  // Standing at a desk or till: forearms out level, fingers tapping in turns, eyes on the screen; a glance up now and then.
+  type(r, t, w) {
+    const look = Math.sin(t * 0.35) > 0.85 ? 1 : 0;
+    rot(r.head, 'x', 0.32 - 0.3 * look, w);
+    rot(r.chest, 'x', 0.08, w);
+    for (const [arm, elbow, side] of [[r.lArm, r.lElbow, -1], [r.rArm, r.rElbow, 1]] as const) {
+      const tap = Math.max(0, Math.sin(t * 14 + (side > 0 ? 0 : Math.PI))) * 0.12;
+      rot(arm, 'x', -0.38 - tap * 0.4, w);
+      rot(arm, 'z', side * -0.14, w);
+      rot(elbow, 'x', -1.15 + tap, w);
+    }
+  },
+
+  // Behind the bar: hold the glass low in the left hand, pour from the right; every few seconds, shake a cocktail by the shoulder.
+  pour(r, t, w) {
+    const cycle = t % 6;
+    const shaking = cycle > 4;
+    rot(r.head, 'x', shaking ? 0.05 : 0.3, w);
+    rot(r.lArm, 'x', shaking ? -1.6 : -0.75, w);
+    rot(r.lArm, 'z', shaking ? 0.35 : 0.1, w);
+    rot(r.lElbow, 'x', shaking ? -1.6 : -0.9, w);
+    if (shaking) {
+      const sh = Math.sin(t * 22) * 0.25;
+      rot(r.rArm, 'x', -1.7 + sh, w);
+      rot(r.rArm, 'z', -0.35, w);
+      rot(r.rElbow, 'x', -1.7 - sh, w);
+    } else {
+      const tip = smooth(Math.min(1, cycle / 1.2));
+      rot(r.rArm, 'x', -1.25, w);
+      rot(r.rArm, 'z', -0.2 - 0.3 * tip, w);
+      rot(r.rElbow, 'x', -0.6, w);
+    }
+  },
+
+  // A trainer counting reps: clap on the beat, then point and call it out, weight shifting foot to foot.
+  coach(r, t, w) {
+    const beat = t * Math.PI * 2 * 0.9;
+    const phase = Math.floor(t / 2.2) % 2; // 0 = clapping, 1 = pointing
+    rot(r.body, 'z', 0.05 * Math.sin(beat * 0.5), w);
+    rot(r.head, 'x', 0.12 + 0.06 * Math.sin(beat), w);
+    if (phase === 0) {
+      const clap = 0.5 + 0.5 * Math.sin(beat * 2);
+      for (const [arm, elbow, side] of [[r.lArm, r.lElbow, -1], [r.rArm, r.rElbow, 1]] as const) {
+        rot(arm, 'x', -1.2, w);
+        rot(arm, 'z', side * (0.15 - 0.3 * clap), w);
+        rot(elbow, 'x', -0.9, w);
+      }
+    } else {
+      rot(r.rArm, 'x', -1.5, w);
+      rot(r.rArm, 'z', 0.1, w);
+      rot(r.rElbow, 'x', -0.15, w);
+      rot(r.lArm, 'x', 0.1, w);
+      rot(r.lArm, 'z', -0.55, w);
+      rot(r.lElbow, 'x', -1.4, w); // hand on the hip
+    }
+  },
+
+  // Ground crew bringing a jet in: both arms up, waving forward together.
+  marshal(r, t, w) {
+    const wave = Math.sin(t * Math.PI * 1.6);
+    rot(r.head, 'x', -0.12, w);
+    for (const [arm, elbow, side] of [[r.lArm, r.lElbow, -1], [r.rArm, r.rElbow, 1]] as const) {
+      rot(arm, 'x', -2.6 + 0.25 * wave, w);
+      rot(arm, 'z', side * -0.2, w);
+      rot(elbow, 'x', -0.9 - 0.7 * (0.5 + 0.5 * wave), w);
+    }
+  },
+
+  // A doctor at the bedside: lean in, one hand on the clipboard, the other checking the patient; then stand and write.
+  examine(r, t, w) {
+    const phase = t % 7;
+    const lean = phase < 4 ? smooth(Math.min(1, phase / 0.8)) : 1 - smooth(Math.min(1, (phase - 4) / 0.8));
+    rot(r.chest, 'x', 0.1 + 0.35 * lean, w);
+    rot(r.head, 'x', 0.25 + 0.15 * lean, w);
+    rot(r.lArm, 'x', -0.9, w);
+    rot(r.lArm, 'z', 0.15, w);
+    rot(r.lElbow, 'x', -1.3, w); // the clipboard
+    if (lean > 0.5) {
+      rot(r.rArm, 'x', -0.9 - 0.08 * Math.sin(t * 3), w);
+      rot(r.rArm, 'z', 0.05, w);
+      rot(r.rElbow, 'x', -0.3, w);
+    } else {
+      rot(r.rArm, 'x', -0.7, w);
+      rot(r.rArm, 'z', -0.25, w);
+      rot(r.rElbow, 'x', -1.4 + 0.1 * Math.sin(t * 9), w); // writing
+    }
   },
 };

@@ -71,12 +71,20 @@ export const VENUES: Venue[] = [
     actions: [{ id: 'cut', label: 'Fresh cut', emoji: '💈', bags: 500, me: { clout: +8, vibes: +4 }, cooldown: 1800, line: 'got a fresh cut 💈' }],
   },
   {
-    id: 'clinic', name: 'Clinic', emoji: '🏥', color: '#F4F1DE', blurb: 'Full recovery. Not cheap.',
+    id: 'clinic', name: 'Clinic', emoji: '🏥', color: '#5FB3B3', blurb: 'Full recovery. Not cheap. Hiring doctors.',
     actions: [{ id: 'recover', label: 'Full recovery', emoji: '💊', bags: 2000, me: { gas: +100, vibes: +5 }, cooldown: 600, line: 'is fully recovered' }],
   },
   {
-    id: 'hustle', name: 'Hustle Hub', emoji: '🏢', color: '#6B7280', blurb: 'Work a shift. Earn bags. Lose a little joy.',
-    actions: [{ id: 'shift', label: 'Work a shift (+500 bags)', emoji: '💼', bags: -500, me: { gas: -15, vibes: -5, clout: +1 }, cooldown: 1800, line: 'finished a shift 💼' }],
+    id: 'hustle', name: 'Hustle Hub', emoji: '🏢', color: '#8338EC', blurb: 'The job centre. Find a real job on the board, or grab a day of casual work.',
+    // casual work for anyone without a job; a real job (lib/life/jobs.ts) always pays more
+    actions: [{ id: 'shift', label: 'Work a shift (+250 bags)', emoji: '💼', bags: -250, me: { gas: -15, vibes: -5, clout: +1 }, cooldown: 1800, line: 'finished a shift 💼' }],
+  },
+  {
+    id: 'tech', name: 'Devnet Labs', emoji: '💻', color: '#3A86FF', blurb: 'The tech office. Standing desks, free coffee, hiring programmers.',
+    actions: [
+      { id: 'coffee', label: 'Free office coffee', emoji: '☕', bags: 0, me: { gas: +4, vibes: +1 }, cooldown: 900, line: 'is on the office coffee' },
+      { id: 'meetup', label: 'Tech meetup', emoji: '🎤', bags: 150, me: { clout: +4, vibes: +2, gas: -2 }, cooldown: 1800, line: 'is at a tech meetup' },
+    ],
   },
   { id: 'bank', name: 'Bank', emoji: '🏦', color: '#D4C3A5', blurb: 'Your bags, your sends.', actions: [], app: 'wallet' },
   {

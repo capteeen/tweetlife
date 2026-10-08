@@ -251,19 +251,19 @@ model Incident {
 // ---------------------------------------------------------------------------------------------
 
 model Player {
-  id          String   @id // = User.id
-  user        User     @relation(fields: [id], references: [id], onDelete: Cascade)
-  bags        Int      @default(10000)
-  vibes       Int      @default(70) // fun
-  clout       Int      @default(50) // social
-  gas         Int      @default(80) // energy
-  status      String   @default("Just arrived")
+  id          String    @id // = User.id
+  user        User      @relation(fields: [id], references: [id], onDelete: Cascade)
+  bags        Int       @default(10000)
+  vibes       Int       @default(70) // fun
+  clout       Int       @default(50) // social
+  gas         Int       @default(80) // energy
+  status      String    @default("Just arrived")
   /// When `status` stops being true (the activity, nap or furniture action ends). Null or past = idle.
   statusUntil DateTime?
   /// The look picked in the avatar creator (lib/life/look.ts). Null = seeded from the handle.
   look        Json?
   /// True for players created after the avatar creator shipped, until they pick a look.
-  lookPending Boolean  @default(false)
+  lookPending Boolean   @default(false)
   /// Country id from lib/world/countries.ts, picked at sign-up. Null = not asked yet (shown once, Solana on skip).
   nationality String?
   /// The country the player is in right now (lib/world/countries.ts id). Null = at home. Set by flights.
@@ -271,22 +271,23 @@ model Player {
   /// The guided first day (lib/life/firstDay.ts): "active" for new players, then "done" or "skipped".
   /// Null = never offered (players from before it existed); they can start it from Settings.
   firstDay    String?
-  lastTickAt  DateTime @default(now())
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  lastTickAt  DateTime  @default(now())
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-  wallet     Wallet?
-  walletTxs  WalletTx[]
-  txs        BagTx[]
-  questDays  QuestDay[]
-  sent       Interaction[] @relation("sent")
-  received   Interaction[] @relation("received")
-  assets     Asset[]
-  paperCoins PaperCoin[]
-  bonds      Bond[]          @relation("bonds")
-  bondedTo   Bond[]          @relation("bondedTo")
-  loveSent   SocialRequest[] @relation("loveSent")
-  loveGot    SocialRequest[] @relation("loveGot")
+  wallet        Wallet?
+  walletTxs     WalletTx[]
+  txs           BagTx[]
+  questDays     QuestDay[]
+  sent          Interaction[]   @relation("sent")
+  received      Interaction[]   @relation("received")
+  assets        Asset[]
+  paperCoins    PaperCoin[]
+  jobs          JobRecord[]
+  bonds         Bond[]          @relation("bonds")
+  bondedTo      Bond[]          @relation("bondedTo")
+  loveSent      SocialRequest[] @relation("loveSent")
+  loveGot       SocialRequest[] @relation("loveGot")
   firstDaySteps FirstDayStep[]
   suggestions Suggestion[]
   backed      SuggestionBacker[]
@@ -296,7 +297,7 @@ model BagTx {
   id       String   @id @default(cuid())
   playerId String
   player   Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
-  kind     String // buy | sell | tip_in | tip_out | quest | welcome
+  kind     String // buy | sell | tip_in | tip_out | quest | welcome | wage
   amount   Int // signed
   note     String
   at       DateTime @default(now())
@@ -389,6 +390,24 @@ model PaperCoin {
   updatedAt DateTime @updatedAt
 
   @@unique([playerId, mint])
+}
+
+/// A job you were hired for (lib/life/jobs.ts): shifts worked there (your level) and the shift in progress.
+/// One row per player and job; `active` marks the job you hold now (at most one).
+model JobRecord {
+  id             String    @id @default(cuid())
+  playerId       String
+  player         Player    @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  jobId          String
+  shifts         Int       @default(0)
+  active         Boolean   @default(false)
+  hiredAt        DateTime  @default(now())
+  /// the shift in progress: when it started and how many of its tasks are done
+  shiftStartedAt DateTime?
+  shiftTasks     Int       @default(0)
+
+  @@unique([playerId, jobId])
+  @@index([playerId, active])
 }
 
 /// One side of a relationship: you and another player (partnerId) or you and an AI resident (residentId).

@@ -1,7 +1,7 @@
 import { capitolSolids } from './capitol';
 
 // Walk-in venues: open-roofed buildings you can walk into (the club, the lounge, the gym, the coin shop, the
-// government house).
+// government house, and the workplaces: the clinic, the Hustle Hub job centre and the Devnet Labs tech office).
 // Footprints are in the venue's own frame: x across the front, z towards the door (+z faces the city centre).
 
 export type WalkIn = { w: number; d: number; h: number; door: number };
@@ -11,6 +11,9 @@ export const WALK_IN: Record<string, WalkIn> = {
   bar: { w: 12, d: 10, h: 4, door: 4 },
   gym: { w: 14, d: 12, h: 4.2, door: 5 },
   exchange: { w: 12, d: 10, h: 4.2, door: 4.5 },
+  clinic: { w: 13, d: 11, h: 4.2, door: 4.5 },
+  hustle: { w: 13, d: 11, h: 4.2, door: 4.5 },
+  tech: { w: 13, d: 11, h: 4.4, door: 4.5 },
   capitol: { w: 16, d: 13, h: 5.2, door: 5 },
 };
 

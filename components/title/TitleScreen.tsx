@@ -5,13 +5,15 @@ import Link from 'next/link';
 import { XMark } from '@/components/ui/Chrome';
 import { installAudioUnlock, isAudioUnlocked, unlockAudio, whenUnlocked } from '@/lib/audio/engine';
 import { useSoundSettings } from '@/lib/audio/settings';
+import { COUNTRY_LIST } from '@/lib/world/countries';
 import { startTheme, stopTheme, ui, type UiSound } from './titleSound';
 
 const WelcomeScene = dynamic(() => import('./WelcomeScene').then((m) => m.WelcomeScene), { ssr: false });
+const CountriesScene = dynamic(() => import('./CountriesScene').then((m) => m.CountriesScene), { ssr: false });
 
 // The welcome page. Up top, a little 3D city on a speech-bubble island (the brand: white bubble-buildings with
-// yellow windows on sky blue) behind the headline and the two ways in. Below, how a world grows and what there is
-// to do inside, with real screenshots. A sunny theme tune starts on the first tap (browsers block sound before
+// yellow windows on sky blue) behind the headline and the two ways in. Below, how a world grows, the three
+// countries as 3D islands with a plane flying between them, and what there is to do inside, with real screenshots. A sunny theme tune starts on the first tap (browsers block sound before
 // that); the speaker button mutes it, and the choice is kept for the game too.
 
 type Props = {
@@ -62,6 +64,7 @@ export function TitleScreen({ backdropHandle, signedInHandle, authError, liveWor
         onEnter={() => open('enter')}
       />
       <HowItWorks />
+      <Countries />
       <Features />
       <Stats />
       <FinalCta signedInHandle={signedInHandle} onPrimary={primary} onEnter={() => open('enter')} />
@@ -371,6 +374,65 @@ function HowItWorks() {
           </li>
         ))}
       </ol>
+    </section>
+  );
+}
+
+function Countries() {
+  const ref = useRef<HTMLDivElement>(null);
+  const [near, setNear] = useState(false);
+  const [onScreen, setOnScreen] = useState(false);
+  const [ready, setReady] = useState(false);
+  const reduced = useReducedMotion();
+  useEffect(() => {
+    // load the 3D islands as the section scrolls close, and only draw them while they are on screen
+    const el = ref.current;
+    if (!el || !webglOk()) return;
+    const soon = new IntersectionObserver(([e]) => e.isIntersecting && setNear(true), { rootMargin: '400px 0px' });
+    const seen = new IntersectionObserver(([e]) => setOnScreen(e.isIntersecting), { threshold: 0.02 });
+    soon.observe(el);
+    seen.observe(el);
+    return () => (soon.disconnect(), seen.disconnect());
+  }, []);
+  return (
+    <section id="countries" className="relative overflow-hidden px-5 pb-16 pt-14 sm:px-8 md:pb-20 md:pt-16" style={{ background: 'linear-gradient(180deg, #FFFFFF 0%, #E3F3FF 26%, #BFE6FF 70%, #F6FAFE 100%)' }}>
+      <SectionTitle kicker="Three countries" title="Pick your passport" sub="Every player is a citizen of Solana, BNB or Robinhood, with an ID card to prove it. Each capital wears its coin's colours, and planes fly between them." />
+      <div ref={ref} className="relative -mx-5 mt-2 h-[340px] sm:-mx-8 sm:h-[420px] md:h-[500px]">
+        {/* the logos stand in until the islands load */}
+        <div className={`absolute inset-0 flex items-center justify-center gap-10 transition-opacity duration-700 ${ready ? 'opacity-0' : 'opacity-100'}`} aria-hidden>
+          {COUNTRY_LIST.map((c, i) => (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img key={c.id} src={c.logo} alt="" width={64} height={64} className="h-14 w-14 animate-[tl-bob_3s_ease-in-out_infinite] sm:h-16 sm:w-16" style={{ animationDelay: `${-i}s` }} />
+          ))}
+        </div>
+        {near && (
+          <div className={`absolute inset-0 transition-opacity duration-1000 ${ready ? 'opacity-100' : 'opacity-0'}`}>
+            <CountriesScene paused={!onScreen} onReady={() => setReady(true)} reducedMotion={reduced} />
+          </div>
+        )}
+      </div>
+      <div className="relative mx-auto mt-2 grid max-w-6xl gap-4 md:grid-cols-3 md:gap-5">
+        {COUNTRY_LIST.map((c) => (
+          <article key={c.id} className="relative overflow-hidden rounded-3xl bg-white p-5 shadow-[0_8px_30px_rgba(15,39,71,0.08)] ring-1 ring-[#0F2747]/5">
+            <span className="absolute inset-x-0 top-0 h-1.5" style={{ background: `linear-gradient(90deg, ${c.theme.gradient[0]}, ${c.theme.gradient[1]})` }} aria-hidden />
+            <div className="flex items-center gap-3">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={c.logo} alt={`${c.name} logo`} width={48} height={48} loading="lazy" className="h-12 w-12 rounded-2xl" />
+              <div className="min-w-0">
+                <h3 className="flex items-center gap-2 text-xl font-extrabold">
+                  {c.name}
+                  <span className="rounded-full px-2 py-0.5 text-[11px] font-bold tracking-wide" style={{ background: `${c.theme.primary}22`, color: c.id === 'bnb' ? '#8A6400' : c.id === 'robinhood' ? '#0A7A0D' : '#6B2BD9' }}>
+                    ${c.ticker}
+                  </span>
+                </h3>
+                <div className="text-sm font-semibold text-[#4A5B73]">Capital: {c.capital}</div>
+              </div>
+            </div>
+            <p className="mt-3 text-[15px] italic leading-6 text-[#0F2747]">&ldquo;{c.motto}&rdquo;</p>
+            <p className="mt-1 text-sm text-[#4A5B73]">President {c.president}</p>
+          </article>
+        ))}
+      </div>
     </section>
   );
 }

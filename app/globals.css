@@ -100,6 +100,15 @@ canvas {
     transform: translateX(120vw);
   }
 }
+@keyframes tl-bob {
+  0%,
+  100% {
+    transform: translateY(-5px);
+  }
+  50% {
+    transform: translateY(5px);
+  }
+}
 @keyframes tl-eq {
   from {
     transform: scaleY(0.3);

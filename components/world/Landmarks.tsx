@@ -52,7 +52,7 @@ export function Landmark({ boundaryRadius, country, sand, grass }: { boundaryRad
 
 /** The coin's logo file, extruded and standing upright, about 26 units tall. Solana's gradient fill is
  * applied per bar (purple at the bottom left to green at the top right, as in the logo). */
-function LogoMonument({ url, gradient }: { url: string; gradient: [string, string] | null }) {
+export function LogoMonument({ url, gradient }: { url: string; gradient: [string, string] | null }) {
   const svg = useLoader(SVGLoader, url);
   const parts = useMemo(() => {
     const out: { geo: THREE.ExtrudeGeometry; color: string }[] = [];

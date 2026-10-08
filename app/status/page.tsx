@@ -28,12 +28,21 @@ export default async function Status() {
           <>
             {snap.budget.level !== 'ok' && (
               <div className={`mt-4 rounded-xl px-4 py-3 text-sm ${snap.budget.level === 'exhausted' ? 'border border-rose-400/30 bg-rose-500/10 text-rose-200' : 'border border-amber-400/30 bg-amber-500/10 text-amber-200'}`}>
-                {snap.budget.level === 'exhausted'
+                {snap.budget.limitedBy === 'day'
+                  ? snap.budget.level === 'exhausted'
+                    ? `Today's X spend cap is used up (about $${snap.budget.spentToday.toFixed(2)} of $${snap.budget.dailyCap.toFixed(2)}). X calls wait until ${new Date(snap.budget.resetsAt).toUTCString()}; new cities start building then. Existing worlds keep serving from the database.`
+                    : `${Math.round((snap.budget.spentToday / snap.budget.dailyCap) * 100)}% of today's X spend cap is used, so optional X calls (metric refreshes, follower lists, automatic post checks) are paused until midnight UTC.${admin ? ' Admin: raise X_DAILY_SPEND_CAP_USD to allow more.' : ''}`
+                  : snap.budget.level === 'exhausted'
                   ? `Monthly X API budget is exhausted (${fullNumber(snap.budget.used)} of ${fullNumber(snap.budget.budget)} calls). New world builds are paused until ${new Date(snap.budget.resetsAt).toUTCString()}. Existing worlds keep serving from the database.`
                   : `${Math.round(snap.budget.fraction * 100)}% of the monthly X API budget is used.${admin ? ' Admin: consider raising X_MONTHLY_CALL_BUDGET or the tier.' : ''}`}
               </div>
             )}
             <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <Stat
+                label="X spend today (estimate)"
+                value={`$${snap.budget.spentToday.toFixed(2)}${snap.budget.dailyCap > 0 ? ` / $${snap.budget.dailyCap.toFixed(2)}` : ''}`}
+                sub="$0.005 a post, $0.010 a user read; X bills a repeat read in the same UTC day once"
+              />
               <Stat label={`X calls this month (${snap.budget.month})`} value={`${fullNumber(snap.budget.used)} / ${fullNumber(snap.budget.budget)}`} sub={`${Math.round(snap.budget.fraction * 100)}% · tier: ${snap.tier}`} />
               <Stat
                 label={`Ingest queue (${snap.queues?.mode ?? 'unknown'} mode)`}

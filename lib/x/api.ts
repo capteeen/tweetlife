@@ -1,13 +1,14 @@
 import { xFetch } from './client';
 import type { XMedia, XPage, XSingle, XTweet, XUser } from './types';
 
-// Typed wrappers over the three endpoints the product reads.
+// Typed wrappers over the endpoints the product reads. On X's pay-per-use plan every post ($0.005) and every
+// user ($0.010) a response returns is billed, so callers ask for as few objects as the game needs.
 
 const USER_FIELDS = 'created_at,profile_image_url,public_metrics';
 const TWEET_FIELDS = 'public_metrics,created_at,referenced_tweets,attachments,conversation_id,author_id,in_reply_to_user_id';
 const MEDIA_FIELDS = 'media_key,type,url,preview_image_url';
 
-type Ctx = { accessToken: string; userId: string | null; maxWaitMs?: number };
+type Ctx = { accessToken: string; userId: string | null; maxWaitMs?: number; ignoreBudget?: boolean };
 
 export async function getMe(ctx: Ctx): Promise<XUser> {
   const r = await xFetch<XSingle<XUser>>({ path: '/2/users/me', query: { 'user.fields': USER_FIELDS }, ...ctx });
@@ -51,20 +52,29 @@ export async function getTweetsByIds(ctx: Ctx, ids: string[]): Promise<XTweet[]>
   return r.data ?? [];
 }
 
+/**
+ * How the signed-in user (ctx's token) relates to one account: X's connection_status, e.g. ['following'] when they
+ * follow it. One user read. null when X left the field out, which it may do when there is no relationship at all.
+ */
+export async function getConnectionStatus(ctx: Ctx, targetXUserId: string): Promise<string[] | null> {
+  const r = await xFetch<XSingle<XUser>>({ path: `/2/users/${targetXUserId}`, query: { 'user.fields': 'connection_status' }, ...ctx });
+  return r.data?.connection_status ?? null;
+}
+
 export type FollowingPage = { ids: string[]; nextToken?: string };
 
-/** One page (max 1000) of accounts `xUserId` follows. */
-export async function getFollowing(ctx: Ctx, xUserId: string, paginationToken?: string): Promise<FollowingPage> {
+/** One page (max 1000) of accounts `xUserId` follows, newest follows first. Billed per account returned. */
+export async function getFollowing(ctx: Ctx, xUserId: string, paginationToken?: string, maxResults = 1000): Promise<FollowingPage> {
   const r = await xFetch<XPage<XUser>>({
     path: `/2/users/${xUserId}/following`,
-    query: { max_results: 1000, pagination_token: paginationToken, 'user.fields': 'id' },
+    query: { max_results: maxResults, pagination_token: paginationToken, 'user.fields': 'id' },
     ...ctx,
   });
   return { ids: (r.data ?? []).map((u) => u.id), nextToken: r.meta?.next_token };
 }
 
-/** The account's newest followers (X lists them most recent first), with names and avatars. One call. */
-export async function getFollowers(ctx: Ctx, xUserId: string, maxResults = 100): Promise<XUser[]> {
+/** The account's newest followers (X lists them most recent first), with names and avatars. One call, billed per follower. */
+export async function getFollowers(ctx: Ctx, xUserId: string, maxResults: number): Promise<XUser[]> {
   const r = await xFetch<XPage<XUser>>({
     path: `/2/users/${xUserId}/followers`,
     query: { max_results: maxResults, 'user.fields': 'profile_image_url,public_metrics' },

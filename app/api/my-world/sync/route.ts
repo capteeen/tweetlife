@@ -18,7 +18,6 @@ export async function POST() {
   if (!ok) return NextResponse.json({ error: 'You can sync manually once every 10 minutes.' }, { status: 429 });
   const kind = world.newestPostId ? 'incremental' : 'first_build';
   const run = await enqueueIngest(world.id, kind);
-  if (!run) return NextResponse.json({ error: 'Monthly X API budget is exhausted; new builds are paused.' }, { status: 503 });
   if (world.ingestState !== 'building') await db.world.update({ where: { id: world.id }, data: { ingestState: 'queued', ingestError: null } });
   return NextResponse.json({ ok: true, runId: run.id, kind });
 }

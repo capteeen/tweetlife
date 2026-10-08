@@ -1,8 +1,9 @@
 import { Queue, type JobsOptions } from 'bullmq';
+import type { Prisma } from '@prisma/client';
 import { bullConnection } from '../redis';
 import { db } from '../db';
 import { env } from '../env';
-import { canStartNewBuild } from '../x/budget';
+import { budgetStatus } from '../x/budget';
 
 // Job scheduling. Two modes (INGEST_MODE):
 //  - worker: rows are also BullMQ jobs; worker/index.ts consumes them.
@@ -13,6 +14,17 @@ export const INGEST_QUEUE = 'ingest';
 export const TIMELAPSE_QUEUE = 'timelapse';
 
 export type IngestJob = { worldId: string; kind: 'first_build' | 'incremental' | 'metrics_refresh'; runId: string };
+
+/** Scheduled syncs and metric refreshes only run for players who played this recently; every X read is billed. */
+export const ACTIVE_DAYS = 7;
+
+/** Live worlds whose owner is signed in and has played in the last ACTIVE_DAYS days. */
+export function activeLiveWorlds(now = new Date()): Prisma.WorldWhereInput {
+  return {
+    ingestState: 'live',
+    owner: { revokedAt: null, player: { updatedAt: { gte: new Date(now.getTime() - ACTIVE_DAYS * 24 * 3600 * 1000) } } },
+  };
+}
 export type TimelapseJob = { worldId: string; jobId: string };
 
 const g = globalThis as unknown as { ingestQueue?: Queue<IngestJob>; timelapseQueue?: Queue<TimelapseJob> };
@@ -58,31 +70,33 @@ export async function kickTick() {
   }
 }
 
-async function dispatch(run: { id: string; worldId: string; kind: IngestJob['kind'] }) {
+export async function dispatch(run: { id: string; worldId: string; kind: IngestJob['kind']; notBefore?: Date | null }) {
+  const delay = run.notBefore ? Math.max(0, run.notBefore.getTime() - Date.now()) : 0;
   if (inlineMode()) {
-    await kickTick();
+    if (!delay) await kickTick();
     return;
   }
-  const job = await ingestQueue().add(run.kind, { worldId: run.worldId, kind: run.kind, runId: run.id }, { ...RETRY, jobId: `${run.kind}:${run.id}` });
+  const job = await ingestQueue().add(run.kind, { worldId: run.worldId, kind: run.kind, runId: run.id }, { ...RETRY, delay, jobId: `${run.kind}:${run.id}` });
   await db.ingestRun.update({ where: { id: run.id }, data: { jobId: job.id ?? null } });
 }
 
-/** Create the IngestRun row and dispatch it. Returns null when the budget refuses a new build. */
+/** Create the IngestRun row and dispatch it. While the X budget is used up, a new build waits for it to reset. */
 export async function enqueueIngest(worldId: string, kind: IngestJob['kind']) {
-  if (kind === 'first_build' && !(await canStartNewBuild())) {
-    await db.world.update({
-      where: { id: worldId },
-      data: { ingestState: 'failed', ingestError: 'Monthly X API budget exhausted — new world builds are paused until it resets.' },
-    });
-    return null;
-  }
   // Do not stack a second active run of the same kind on the same world.
   const active = await db.ingestRun.findFirst({ where: { worldId, kind, status: { in: ['queued', 'running'] } } });
   if (active) {
     await kickTick();
     return active;
   }
-  const run = await db.ingestRun.create({ data: { worldId, kind, status: 'queued' } });
+  const budget = await budgetStatus();
+  const notBefore = budget.level === 'exhausted' ? new Date(budget.resetsAt) : null;
+  if (notBefore && kind === 'first_build') {
+    await db.world.update({
+      where: { id: worldId },
+      data: { ingestError: `Tweetlife has used its X budget for ${budget.limitedBy === 'day' ? 'today' : 'this month'}. Your city starts building at ${notBefore.toUTCString()}.` },
+    });
+  }
+  const run = await db.ingestRun.create({ data: { worldId, kind, status: 'queued', notBefore } });
   await dispatch(run);
   return run;
 }

@@ -2,6 +2,7 @@ import type { IngestRun } from '@prisma/client';
 import { db } from '../db';
 import { ingestTimeline, refreshRecentMetrics } from '../x/ingest';
 import { BudgetExhaustedError, XApiError } from '../x/types';
+import { budgetStatus } from '../x/budget';
 
 // Runs one IngestRun. Shared by the BullMQ worker (no deadline: a run completes in one go) and by
 // inline mode (/api/cron/tick: a run is advanced in bounded steps and re-queued until done).
@@ -36,7 +37,16 @@ export async function runIngest(runId: string, opts: { deadline?: number; countA
     return { outcome: 'paused' };
   } catch (e) {
     const err = (e as Error).message.slice(0, 1000);
-    const terminal = e instanceof BudgetExhaustedError || (e instanceof XApiError && e.isAuth);
+    if (e instanceof BudgetExhaustedError) {
+      // the budget ran out mid-run: progress is saved, so carry on where it stopped once the budget resets
+      const resetsAt = new Date((await budgetStatus()).resetsAt);
+      await db.ingestRun.update({
+        where: { id: runId },
+        data: { status: 'queued', error: err, notBefore: resetsAt, attempts: { decrement: opts.countAttempt === false ? 0 : 1 } },
+      });
+      return { outcome: 'paused', error: err };
+    }
+    const terminal = e instanceof XApiError && e.isAuth;
     const final = terminal || run.attempts >= MAX_ATTEMPTS;
     await db.ingestRun.update({
       where: { id: runId },
@@ -72,6 +82,10 @@ export async function claimNextRun(): Promise<IngestRun | null> {
   return claimed.count === 1 ? candidate : null;
 }
 
+/** Runs a tick could advance now. Runs waiting for a backoff or for the X budget to reset don't count. */
 export async function pendingRunCount() {
-  return db.ingestRun.count({ where: { status: { in: ['queued', 'running'] } } });
+  const now = new Date();
+  return db.ingestRun.count({
+    where: { OR: [{ status: 'running' }, { status: 'queued', OR: [{ notBefore: null }, { notBefore: { lte: now } }] }] },
+  });
 }

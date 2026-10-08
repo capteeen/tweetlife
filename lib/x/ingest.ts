@@ -13,6 +13,10 @@ import { crowdForNewPosts } from '../life/crowd';
 
 const PAGE_SIZE = 100;
 const WORKER_MAX_WAIT = 10 * 60 * 1000;
+/** Metrics are re-read for posts this recent. Likes and reposts mostly land in a post's first days. */
+const METRICS_DAYS = 7;
+/** The profile (follower count, avatar) is re-read at most this often; each read is billed. */
+const PROFILE_EVERY_S = 20 * 3600;
 
 export type Progress = { postsWritten: number; pagesFetched: number; calls: number };
 
@@ -60,6 +64,14 @@ async function ownerContext(worldId: string) {
   return { world, user, ctx: { accessToken: token, userId: user.id, maxWaitMs: WORKER_MAX_WAIT } };
 }
 
+/** Refresh profile metrics (followers, post count, avatar) at most once per PROFILE_EVERY_S. One user read. */
+async function syncProfileDaily(worldId: string) {
+  const fresh = await redis().set(`profile:synced:${worldId}`, '1', 'EX', PROFILE_EVERY_S, 'NX').catch(() => 'OK');
+  if (!fresh) return false;
+  await syncProfile(worldId);
+  return true;
+}
+
 /** Refresh profile metrics (followers, post count, avatar). One call. */
 export async function syncProfile(worldId: string) {
   const { world, ctx } = await ownerContext(worldId);
@@ -98,11 +110,8 @@ export async function ingestTimeline(run: IngestRun, kind: Extract<RunKind, 'fir
 
   await db.world.update({ where: { id: world.id }, data: { ingestState: 'building', ingestError: null } });
 
-  // Profile first (once per run): followers_count sets the boundary; also confirms the token works before we page.
-  if (run.pagesFetched === 0) {
-    await syncProfile(world.id);
-    progress.calls++;
-  }
+  // Profile first (once per run, at most once a day): followers_count sets the boundary; also confirms the token works.
+  if (run.pagesFetched === 0 && (await syncProfileDaily(world.id))) progress.calls++;
 
   let paginationToken: string | undefined;
   let newestSeen: string | null = world.newestPostId;
@@ -143,6 +152,8 @@ export async function ingestTimeline(run: IngestRun, kind: Extract<RunKind, 'fir
     const total = existing + progress.postsWritten;
     if (!page.nextToken || page.tweets.length === 0) break;
     if (kind === 'first_build' && total >= maxPosts) break;
+    // a long gap (a player back after weeks away) reads at most a first build's worth of new posts
+    if (kind === 'incremental' && progress.postsWritten >= maxPosts) break;
     paginationToken = page.nextToken;
     if (opts.deadline && Date.now() > opts.deadline) return { ...progress, done: false };
   }
@@ -157,12 +168,12 @@ export async function ingestTimeline(run: IngestRun, kind: Extract<RunKind, 'fir
   return { ...progress, done: true };
 }
 
-/** Nightly: re-read metrics for posts from the last 30 days, 100 ids per call. */
+/** Nightly: re-read metrics for posts from the last METRICS_DAYS days, 100 ids per call. Lamps (reposts) don't use them. */
 export async function refreshRecentMetrics(run: IngestRun) {
   const { world, ctx } = await ownerContext(run.worldId);
-  const since = new Date(Date.now() - 30 * 24 * 3600 * 1000);
+  const since = new Date(Date.now() - METRICS_DAYS * 24 * 3600 * 1000);
   const recent = await db.structure.findMany({
-    where: { worldId: world.id, postedAt: { gte: since } },
+    where: { worldId: world.id, postedAt: { gte: since }, kind: { not: 'lantern' } },
     select: { id: true, postId: true },
   });
   const progress: Progress = { postsWritten: 0, pagesFetched: 0, calls: 0 };
@@ -191,8 +202,7 @@ export async function refreshRecentMetrics(run: IngestRun) {
     }
     await db.ingestRun.update({ where: { id: run.id }, data: { ...progress } });
   }
-  await syncProfile(world.id);
-  progress.calls++;
+  if (await syncProfileDaily(world.id)) progress.calls++;
   await db.world.update({ where: { id: world.id }, data: { lastSyncAt: new Date() } });
   return { ...progress, done: true };
 }

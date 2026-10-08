@@ -1,10 +1,10 @@
 import { db } from '../db';
 import { acquire, pauseUntil } from './limiter';
-import { budgetStatus, recordCall } from './budget';
+import { budgetStatus, estimateCostMicros, recordCall, recordSpend } from './budget';
 import { BudgetExhaustedError, XApiError } from './types';
 
 // The one function through which every request to api.x.com passes.
-// Order per call: budget check -> token bucket (queue) -> fetch -> ledger row -> 429 handling.
+// Order per call: budget check -> token bucket (queue) -> fetch -> ledger row -> 429 handling -> spend estimate.
 
 const BASE = 'https://api.x.com';
 
@@ -94,7 +94,9 @@ export async function xFetch<T>(req: XRequest): Promise<T> {
         `X API ${res.status}`;
       throw new XApiError(String(detail), res.status, null, body);
     }
-    return (await res.json()) as T;
+    const json = await res.json();
+    await recordSpend(estimateCostMicros(endpointLabel(req.path), json)).catch((e) => console.error('[x spend]', (e as Error).message));
+    return json as T;
   }
 }
 

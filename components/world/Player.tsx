@@ -132,7 +132,7 @@ export function Player({ structures, blocks, grid, boundaryRadius, contentRadius
   }, [gl]);
 
   useFrame((state, dt) => {
-    const d = Math.min(dt, 0.05);
+    const d = Math.min(dt, 0.1);
     let mx = 0, mz = 0;
     // on a ride: follow the route, then step off at the nearest open spot
     const tr = useWorld.getState().trip;

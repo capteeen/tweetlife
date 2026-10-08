@@ -9,6 +9,7 @@ import type { PlacedVenue } from '@/lib/life/venues';
 import type { FigureAct } from './figureMoves';
 import { Figure } from './Figure';
 import { beat } from './clubAudio';
+import { DistanceDetail } from './DistanceDetail';
 
 // Walk-in venues, open to the sky so the camera can follow you in: Club Moon (dance floor, DJ, moving
 // lights, mirror ball), the Degen Lounge (bar, booths, slow lights), the gym (racks, benches, treadmills,
@@ -39,10 +40,12 @@ export function WalkInVenue({ v, near, onClick }: { v: PlacedVenue; near: boolea
         {v.name.toUpperCase()}
         <meshStandardMaterial color={v.color} emissive={v.color} emissiveIntensity={1.6} toneMapped={false} />
       </Text>
-      {v.id === 'club' && <Club k={k} />}
-      {v.id === 'bar' && <Lounge k={k} />}
-      {v.id === 'gym' && <Gym k={k} />}
-      {v.id === 'exchange' && <CoinShop k={k} />}
+      <DistanceDetail shadowWithin={45} hideBeyond={110}>
+        {v.id === 'club' && <Club k={k} />}
+        {v.id === 'bar' && <Lounge k={k} />}
+        {v.id === 'gym' && <Gym k={k} />}
+        {v.id === 'exchange' && <CoinShop k={k} />}
+      </DistanceDetail>
     </group>
   );
 }

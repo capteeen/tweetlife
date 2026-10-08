@@ -1,4 +1,5 @@
 'use client';
+import { DRAW_RADIUS } from '@/lib/world/country-map';
 import { useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
@@ -68,7 +69,9 @@ function Resident({ loop: l, blocks, grid, boundaryRadius }: { loop: Loop; block
 export function Peers({ blocks, grid, boundaryRadius }: { blocks: Block[]; grid: CityGrid; boundaryRadius: number }) {
   const peers = useWorld((s) => s.peers);
   const me = useWorld((s) => s.me);
-  const list = Object.values(peers).filter((p) => p.id !== me?.id && Date.now() - p.at < 15000);
+  // a shared country can hold a hundred people: draw only the ones near you (the rest are on the map)
+  const pos = useWorld((s) => s.playerPos);
+  const list = Object.values(peers).filter((p) => p.id !== me?.id && Date.now() - p.at < 15000 && !p.far && Math.hypot(p.x - pos.x, p.z - pos.z) < DRAW_RADIUS);
   return (
     <>
       {list.map((p) => (

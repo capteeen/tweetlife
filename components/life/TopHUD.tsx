@@ -39,11 +39,11 @@ export function TopHUD({ online, handle }: { online: number | null; handle: stri
           {me.moodEmoji} <span className={me.mood === 'Rekt' ? 'text-rose-300' : me.mood === 'Mooning' ? 'text-emerald-300' : ''}>{me.mood}</span>
         </span>
       ) : (
-        <span className="whitespace-nowrap px-1 text-white/60">visiting @{handle}</span>
+        <span className="whitespace-nowrap px-1 text-white/60">{handle ? `visiting @${handle}` : 'visiting'}</span>
       )}
       {/* phones have no room for this; the bottom bar shows who's here instead */}
       <span className="h-4 w-px bg-white/15 max-[420px]:hidden" />
-      <span className="num whitespace-nowrap px-1 text-white/80 max-[420px]:hidden" title="Visitors online in this world">
+      <span className="num whitespace-nowrap px-1 text-white/80 max-[420px]:hidden" title="People online in this country">
         <span className="text-emerald-400">●</span> {online == null ? '—' : online} online
       </span>
       {me && (

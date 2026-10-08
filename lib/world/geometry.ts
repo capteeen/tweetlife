@@ -61,6 +61,8 @@ export type Placed = {
   segment: number;
   isLandmark: boolean;
   metricsKnown: boolean;
+  /** handle of the player whose block this is (shared country maps; absent in a single world) */
+  owner?: string;
 };
 
 export type Lot = { x: number; z: number; w: number; d: number; cls: TerrainClass; facing: 1 | -1 };
@@ -190,6 +192,10 @@ export type BuildOptions = {
   landmarkPostId: string | null;
   showReplies: boolean;
   now?: Date;
+  /** Fixed city blocks to fill, in order (a player's plot on a country map). Posts that don't fit are dropped. */
+  blockOrder?: { i: number; j: number }[];
+  /** Don't leave vacant lots for silences (a plot has no room to spare). */
+  noGaps?: boolean;
 };
 
 export function buildWorld(rowsIn: StructureRow[], opts: BuildOptions): WorldGeometry {
@@ -230,7 +236,9 @@ export function buildWorld(rowsIn: StructureRow[], opts: BuildOptions): WorldGeo
   let prevTime: number | null = null;
   let lastBuilding: Placed | null = null;
 
-  let order: { i: number; j: number }[] = blockOrder(9);
+  const fixed = opts.blockOrder ?? null;
+  const maxLots = fixed ? fixed.length * LOTS_PER_BLOCK : Infinity;
+  let order: { i: number; j: number }[] = fixed ?? blockOrder(9);
   const lotFor = (idx: number): Lot => {
     const b = Math.floor(idx / LOTS_PER_BLOCK);
     if (b >= order.length) order = blockOrder(Math.max(b + 1, order.length * 2));
@@ -340,12 +348,13 @@ export function buildWorld(rowsIn: StructureRow[], opts: BuildOptions): WorldGeo
     }
 
     // Vacant lots for the silence before this post.
-    if (gapDays > 7) {
+    if (gapDays > 7 && !opts.noGaps) {
       const skip = Math.min(24, Math.floor((gapDays - 7) / 3));
       for (let k = 0; k < skip; k++) lots.push({ cls: gapCls, occupied: false });
     }
 
     const idx = lots.length;
+    if (idx >= maxLots) continue;
     const lot = lotFor(idx);
     const kind: StructureKind = r.conversationId && threadRoot.get(r.conversationId) === r ? 'spire' : r.kind;
     const width = scaleWidth(kind, r.reposts);
@@ -373,7 +382,7 @@ export function buildWorld(rowsIn: StructureRow[], opts: BuildOptions): WorldGeo
   // Blocks: terrain class by majority of their lots; vacant lots listed for rendering.
   const tailDays = prevTime == null ? 365 : (now.getTime() - prevTime) / 86400000;
   const outside = terrainClassForGapDays(tailDays);
-  const nBlocks = Math.max(1, Math.ceil(lots.length / LOTS_PER_BLOCK));
+  const nBlocks = fixed ? fixed.length : Math.max(1, Math.ceil(lots.length / LOTS_PER_BLOCK));
   if (nBlocks > order.length) order = blockOrder(nBlocks);
   const blocks: Block[] = [];
   for (let b = 0; b < nBlocks; b++) {

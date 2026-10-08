@@ -26,6 +26,7 @@ import { GuideBeacon } from './GuideBeacon';
 import { useWorld } from './store';
 import { themeOf, themedPalette } from '@/lib/world/cityThemes';
 import { WorldSounds } from '@/components/audio/WorldSounds';
+import { PlotSigns } from './PlotSigns';
 
 // The scene. `mode`:
 //  - 'walk'     : admitted visitor, third-person controls
@@ -151,6 +152,7 @@ function Scene(props: SceneProps) {
           <WorldSounds geometry={geometry} />
           {geometry.structures.length > 0 && <AirportStand contentRadius={geometry.contentRadius} boundaryRadius={R} />}
           <GuideBeacon />
+          <PlotSigns />
         </>
       )}
       {mode === 'boundary' && <BoundaryOrbit radius={R} landmark={geometry.structures.find((s) => s.isLandmark) ?? null} />}

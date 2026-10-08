@@ -100,7 +100,8 @@ function Tiles() {
   return (
     <group>
       {tiles.map((t, i) => (
-        <mesh key={i} position={[t.x, 0, t.z]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        // lifted a hair off the plinth top (y = 0) so the two surfaces do not z-fight (and under the contact shadow at 0.01)
+        <mesh key={i} position={[t.x, 0.004, t.z]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
           <planeGeometry args={[1.96, 1.96]} />
           <meshStandardMaterial color={t.dark ? '#B98A5E' : '#D4AB7E'} roughness={1} />
         </mesh>

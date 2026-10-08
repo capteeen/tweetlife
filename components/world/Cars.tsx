@@ -5,9 +5,11 @@ import { useFrame } from '@react-three/fiber';
 import type { CityGrid } from '@/lib/world/geometry';
 import { prng, hashString } from '@/lib/world/seed';
 import { CAR_PARTS, TRAFFIC_MODELS, carMaterial, carParts, carSpec, type CarModel } from './carModels';
+import { useWorld } from './store';
 
 // Ambient traffic: detailed low-poly cars following the road grid on the right-hand lane. At each intersection a car
 // goes straight or turns (curving through the junction), and it slows behind the car ahead in its lane.
+// With `player`, cars also brake for the player standing in their path and honk at them.
 // Count comes from followers_count; models, colours and starting spots are seeded by the handle.
 // One instanced mesh per (model, material), so the whole fleet is a few dozen draw calls.
 
@@ -17,6 +19,9 @@ const tmpColor = new THREE.Color();
 const DX = [1, 0, -1, 0], DZ = [0, 1, 0, -1];
 const LANE = 1.75; // lane centre from the road centreline
 const GAP = 3; // bumper-to-bumper distance cars keep
+const PLAYER_GAP = 1; // room left between a bumper and the player
+const PLAYER_HALF = 1.4; // how far either side of a car's centreline counts as in its path
+const HONK_EVERY = 3500; // ms between honks
 
 type Car = {
   model: CarModel;
@@ -38,7 +43,7 @@ type Car = {
   rnd: () => number;
 };
 
-export function Cars({ count: wanted, grid, handle }: { count: number; grid: CityGrid; handle: string }) {
+export function Cars({ count: wanted, grid, handle, player = false }: { count: number; grid: CityGrid; handle: string; player?: boolean }) {
   const { K, pitchX, pitchZ, road } = grid;
   // no more cars than the lanes hold with room to move: about one per 12 m of lane
   const nodes = 2 * K + 2;
@@ -173,9 +178,14 @@ export function Cars({ count: wanted, grid, handle }: { count: number; grid: Cit
   // Hidden for the first frames so the one-shot baked contact shadow under the city doesn't capture parked cars.
   const group = useRef<THREE.Group>(null);
   const frames = useRef(0);
+  const lastHonk = useRef(0);
   useFrame((_, delta) => {
     if (group.current && !group.current.visible && ++frames.current > 2) group.current.visible = true;
     const dt = Math.min(delta, 0.1);
+    const st = player ? useWorld.getState() : null;
+    const me = st?.playerPos ?? null;
+    const onTrip = !!st?.trip;
+    let honk = false;
     // car following: on a straight, the nearest car ahead heading for the same node in the same lane
     for (const c of cars) {
       let target = c.cruise;
@@ -189,7 +199,22 @@ export function Cars({ count: wanted, grid, handle }: { count: number; grid: Cit
         if (gap < GAP) target = 0;
         else if (gap < GAP + 8) target = Math.min(target, ((gap - GAP) / 8) * c.cruise);
       }
+      if (me) {
+        // the player in front of the bumper and within the car's width: ease off, then stop short of them
+        const fx = Math.sin(c.rot), fz = Math.cos(c.rot);
+        const rx = me.x - c.x, rz = me.z - c.z;
+        const ahead = rx * fx + rz * fz, side = Math.abs(rx * fz - rz * fx);
+        const gap = ahead - c.len / 2 - PLAYER_GAP;
+        if (ahead > 0 && side < PLAYER_HALF && gap < 10) {
+          target = gap < 0.5 ? 0 : Math.min(target, (gap / 10) * c.cruise);
+          if (gap < 6) honk = true;
+        }
+      }
       c.speed += (target - c.speed) * Math.min(1, dt * 4);
+    }
+    if (honk && !onTrip && performance.now() - lastHonk.current > HONK_EVERY) {
+      lastHonk.current = performance.now();
+      playHorn();
     }
     for (const c of cars) {
       let step = c.speed * dt;
@@ -231,4 +256,37 @@ export function Cars({ count: wanted, grid, handle }: { count: number; grid: Cit
       ))}
     </group>
   );
+}
+
+// A short two-tone car horn, synthesised so there is no audio file to load. Browsers only allow sound after the
+// player has interacted with the page, which they have by the time they walk into the road.
+let hornCtx: AudioContext | null = null;
+function playHorn() {
+  try {
+    const AC = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AC) return;
+    hornCtx ??= new AC();
+    const c = hornCtx;
+    if (c.state === 'suspended') void c.resume();
+    const t = c.currentTime;
+    const g = c.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.12, t + 0.02);
+    g.gain.setValueAtTime(0.12, t + 0.32);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.42);
+    const lp = c.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 1800;
+    g.connect(lp).connect(c.destination);
+    for (const f of [349, 440]) {
+      const o = c.createOscillator();
+      o.type = 'square';
+      o.frequency.value = f;
+      o.connect(g);
+      o.start(t);
+      o.stop(t + 0.45);
+    }
+  } catch {
+    // no audio: the brake is enough
+  }
 }

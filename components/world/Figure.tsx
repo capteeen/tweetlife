@@ -117,6 +117,8 @@ export function Figure({ seed, look: chosen, speedRef, label, labelColor = '#FFF
   const move = useRef<{ act: FigureAct | HomePose | null; key: string; t: number; w: number }>({ act: null, key: '', t: 0, w: 0 });
   const eyes = useRef<(THREE.Group | null)[]>([null, null]);
   const blink = useRef(2 + (hashString(seed) % 30) / 10);
+  const root = useRef<THREE.Group>(null);
+  const lod = useRef({ level: -1, tick: 0 });
 
   // Rekt (a rug just popped): shoulders roll forward and the head drops, on top of whatever pose is playing.
   // `layered`: a pose was set this frame, so lean at least this far; otherwise the slump owns the lean.
@@ -129,7 +131,8 @@ export function Figure({ seed, look: chosen, speedRef, label, labelColor = '#FFF
     if (rArm.current) rArm.current.rotation.x -= 0.3 * k;
   };
 
-  useFrame((_, dt) => {
+  useFrame(({ camera }, dt) => {
+    if (root.current) applyLod(root.current, camera, lod.current);
     const target = alwaysWalk ? 1 : speedRef?.current ?? 0;
     cur.current += (target - cur.current) * Math.min(1, dt * 8);
     const s = cur.current;
@@ -206,27 +209,27 @@ export function Figure({ seed, look: chosen, speedRef, label, labelColor = '#FFF
   const armR = fem ? 0.9 : 1;
 
   return (
-    <group scale={[1, 1, 1]}>
+    <group ref={root}>
       <group ref={body}>
         {/* legs: pivot at hip, bend at knee */}
         {[-1, 1].map((side) => (
           <group key={side} ref={side < 0 ? lLeg : rLeg} position={[side * 0.085 * W, hipY, 0]}>
-            <mesh position={[0, -thigh * 0.5, 0]} geometry={capsule(0.075 * W, thigh - 0.1)} castShadow>
+            <mesh position={[0, -thigh * 0.5, 0]} geometry={capsule(0.075 * W, thigh - 0.1)} castShadow userData={MID_SHADOW}>
               {mat(thighColor)}
             </mesh>
 
             <group ref={side < 0 ? lKnee : rKnee} position={[0, -thigh, 0]}>
-              <mesh position={[0, -shin * 0.47, 0]} geometry={capsule((look.bottom === 'pants' ? 0.058 : 0.052) * W, shin - 0.1)} castShadow>
+              <mesh position={[0, -shin * 0.47, 0]} geometry={capsule((look.bottom === 'pants' ? 0.058 : 0.052) * W, shin - 0.1)} castShadow userData={MID_SHADOW}>
                 {mat(shinColor)}
               </mesh>
-              <mesh position={[0, -shin + 0.045, 0.045]} scale={[0.062 * W, 0.05, 0.13]} geometry={ball()} castShadow>
+              <mesh position={[0, -shin + 0.045, 0.045]} scale={[0.062 * W, 0.05, 0.13]} geometry={ball()} castShadow userData={MID}>
                 {mat(look.shoes, 0.55)}
               </mesh>
             </group>
           </group>
         ))}
         {/* pelvis */}
-        <mesh position={[0, hipY + 0.03, 0]} scale={[(fem ? 0.168 : 0.155) * W, 0.11, 0.098]} geometry={ball()} castShadow>
+        <mesh position={[0, hipY + 0.03, 0]} scale={[(fem ? 0.168 : 0.155) * W, 0.11, 0.098]} geometry={ball()} castShadow userData={MID_SHADOW}>
           {mat(look.pants)}
         </mesh>
         {look.bottom === 'skirt' && (
@@ -237,38 +240,38 @@ export function Figure({ seed, look: chosen, speedRef, label, labelColor = '#FFF
         <group ref={chest} position={[0, hipY, 0]}>
           {/* torso: a lathed body, flattened front to back */}
           <group scale={[W, torsoH, 0.62]}>
-            <mesh geometry={torso(look.body, 0, 1)} castShadow>
+            <mesh geometry={torso(look.body, 0, 1)} castShadow userData={MID_SHADOW}>
               {mat(look.shirt)}
             </mesh>
             {look.pattern === 'stripes' &&
               [0.2, 0.45, 0.7].map((f) => (
-                <mesh key={f} geometry={torso(look.body, f, f + 0.08, 1.02)}>
+                <mesh key={f} geometry={torso(look.body, f, f + 0.08, 1.02)} userData={NEAR}>
                   {mat(look.shirtAlt)}
                 </mesh>
               ))}
             {look.pattern === 'yoke' && (
-              <mesh geometry={torso(look.body, 0.74, 0.985, 1.02)}>
+              <mesh geometry={torso(look.body, 0.74, 0.985, 1.02)} userData={NEAR}>
                 {mat(look.shirtAlt)}
               </mesh>
             )}
           </group>
           {fem &&
             [-1, 1].map((side) => (
-              <mesh key={side} position={[side * 0.062 * W, torsoH * 0.64, 0.05]} scale={[0.062 * W, 0.055, 0.05]} geometry={ball()}>
+              <mesh key={side} position={[side * 0.062 * W, torsoH * 0.64, 0.05]} scale={[0.062 * W, 0.055, 0.05]} geometry={ball()} userData={NEAR}>
                 {mat(look.shirt)}
               </mesh>
             ))}
           {/* arms: pivot at shoulder, bend at elbow */}
           {[-1, 1].map((side) => (
             <group key={side} ref={side < 0 ? lArm : rArm} position={[side * shoulderX, torsoH - 0.07, 0]} scale={[armR, 1, armR]}>
-              <mesh position={[side * -0.012, -0.01, 0]} scale={[0.06, 0.058, 0.062]} geometry={smallBall()}>
+              <mesh position={[side * -0.012, -0.01, 0]} scale={[0.06, 0.058, 0.062]} geometry={smallBall()} userData={NEAR}>
                 {mat(look.shirt)}
               </mesh>
               <mesh position={[0, -0.14, 0]} geometry={capsule(0.05, 0.2)} castShadow>
                 {mat(sleeve)}
               </mesh>
               {look.sleeves === 'short' && (
-                <mesh position={[0, -0.06, 0]} geometry={capsule(0.058, 0.08)}>
+                <mesh position={[0, -0.06, 0]} geometry={capsule(0.058, 0.08)} userData={NEAR}>
                   {mat(look.shirt)}
                 </mesh>
               )}
@@ -276,7 +279,7 @@ export function Figure({ seed, look: chosen, speedRef, label, labelColor = '#FFF
                 <mesh position={[0, -0.12, 0]} geometry={capsule(0.042, 0.19)} castShadow>
                   {mat(sleeve)}
                 </mesh>
-                <mesh position={[0, -0.28, 0.005]} scale={[0.035, 0.06, 0.045]} geometry={smallBall()}>
+                <mesh position={[0, -0.28, 0.005]} scale={[0.035, 0.06, 0.045]} geometry={smallBall()} userData={NEAR}>
                   {skin()}
                 </mesh>
                 {side > 0 && actRef && (
@@ -288,13 +291,15 @@ export function Figure({ seed, look: chosen, speedRef, label, labelColor = '#FFF
             </group>
           ))}
           {/* neck + head */}
-          <mesh position={[0, torsoH + 0.02, 0]} geometry={capsule(0.054, 0.05)}>
+          <mesh position={[0, torsoH + 0.02, 0]} geometry={capsule(0.054, 0.05)} userData={MID}>
             {skin()}
           </mesh>
           <group ref={head} position={[0, torsoH + 0.2, 0]}>
-            <mesh scale={[1, 1, 1.1]} geometry={headGeo()} castShadow>
+            <mesh scale={[1, 1, 1.1]} geometry={headGeo()} castShadow userData={MID_SHADOW}>
               {skin()}
             </mesh>
+            {/* the face: ears, eyes, brows, nose and mouth, drawn only up close */}
+            <group userData={NEAR}>
             {/* ears */}
             {[-1, 1].map((side) => (
               <mesh key={side} position={[side * 0.11, -0.005, -0.005]} scale={[0.018, 0.035, 0.024]} geometry={smallBall()}>
@@ -336,6 +341,7 @@ export function Figure({ seed, look: chosen, speedRef, label, labelColor = '#FFF
             <mesh position={[0, -0.07, 0.094]} scale={fem ? [0.023, 0.009, 0.01] : [0.024, 0.007, 0.008]} geometry={smallBall()}>
               {mat(lip, 0.5)}
             </mesh>
+            </group>
             <Hair look={look} dim={dim} />
           </group>
         </group>
@@ -354,6 +360,35 @@ export function Figure({ seed, look: chosen, speedRef, label, labelColor = '#FFF
 
 const smoothW = (w: number) => w * w * (3 - 2 * w);
 
+// Level of detail. A figure is ~40 meshes up close, which is a lot of draw calls once a city has dozens of people in view.
+// Beyond NEAR_D the face, hands and small hair pieces are hidden and only the body, legs and head cast shadows;
+// beyond MID_D the shoes and neck go too and nothing casts a shadow. Meshes say how far they stay drawn with `userData`.
+const NEAR = { lod: 0 }; // drawn up close only
+const MID = { lod: 1 }; // drawn up close and at middle distance
+const MID_SHADOW = { lod: 2, shadow: 1 }; // always drawn, casts a shadow up to middle distance
+const NEAR_D = 22, MID_D = 55, HYST = 3;
+const castsShadow = new WeakMap<THREE.Object3D, boolean>();
+const tmpPos = new THREE.Vector3();
+function applyLod(root: THREE.Object3D, camera: THREE.Camera, st: { level: number; tick: number }) {
+  const d = root.getWorldPosition(tmpPos).distanceTo(camera.position);
+  let level = st.level < 0 ? (d < NEAR_D ? 0 : d < MID_D ? 1 : 2) : st.level;
+  if (level === 0 && d > NEAR_D + HYST) level = 1;
+  if (level === 1 && d < NEAR_D - HYST) level = 0;
+  if (level === 1 && d > MID_D + HYST) level = 2;
+  if (level === 2 && d < MID_D - HYST) level = 1;
+  // re-apply now and then too, so meshes added by a look change pick up the current level
+  if (level === st.level && ++st.tick < 30) return;
+  st.level = level;
+  st.tick = 0;
+  root.traverse((o) => {
+    const u = o.userData as { lod?: number; shadow?: number };
+    if (u.lod != null) o.visible = level <= u.lod;
+    if (!(o as THREE.Mesh).isMesh) return;
+    if (!castsShadow.has(o)) castsShadow.set(o, o.castShadow);
+    o.castShadow = castsShadow.get(o)! && level <= (u.shadow ?? 0);
+  });
+}
+
 // Locs hang around the sides and back: [angle around the head (0 = front), length].
 const LOCS: [number, number][] = [-2.9, -2.5, -2.1, -1.7, -1.35, 1.35, 1.7, 2.1, 2.5, 2.9, Math.PI].map((a, i) => [a, 0.16 + (i % 3) * 0.03]);
 
@@ -365,7 +400,7 @@ function Hair({ look, dim }: { look: Look; dim: boolean }) {
       <mesh position={[0, 0.004, -0.004]} geometry={headShell(0.06, 1.07)}>
         {m(color)}
       </mesh>
-      <mesh position={[0, 0.004, -0.004]} geometry={headShell(-0.05, 1.06, true)}>
+      <mesh position={[0, 0.004, -0.004]} geometry={headShell(-0.05, 1.06, true)} userData={NEAR}>
         {m(color)}
       </mesh>
     </group>
@@ -379,14 +414,14 @@ function Hair({ look, dim }: { look: Look; dim: boolean }) {
       return (
         <group rotation={[-0.2, 0, 0]} scale={[1, 1, 1.1]}>
           <mesh geometry={headShell(0.07, 1.025)}>{m(look.hair)}</mesh>
-          <mesh geometry={headShell(-0.04, 1.02, true)}>{m(look.hair)}</mesh>
+          <mesh geometry={headShell(-0.04, 1.02, true)} userData={NEAR}>{m(look.hair)}</mesh>
         </group>
       );
     case 'ponytail':
       return (
         <>
           {crop()}
-          <mesh position={[0, 0.085, -0.125]} scale={0.035} geometry={ball()}>
+          <mesh position={[0, 0.085, -0.125]} scale={0.035} geometry={ball()} userData={NEAR}>
             {m(look.hair)}
           </mesh>
           <mesh position={[0, -0.02, -0.15]} rotation={[0.35, 0, 0]} geometry={capsule(0.034, 0.17)}>
@@ -399,7 +434,7 @@ function Hair({ look, dim }: { look: Look; dim: boolean }) {
         <>
           {crop()}
           {LOCS.map(([a, len], i) => (
-            <mesh key={i} position={[Math.sin(a) * 0.112, -0.045 - len * 0.5, Math.cos(a) * 0.108 - 0.012]} rotation={[Math.cos(a) * 0.12, 0, -Math.sin(a) * 0.08]} geometry={capsule(0.019, len)}>
+            <mesh key={i} position={[Math.sin(a) * 0.112, -0.045 - len * 0.5, Math.cos(a) * 0.108 - 0.012]} rotation={[Math.cos(a) * 0.12, 0, -Math.sin(a) * 0.08]} geometry={capsule(0.019, len)} userData={NEAR}>
               {m(look.hair)}
             </mesh>
           ))}
@@ -434,7 +469,7 @@ function Hair({ look, dim }: { look: Look; dim: boolean }) {
             </mesh>
           ) : (
             [-1, 1].map((side) => (
-              <mesh key={side} position={[side * 0.1, -0.15, -0.035]} rotation={[0.15, 0, side * 0.05]} geometry={capsule(0.028, 0.26)}>
+              <mesh key={side} position={[side * 0.1, -0.15, -0.035]} rotation={[0.15, 0, side * 0.05]} geometry={capsule(0.028, 0.26)} userData={MID}>
                 {m(look.hair)}
               </mesh>
             ))

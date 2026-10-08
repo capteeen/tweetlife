@@ -1,19 +1,28 @@
 'use client';
 
-// The music in the club and the lounge, synthesised in the browser (no audio files). A small look-ahead
-// scheduler plays a drum pattern, a log-drum bass line and chord stabs. Volume follows how close you are,
-// and from outside the walls it is muffled. It plays through the shared engine's music bus (lib/audio).
+// The music in the clubs and the lounge, synthesised in the browser (no audio files). A small look-ahead
+// scheduler plays each venue's pattern: amapiano at Club Moon, afrobeats at Afro Yard, techno at Warehouse 404,
+// a jazz trio at the Velvet Room, tropical house at the beach club, slow jams in the lounge. Volume follows how
+// close you are, and from outside the walls it is muffled. It plays through the shared engine's music bus (lib/audio).
 // `beat()` gives the visuals (dance floor, lights) the same clock, music on or off.
 
 import { audioRaw } from '@/lib/audio/engine';
 
-export type Style = 'club' | 'lounge';
+export type Style = 'club' | 'lounge' | 'afro' | 'techno' | 'jazz' | 'beach';
 
 const STYLES: Record<Style, { bpm: number; root: number; chords: number[][] }> = {
   // amapiano-ish: 112 bpm, log drum on the off-beats, shakers, airy chords
   club: { bpm: 112, root: 45, chords: [[0, 3, 7, 10], [-4, 0, 3, 7], [-2, 2, 5, 9], [-5, -1, 2, 5]] },
   // slow jams for the lounge
   lounge: { bpm: 84, root: 50, chords: [[0, 4, 7, 11], [-3, 0, 4, 7], [2, 5, 9, 12], [-5, -1, 2, 5]] },
+  // afrobeats: 104 bpm, syncopated kick, rim on 2 and 4, congas, a highlife guitar line
+  afro: { bpm: 104, root: 52, chords: [[0, 4, 7], [5, 9, 12], [7, 11, 14], [5, 9, 12]] },
+  // techno: 128 bpm, four on the floor, open hats on the off-beat, a rolling bass and an acid line
+  techno: { bpm: 128, root: 41, chords: [[0, 3, 7], [0, 3, 7], [-2, 2, 5], [-4, 0, 3]] },
+  // jazz: swung, ride cymbal, walking bass, comping piano (ii-V-I-vi)
+  jazz: { bpm: 112, root: 48, chords: [[2, 5, 9, 12], [7, 11, 14, 17], [0, 4, 7, 11], [9, 12, 16, 19]] },
+  // tropical house: 118 bpm, marimba plucks, soft pads
+  beach: { bpm: 118, root: 53, chords: [[0, 4, 7, 11], [-3, 0, 4, 7], [-7, -3, 0, 4], [-5, -1, 2, 5]] },
 };
 
 let ctx: AudioContext | null = null;
@@ -111,6 +120,19 @@ function chord(t: number, notes: number[], len: number, level: number, bright: b
   }
 }
 
+/** One plucked or blown note. */
+function note(t: number, midi: number, len: number, level: number, type: OscillatorType, cutoff = 3000) {
+  const c = ctx!, o = c.createOscillator(), f = c.createBiquadFilter(), g = c.createGain();
+  o.type = type;
+  o.frequency.value = hz(midi);
+  f.type = 'lowpass';
+  f.frequency.value = cutoff;
+  env(g, t, level, 0.005, len);
+  o.connect(f).connect(g).connect(master!);
+  o.start(t);
+  o.stop(t + len + 0.05);
+}
+
 function playStep(step: number, t: number) {
   const st = STYLES[style];
   const bar = Math.floor(step / 16) % 4;
@@ -123,6 +145,33 @@ function playStep(step: number, t: number) {
     if ([3, 6, 10, 11, 14].includes(s16)) logDrum(t, st.root + (s16 === 11 ? ch[1] : ch[0]) - 12, 0.45);
     if (s16 === 0) chord(t, ch.map((n) => st.root + 12 + n), 1.6, 0.06, false);
     if (s16 === 7 || s16 === 15) chord(t, ch.map((n) => st.root + 24 + n), 0.18, 0.03, true);
+  } else if (style === 'afro') {
+    if (s16 === 0 || s16 === 7 || s16 === 10) kick(t, 0.8);
+    if (s16 === 4 || s16 === 12) hiss(t, 0.18, 0.06, 3500); // rim
+    if (s16 % 2 === 0) hiss(t, s16 % 4 === 2 ? 0.07 : 0.04, 0.04, 7500); // shaker
+    if ([3, 6, 11, 14].includes(s16)) logDrum(t, st.root + 12 + (s16 === 14 ? 7 : 0), 0.18); // congas
+    if (s16 % 2 === 1) note(t, st.root + 24 + ch[(s16 >> 1) % ch.length], 0.16, 0.05, 'triangle', 2600); // guitar
+    if (s16 === 0 || s16 === 8) note(t, st.root - 12 + ch[0], 0.5, 0.25, 'sine', 400);
+  } else if (style === 'techno') {
+    if (s16 % 4 === 0) kick(t, 1);
+    if (s16 % 4 === 2) hiss(t, 0.1, 0.12, 6000); // open hat
+    if (s16 === 4 || s16 === 12) hiss(t, 0.2, 0.12, 1500); // clap
+    if (s16 % 4 !== 0) note(t, st.root + ch[0] - 12, 0.12, 0.16, 'sawtooth', 320); // rolling bass
+    if ([0, 3, 6, 8, 11, 14].includes(s16)) note(t, st.root + 24 + ch[[0, 2, 1, 0, 2, 1][[0, 3, 6, 8, 11, 14].indexOf(s16)]], 0.1, 0.04, 'sawtooth', 900 + 700 * Math.sin(step / 9)); // acid
+  } else if (style === 'jazz') {
+    // swing: the second eighth of each beat lands late (step 3 of 4)
+    if (s16 % 4 === 0 || s16 % 8 === 7) hiss(t, s16 % 8 === 7 ? 0.05 : 0.07, 0.25, 6500); // ride
+    if (s16 === 4 || s16 === 12) hiss(t, 0.06, 0.18, 2500); // brushes on 2 and 4
+    if (s16 % 4 === 0) note(t, st.root - 12 + ch[(s16 >> 2) % ch.length], 0.38, 0.2, 'triangle', 700); // walking bass
+    if (s16 === 3 || s16 === 10) chord(t, ch.map((n) => st.root + 12 + n), 0.35, 0.045, false); // piano comp
+    if (s16 === 7 && bar % 2) note(t, st.root + 24 + ch[2], 0.4, 0.035, 'sine'); // a little melody
+  } else if (style === 'beach') {
+    if (s16 % 4 === 0) kick(t, 0.75);
+    if (s16 % 4 === 2) hiss(t, 0.07, 0.06, 8000);
+    if (s16 === 4 || s16 === 12) hiss(t, 0.12, 0.1, 2200);
+    if ([0, 3, 6, 10, 13].includes(s16)) note(t, st.root + 12 + ch[[0, 2, 1, 3, 2][[0, 3, 6, 10, 13].indexOf(s16)]], 0.22, 0.09, 'sine'); // marimba
+    if (s16 === 0) chord(t, ch.map((n) => st.root + n), 1.8, 0.04, false);
+    if (s16 === 0 || s16 === 10) note(t, st.root - 12 + ch[0], 0.35, 0.22, 'sine', 300);
   } else {
     if (s16 === 0 || s16 === 10) kick(t, 0.55);
     if (s16 === 4 || s16 === 12) hiss(t, 0.12, 0.2, 2500);

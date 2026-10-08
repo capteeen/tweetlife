@@ -1,12 +1,12 @@
 'use client';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useWorld } from '@/components/world/store';
 import { lifeActions, type SocialSend } from './useLife';
 import { TravelPicker } from './TravelPicker';
 import { CoinCounter } from './CoinCounter';
 import { Departures } from './Departures';
 import { airportLayout, inRect } from '@/lib/world/layout';
-import type { PlacedVenue } from '@/lib/life/venues';
+import { placeVenues, type PlacedVenue } from '@/lib/life/venues';
 import { statDelta } from '@/lib/life/statNames';
 import { SHIFTS_PER_DAY, SHIFT_COST, SHIFT_SECONDS, jobsAt, levelOf, wageFor, type Job } from '@/lib/life/jobs';
 import { jobActions } from './jobs';
@@ -14,6 +14,8 @@ import { citizenOf, curfew, governmentOf, pct, todaysAddress } from '@/lib/life/
 import { COUNTRIES } from '@/lib/world/countries';
 import { useCountry } from '@/components/world/country';
 import { SuggestionBox } from './SuggestionBox';
+import { isClub } from '@/lib/world/interiors';
+import { useClubHeadcounts, vibeOf } from '@/components/world/headcount';
 
 /** Where a ride drops you for a venue: on its plaza, in front of the door (the terminal kerb for the airport). */
 export function venueDoor(v: PlacedVenue, contentRadius: number, boundaryRadius: number) {
@@ -112,6 +114,7 @@ export function VenueCard({ sendSocial }: { sendSocial: SocialSend }) {
           ✕
         </button>
       </div>
+      {isClub(venue.id) && <ClubPulse id={venue.id} capacity={venue.capacity} />}
       <div className="mt-3">
         <div className="text-xs text-white/55">Here now</div>
         <div className="mt-1.5 flex flex-wrap gap-1.5">
@@ -262,6 +265,27 @@ function Government({ country, closed }: { country: ReturnType<typeof useCountry
       <div className="mt-3 border-t border-white/10 pt-3">
         <SuggestionBox country={country} compact />
       </div>
+    </div>
+  );
+}
+
+/** A club's live headcount on its sheet: how busy it is, against what it is built for. */
+function ClubPulse({ id, capacity }: { id: string; capacity?: number }) {
+  const g = useWorld((s) => s.model?.geometry);
+  const country = useWorld((s) => s.country);
+  const venues = useMemo(() => (g ? placeVenues(g.contentRadius, g.boundaryRadius, country) : null), [g, country]);
+  const counts = useClubHeadcounts(venues, g?.contentRadius ?? null);
+  const c = counts[id];
+  if (!c) return null;
+  const v = vibeOf(c.total, capacity);
+  return (
+    <div className="mt-3 flex items-center gap-2 rounded-2xl bg-white/5 px-3 py-2 text-sm">
+      <span className="text-lg leading-none">{v.emoji}</span>
+      <span className="font-semibold">{v.label}</span>
+      <span className="text-white/60">
+        · {c.total} inside{c.residents ? ` (${c.residents} regular${c.residents === 1 ? '' : 's'})` : ''}
+        {capacity ? ` · fits ${capacity}` : ''}
+      </span>
     </div>
   );
 }

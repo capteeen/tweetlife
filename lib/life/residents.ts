@@ -141,7 +141,7 @@ const REGULARS: Resident[] = [
       { venue: 'exchange', doing: 'counter', seconds: 90 },
       { venue: 'bank', doing: 'hangout', seconds: 25 },
       { venue: 'bar', doing: 'stool', seconds: 40 },
-      { venue: 'exchange', doing: 'selfie', seconds: 25 },
+      { venue: 'warehouse', doing: 'dance', seconds: 40 },
     ],
     canned: [
       'gm ser. Chart looking spicy today. Not advice, I\'ve been rugged six times this week.',
@@ -160,7 +160,7 @@ const REGULARS: Resident[] = [
     look: L({ body: 'female', skin: '#A66E4B', eyes: 'almond', hairStyle: 'long', hair: '#7A5230', shirt: '#FF5D8F', shirtAlt: '#FFFFFF', bottom: 'skirt', pants: '#FFFFFF', shoes: '#FFFFFF', height: 1.0, build: 0.92, top: 'crop', eyewear: 'shades', shoeStyle: 'heels' }),
     route: [
       { venue: 'club', doing: 'selfie', seconds: 45 },
-      { venue: 'barber', doing: 'hangout', seconds: 25 },
+      { venue: 'beach', doing: 'selfie', seconds: 35 },
       { venue: 'exchange', doing: 'selfie', seconds: 25 },
       { venue: 'club', doing: 'dance', seconds: 50 },
     ],
@@ -183,7 +183,7 @@ const REGULARS: Resident[] = [
       { venue: 'hustle', doing: 'hangout', seconds: 70 },
       { venue: 'suya', doing: 'hangout', seconds: 30 },
       { venue: 'gym', doing: 'pushups', seconds: 30 },
-      { venue: 'dealership', doing: 'hangout', seconds: 25 },
+      { venue: 'beach', doing: 'dance', seconds: 30 },
     ],
     canned: [
       'Bros, one more shift and I\'m buying that keke. Hustle no dey sleep.',
@@ -203,7 +203,7 @@ const REGULARS: Resident[] = [
     route: [
       { venue: 'bar', doing: 'booth', seconds: 90 },
       { venue: 'bank', doing: 'hangout', seconds: 30 },
-      { venue: 'barber', doing: 'hangout', seconds: 30 },
+      { venue: 'jazz', doing: 'dance', seconds: 45 },
       { venue: 'bar', doing: 'stool', seconds: 50 },
     ],
     canned: [
@@ -225,7 +225,7 @@ const REGULARS: Resident[] = [
       { venue: 'exchange', doing: 'counter', seconds: 40 },
       { venue: 'gym', doing: 'treadmill', seconds: 40 },
       { venue: 'bar', doing: 'stool', seconds: 50 },
-      { venue: 'suya', doing: 'hangout', seconds: 25 },
+      { venue: 'warehouse', doing: 'dance', seconds: 35 },
     ],
     canned: [
       'lol you walked in here like a bug report. What\'s up?',
@@ -244,7 +244,7 @@ const REGULARS: Resident[] = [
     look: L({ body: 'male', skin: '#8D5A3C', hairStyle: 'locs', hair: '#2B1B12', shirt: '#FFBE0B', shirtAlt: '#0B0E14', pattern: 'solid', pants: '#6B4EFF', shoes: '#0B0E14', height: 1.03, build: 0.95, top: 'jersey', bottom: 'joggers', hat: 'beanie', accent: '#0B0E14', extras: ['chain'] }),
     route: [
       { venue: 'club', doing: 'dance', seconds: 80 },
-      { venue: 'bar', doing: 'dance', seconds: 40 },
+      { venue: 'yard', doing: 'dance', seconds: 45 },
       { venue: 'suya', doing: 'hangout', seconds: 20 },
     ],
     canned: [
@@ -264,7 +264,7 @@ const REGULARS: Resident[] = [
     look: L({ body: 'female', skin: '#6F4530', hairStyle: 'bun', hair: '#1A120D', shirt: '#E9EDC9', shirtAlt: '#BFE3FF', pattern: 'yoke', sleeves: 'short', bottom: 'pants', pants: '#1B4332', shoes: '#FFFFFF', height: 0.97, build: 1.0, extras: ['watch'] }),
     route: [
       { venue: 'clinic', doing: 'hangout', seconds: 70 },
-      { venue: 'suya', doing: 'hangout', seconds: 25 },
+      { venue: 'yard', doing: 'dance', seconds: 30 },
       { venue: 'bar', doing: 'booth', seconds: 40 },
       { venue: 'club', doing: 'dance', seconds: 30 },
     ],

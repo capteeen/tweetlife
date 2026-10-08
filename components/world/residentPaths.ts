@@ -23,18 +23,56 @@ const STOOLS = [-2.4, -1.2, 0, 1.2, 2.4];
 const BOOTHS: [number, number][] = [[1, 0.7], [-1, 0.7], [1, 2.1], [-1, 2.1]];
 
 const SPOTS: Record<string, Partial<Record<ResidentDoing, Spot[]>>> = {
+  // Club Moon: the LED floor is 10 tiles across around (0, -1.6); selfies by the bar
   club: {
     dance: [
-      { x: -2.6, z: 2.4, rot: 0.6, act: 'dance' },
-      { x: 2.4, z: -1.4, rot: -2.2, act: 'dance' },
-      { x: 1.0, z: 2.8, rot: -0.4, act: 'dance' },
-      { x: -0.9, z: 1.0, rot: 2.6, act: 'dance' },
-      { x: 2.7, z: 2.0, rot: -1.0, act: 'dance' },
-      { x: -2.7, z: -1.5, rot: 1.9, act: 'dance' },
+      { x: -3.8, z: 1.6, rot: 0.6, act: 'dance' },
+      { x: 3.6, z: -4.4, rot: -2.2, act: 'dance' },
+      { x: 1.4, z: 2.4, rot: -0.4, act: 'dance' },
+      { x: -1.2, z: -2.0, rot: 2.6, act: 'dance' },
+      { x: 4.0, z: 1.2, rot: -1.0, act: 'dance' },
+      { x: -4.0, z: -5.0, rot: 1.9, act: 'dance' },
+      { x: 0.8, z: -6.0, rot: 3.0, act: 'dance' },
+      { x: -2.6, z: 3.6, rot: 0.2, act: 'dance' },
     ],
     selfie: [
-      { x: 5.2, z: 2.6, rot: -Math.PI / 2, act: 'selfie' },
-      { x: 5.0, z: -1.2, rot: -Math.PI / 2, act: 'selfie' },
+      { x: -10.4, z: 3.4, rot: Math.PI / 2, act: 'selfie' },
+      { x: 7.4, z: -2.0, rot: -Math.PI / 2, act: 'selfie' },
+    ],
+  },
+  // Afro Yard: the round floor around (-1, 0)
+  yard: {
+    dance: [
+      { x: -3.4, z: 1.8, rot: 0.9, act: 'dance' },
+      { x: 1.4, z: 2.2, rot: -0.7, act: 'dance' },
+      { x: -2.2, z: -2.4, rot: 2.4, act: 'dance' },
+      { x: 2.0, z: -1.0, rot: -2.0, act: 'dance' },
+    ],
+    selfie: [{ x: -8.6, z: 2.4, rot: Math.PI / 2, act: 'selfie' }],
+  },
+  warehouse: {
+    dance: [
+      { x: -2.6, z: -0.6, rot: 0.2, act: 'dance' },
+      { x: 2.8, z: 0.4, rot: -0.3, act: 'dance' },
+      { x: -0.8, z: 3.4, rot: 3.0, act: 'dance' },
+      { x: 2.2, z: -3.2, rot: -2.8, act: 'dance' },
+    ],
+  },
+  jazz: {
+    dance: [
+      { x: -2.6, z: 2.2, rot: 0.8, act: 'dance' },
+      { x: 3.4, z: -2.4, rot: -2.2, act: 'dance' },
+    ],
+  },
+  beach: {
+    dance: [
+      { x: -5.4, z: -1.4, rot: 0.6, act: 'dance' },
+      { x: -2.0, z: -1.2, rot: -0.6, act: 'dance' },
+      { x: -3.6, z: -4.2, rot: 2.8, act: 'dance' },
+    ],
+    selfie: [
+      { x: 2.2, z: 1.6, rot: 0, act: 'selfie' },
+      { x: -6.0, z: 4.8, rot: 0.5, act: 'selfie' },
     ],
   },
   bar: {

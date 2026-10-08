@@ -9,7 +9,7 @@ import { terrainOf, groundAt, venueFloorAt, toVenueFrame, taxiLinks, HANGAR_FLOO
 import { airportSpots, arrivalStand, footprint, privateStand, PLANE_SIZE } from '../lib/world/aircraft';
 import { placementSite, placementConflict, zoneAt, type Site } from '../lib/world/placement';
 import { cityTrees, palmSpots, streetFurniture, PROP_R, TREE_R } from '../lib/world/scatter';
-import { DANCE_FLOOR, FLOOR_Y, WALK_IN } from '../lib/world/interiors';
+import { DANCE_FLOOR, WALK_IN, walkInFloorAt } from '../lib/world/interiors';
 import { TERMINAL_FLOOR } from '../lib/world/terminal';
 import { RING_ROAD_W, billboardSpots, inRect } from '../lib/world/layout';
 import { RESIDENTS } from '../lib/life/residents';
@@ -157,8 +157,7 @@ function check(c: Case, prebuilt?: WorldGeometry) {
       for (let lz = -k.d / 2 + 0.6; lz < k.d / 2 - 0.6; lz += 0.5) {
         const c0 = Math.cos(v.rot), s0 = Math.sin(v.rot);
         const x = v.x + lx * c0 + lz * s0, z = v.z - lx * s0 + lz * c0;
-        const onDance = v.id === 'club' && Math.abs(lx - DANCE_FLOOR.x) < DANCE_FLOOR.size / 2 && Math.abs(lz - DANCE_FLOOR.z) < DANCE_FLOOR.size / 2;
-        const want = onDance ? DANCE_FLOOR.top : FLOOR_Y;
+        const want = walkInFloorAt(v.id, lx, lz);
         const got = groundAt(t, x, z);
         if (Math.abs(got - want) > 1e-6) fail(w, `${v.name} floor at local ${fmt(lx, lz)} gives ${got.toFixed(3)}, floor is ${want.toFixed(3)}`);
       }

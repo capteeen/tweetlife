@@ -17,16 +17,50 @@ export const DISTRICTS: District[] = [
 ];
 /** Slots between districts. New venues that no district names land here, in this order. */
 export const SPARE_SLOTS = [7, 15];
+/**
+ * Billboards stand on the inner side of the ring road between the spare slots and the next district, facing the
+ * traffic, so whatever takes a spare slot keeps a clear view of its door from the city.
+ */
+export const BILLBOARD_SLOTS = [3.5, 7.5, 11.5, 15.5];
 
-export const districtOf = (venueId: string) => DISTRICTS.find((d) => d.venues.includes(venueId)) ?? null;
+/**
+ * The nightlife row: the clubs beyond Club Moon stand on a second ring behind the venue ring, between its slots
+ * (`at` is a fractional slot), each inside a district's angles so it takes that district's name and ground.
+ * Their front walls sit NIGHTLIFE_GAP past the venue ring; the beach club goes right out to the shore.
+ */
+export const NIGHTLIFE_ROW: { venue: string; at: number; district: string }[] = [
+  { venue: 'beach', at: 1.5, district: 'waterfront' },
+  { venue: 'yard', at: 9.5, district: 'strip' },
+  { venue: 'jazz', at: 10.4, district: 'strip' },
+  { venue: 'warehouse', at: 12.5, district: 'trenches' },
+];
+export const NIGHTLIFE_GAP = 22;
+/** The deepest club on the nightlife row (Warehouse 404 and Afro Yard are 18 deep). */
+const NIGHTLIFE_DEPTH = 18;
+export const nightlifeOf = (venueId: string) => NIGHTLIFE_ROW.find((n) => n.venue === venueId) ?? null;
+
+export const districtOf = (venueId: string) => {
+  const row = nightlifeOf(venueId);
+  return DISTRICTS.find((d) => (row ? d.id === row.district : d.venues.includes(venueId))) ?? null;
+};
 export const slotAngle = (slot: number) => (slot / RING_SLOTS) * Math.PI * 2;
 
 export const RING_ROAD_W = 6;
-/** Ring road: just outside the posts, never so tight that the venues round it crowd each other. */
-export const ringRoadRadius = (contentRadius: number) => Math.max(contentRadius + 5, (RING_SLOTS * 17) / (Math.PI * 2) - 11);
 /** Venue ring radius: far enough out that a walk-in venue's front plaza stops at the ring road's curb. */
 export const VENUE_SETBACK = 15;
+/**
+ * The smallest venue ring. The clubs are wide (Club Moon is 30 across), so even a tiny city's ring leaves Club
+ * Moon clear of its neighbours.
+ */
+export const MIN_VENUE_RING = 70;
+/** Ring road: just outside the posts, never so tight that the venues round it crowd each other. */
+export const ringRoadRadius = (contentRadius: number) => Math.max(contentRadius + 5, MIN_VENUE_RING - VENUE_SETBACK);
 export const venueRingRadius = (contentRadius: number) => ringRoadRadius(contentRadius) + VENUE_SETBACK;
+/**
+ * How far past the venue ring the land always reaches: past the back wall of the nightlife row, with a margin
+ * before the shore. Everything grows with contentRadius, so the row moves out with the city.
+ */
+export const VENUE_BACK_MARGIN = NIGHTLIFE_GAP + NIGHTLIFE_DEPTH + 8;
 
 export type Rect = { x: number; z: number; w: number; d: number };
 export const inRect = (r: Rect, x: number, z: number, pad = 0) => Math.abs(x - r.x) <= r.w / 2 + pad && Math.abs(z - r.z) <= r.d / 2 + pad;
@@ -84,15 +118,15 @@ export function onLand(x: number, z: number, contentRadius: number, boundaryRadi
   return inRect(ap.bridge, x, z, -0.8) || inRect(ap.island, x, z, -1);
 }
 
-/** Billboards: in the spare slots on the outside of the ring road, and on the airport road. */
+/** Billboards: between districts on the inner side of the ring road, facing out at the traffic, and on the airport road. */
 export type BillboardSpot = { x: number; z: number; rot: number };
 export function billboardSpots(contentRadius: number, boundaryRadius: number): BillboardSpot[] {
   const rr = ringRoadRadius(contentRadius);
-  const r = rr + RING_ROAD_W / 2 + 4;
-  const out: BillboardSpot[] = SPARE_SLOTS.map((s) => {
+  const r = rr - RING_ROAD_W / 2 - 4.5;
+  const out: BillboardSpot[] = BILLBOARD_SLOTS.map((s) => {
     const a = slotAngle(s);
     const x = Math.cos(a) * r, z = Math.sin(a) * r;
-    return { x, z, rot: Math.atan2(-x, -z) };
+    return { x, z, rot: Math.atan2(x, z) };
   });
   const a = airportLayout(contentRadius, boundaryRadius);
   // one on each side of the airport road, facing traffic

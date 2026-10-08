@@ -84,6 +84,10 @@ const BNB: CityTheme = {
   districts: { waterfront: 'Binance Bay', wellness: 'SAFU Row', strip: 'The Gold Strip', trenches: 'Pancake Quarter' },
   venues: {
     club: { name: 'Club Yellow' },
+    yard: { name: 'Gold Yard' },
+    warehouse: { name: 'Warehouse 4' },
+    jazz: { name: 'Golden Hour Jazz' },
+    beach: { name: 'Binance Bay Beach Club' },
     bar: { name: 'SAFU Lounge' },
     suya: { name: 'Pancake House', emoji: '🥞' },
     gym: { name: 'Build Build Gym' },
@@ -129,6 +133,10 @@ const ROBINHOOD: CityTheme = {
   districts: { waterfront: 'Sherwood Waterfront', wellness: 'Feather Row', strip: 'Market Street', trenches: 'The Options Pit' },
   venues: {
     club: { name: 'Club Sherwood' },
+    yard: { name: 'Greenwood Yard' },
+    warehouse: { name: 'The Vault' },
+    jazz: { name: 'Sherwood Jazz Den', emoji: '🎺' },
+    beach: { name: 'Sherwood Shore Club' },
     bar: { name: 'Merry Men Tavern', emoji: '🍺' },
     suya: { name: "Archer's Grill", emoji: '🍖' },
     gym: { name: 'Green Candle Gym' },

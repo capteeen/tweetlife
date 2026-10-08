@@ -60,7 +60,8 @@ export function CityExtras({ contentRadius, boundaryRadius, blocks, grid, hasCit
   }, [structures, handle, theme]);
   const spots = useMemo(() => billboardSpots(contentRadius, boundaryRadius), [contentRadius, boundaryRadius]);
 
-  const labelR = Math.min(venueRingRadius(contentRadius) + 11, R - 3.5);
+  // district names on the ground behind the venues (past the deepest club's back wall)
+  const labelR = Math.min(venueRingRadius(contentRadius) + 21, R - 3.5);
 
   return (
     <group>

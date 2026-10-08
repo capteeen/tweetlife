@@ -1,4 +1,5 @@
 import { seededFor } from './seed';
+import { VENUE_BACK_MARGIN, venueRingRadius } from './layout';
 
 // Pure world geometry: the account's real posts laid out as a city.
 // Blocks sit on a road grid and fill chronologically from the centre block outward in rings, so
@@ -173,9 +174,10 @@ export function skyFromAccountAge(accountCreatedAt: Date, now = new Date()): { p
 }
 
 export function boundaryRadiusFor(followersCount: number, contentRadius: number) {
-  // followers set the boundary; the city, its ring of venues and the district names always fit inside it.
+  // followers set the boundary; the city, its ring of venues (the clubs are deep) and the district names always
+  // fit inside it.
   const fromFollowers = 60 + Math.log10(1 + followersCount) * 30; // 0 -> 60, 1k -> 150, 1M -> 240
-  return Math.max(contentRadius + 36, fromFollowers);
+  return Math.max(contentRadius + 36, venueRingRadius(contentRadius) + VENUE_BACK_MARGIN, fromFollowers);
 }
 
 export function residentsFor(followersCount: number) {

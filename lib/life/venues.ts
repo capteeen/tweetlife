@@ -1,9 +1,9 @@
 import type { Stats } from './stats';
 import type { ActivityId } from './activities';
-import { WALK_IN } from '@/lib/world/interiors';
+import { WALK_IN, outwardShift } from '@/lib/world/interiors';
 import { COUNTRIES, countryOf } from '@/lib/world/countries';
 import { GOVERNMENTS } from './government';
-import { SPARE_SLOTS, airportLayout, districtOf, slotAngle, venueRingRadius } from '@/lib/world/layout';
+import { NIGHTLIFE_GAP, RING_ROAD_W, SPARE_SLOTS, airportLayout, districtOf, nightlifeOf, ringRoadRadius, slotAngle, venueRingRadius } from '@/lib/world/layout';
 import { districtName, themeOf } from '@/lib/world/cityThemes';
 
 // Venues: the city's services, in districts on a ring just outside the post blocks so they are never
@@ -94,6 +94,43 @@ export const VENUES: Venue[] = [
       { id: 'request', label: 'Request a song from the DJ', emoji: '🎶', bags: 500, me: { vibes: +6, clout: +4 }, nearby: { vibes: +4 }, cooldown: 600, line: 'requested a song 🎶' },
       { id: 'vip', label: 'VIP table with bottle service', emoji: '🍾', bags: 3000, me: { clout: +15, vibes: +10 }, nearby: { vibes: +6 }, cooldown: 1800, line: 'popped bottles in VIP 🍾' },
       { id: 'selfie', label: 'Selfie under the lights', emoji: '🤳', bags: 0, me: { clout: +3 }, cooldown: 300, line: 'took a club selfie', act: 'selfie', actSeconds: 6 },
+      { id: 'chill', label: 'Breather in the chill room', emoji: '🛋️', bags: 0, me: { gas: +5, vibes: +1 }, cooldown: 600, line: 'is cooling off in the chill room', act: 'rest', actSeconds: 10 },
+    ],
+  },
+  {
+    id: 'yard', name: 'Afro Yard', emoji: '🪘', color: '#FF9F1C', blurb: 'Afrobeats under the stars. Live band, string lights, palm trees.',
+    actions: [
+      { id: 'dance', label: 'Dance to the live band', emoji: '💃', bags: 200, me: { vibes: +11, gas: -7 }, nearby: { vibes: +3 }, cooldown: 120, line: 'is dancing at Afro Yard 💃', act: 'dance', actSeconds: 14 },
+      { id: 'spray', label: 'Spray bags on the dancers', emoji: '💸', bags: 1000, me: { clout: +10, vibes: +6 }, nearby: { vibes: +6 }, cooldown: 900, line: 'is spraying bags on the dance floor 💸' },
+      { id: 'shout', label: 'Get a shout-out from the band', emoji: '🎤', bags: 400, me: { clout: +5, vibes: +4 }, cooldown: 600, line: 'got a shout-out from the band 🎤' },
+      { id: 'selfie', label: 'Selfie under the string lights', emoji: '🤳', bags: 0, me: { clout: +3 }, cooldown: 300, line: 'took a selfie at Afro Yard', act: 'selfie', actSeconds: 6 },
+    ],
+  },
+  {
+    id: 'warehouse', name: 'Warehouse 404', emoji: '🔊', color: '#FF2D55', blurb: 'Techno in a concrete box. Lasers, strobes, no phones on the floor.',
+    actions: [
+      { id: 'rave', label: 'Rave till sunrise', emoji: '🕺', bags: 400, me: { vibes: +15, gas: -12 }, nearby: { vibes: +3 }, cooldown: 180, line: 'is raving at Warehouse 404 🔊', act: 'dance', actSeconds: 16 },
+      { id: 'speaker', label: 'Stand by the speaker stack', emoji: '📢', bags: 0, me: { vibes: +4, gas: -3 }, cooldown: 300, line: 'is feeling the bass', act: 'dance', actSeconds: 8 },
+      { id: 'backroom', label: 'Back-room pass', emoji: '🎟️', bags: 2500, me: { clout: +14, vibes: +8 }, nearby: { vibes: +5 }, cooldown: 1800, line: 'got the back-room pass 🎟️' },
+      { id: 'water', label: 'Bottle of water', emoji: '💧', bags: 50, me: { gas: +5 }, cooldown: 120, line: 'is hydrating' },
+    ],
+  },
+  {
+    id: 'jazz', name: 'Velvet Room', emoji: '🎷', color: '#4CC9F0', blurb: 'Jazz bar. Live trio, candlelight, slow cocktails.',
+    actions: [
+      { id: 'table', label: 'Table by the stage', emoji: '🕯️', bags: 600, me: { vibes: +9, gas: +3 }, cooldown: 600, line: 'took a table by the stage 🕯️' },
+      { id: 'standard', label: 'Request a standard', emoji: '🎹', bags: 300, me: { vibes: +5, clout: +3 }, nearby: { vibes: +4 }, cooldown: 600, line: 'requested a jazz standard 🎹' },
+      { id: 'slow', label: 'Slow dance', emoji: '🕺', bags: 0, me: { vibes: +6, gas: -2 }, cooldown: 120, line: 'is slow dancing', act: 'dance', actSeconds: 10 },
+      { id: 'cocktail', label: 'Old fashioned', emoji: '🥃', bags: 250, me: { vibes: +6, gas: -1 }, cooldown: 120, line: 'is sipping an old fashioned' },
+    ],
+  },
+  {
+    id: 'beach', name: 'Sunset Beach Club', emoji: '🏝️', color: '#FF6F91', blurb: 'On the lagoon. Sand, pool, cabanas and house music.',
+    actions: [
+      { id: 'dance', label: 'Dance on the sand', emoji: '💃', bags: 250, me: { vibes: +10, gas: -6 }, nearby: { vibes: +3 }, cooldown: 120, line: 'is dancing on the sand 🏝️', act: 'dance', actSeconds: 14 },
+      { id: 'swim', label: 'Swim in the pool', emoji: '🏊', bags: 0, me: { vibes: +5, gas: +4 }, cooldown: 600, line: 'is in the pool', act: 'rest', actSeconds: 10 },
+      { id: 'cabana', label: 'Rent a cabana', emoji: '⛱️', bags: 2500, me: { clout: +12, vibes: +10 }, nearby: { vibes: +5 }, cooldown: 1800, line: 'rented a cabana ⛱️' },
+      { id: 'selfie', label: 'Sunset selfie', emoji: '🌅', bags: 0, me: { clout: +4 }, cooldown: 300, line: 'took a sunset selfie', act: 'selfie', actSeconds: 6 },
     ],
   },
   { id: 'dealership', name: 'Dealership', emoji: '🚗', color: '#FFD166', blurb: 'Keke to Lambo.', actions: [], app: 'market', marketKind: 'car' },
@@ -121,6 +158,10 @@ export type PlacedVenue = Venue & {
   custom?: boolean;
   /** an open-roofed place you walk into (lib/world/interiors.ts); collisions are its walls, not its footprint */
   walkIn?: boolean;
+  /** how many people a club is built for */
+  capacity?: number;
+  /** length of the paved path from the ring road to the front of this venue's plaza (the nightlife row; a boardwalk to the beach club) */
+  approach?: number;
 };
 
 export const VENUE_W = 9;
@@ -146,13 +187,28 @@ export function placeVenues(contentRadius: number, boundaryRadius = contentRadiu
       return { ...v, x: t.x, z: t.z, rot: -Math.PI / 2, w: t.w, d: t.d, h: 7, district: 'Airport island', custom: true };
     }
     const dd = districtOf(v.id);
-    const slot = dd ? dd.slots[dd.venues.indexOf(v.id)] : spare.shift();
-    // past the spare slots, further venues go on an outer ring
-    const rr = slot === undefined ? r + 22 : r;
-    const a = slot === undefined ? slotAngle(extra++ * 2 + 1) : slotAngle(slot);
-    const x = Math.cos(a) * rr, z = Math.sin(a) * rr;
+    const row = nightlifeOf(v.id);
     const k = WALK_IN[v.id];
     if (v.id === 'capitol') v = { ...v, name: gov.house, blurb: gov.blurb, color: COUNTRIES[gov.country].theme.primary };
-    return { ...v, x, z, rot: Math.atan2(-x, -z), w: k?.w ?? VENUE_W, d: k?.d ?? VENUE_D, h: k?.h ?? VENUE_H, district: dd ? districtName(dd.id, dd.name, country) : 'Downtown', walkIn: !!k };
+    if (row) {
+      // the nightlife row, behind the venue ring; the beach club goes right out to the shore
+      const usual = r + NIGHTLIFE_GAP + (k?.d ?? VENUE_D) / 2;
+      const rr = v.id === 'beach' && k ? Math.max(usual, boundaryRadius - 3 - k.d / 2 - 1.5) : usual;
+      // a paved path (a boardwalk to the beach club) from the ring road's curb to the front of its plaza
+      const curb = ringRoadRadius(contentRadius) + RING_ROAD_W / 2 + 0.6;
+      return at(v, slotAngle(row.at), rr, rr - (k?.d ?? VENUE_D) / 2 - 4.5 - curb);
+    }
+    const slot = dd ? dd.slots[dd.venues.indexOf(v.id)] : spare.shift();
+    // past the spare slots, further venues go on an outer ring. Deep walk-ins (Club Moon) sit further out so every
+    // door is the same distance from the ring road.
+    const rr = (slot === undefined ? r + 22 : r) + outwardShift(k);
+    const a = slot === undefined ? slotAngle(extra++ * 2 + 1) : slotAngle(slot);
+    return at(v, a, rr, 0);
   });
+  function at(v: Venue, a: number, rr: number, approach: number): PlacedVenue {
+    const k = WALK_IN[v.id];
+    const dd = districtOf(v.id);
+    const x = Math.cos(a) * rr, z = Math.sin(a) * rr;
+    return { ...v, x, z, rot: Math.atan2(-x, -z), w: k?.w ?? VENUE_W, d: k?.d ?? VENUE_D, h: k?.h ?? VENUE_H, district: dd ? districtName(dd.id, dd.name, country) : 'Downtown', walkIn: !!k, capacity: k?.capacity, approach };
+  }
 }

@@ -9,17 +9,21 @@ import { insideVenue, venueLocal } from '@/lib/audio/surfaces';
 import { playerSound } from '@/lib/audio/state';
 import { WALK_IN } from '@/lib/world/interiors';
 
-// Music you hear as you get near the club or the lounge: muffled through the walls, clearer in front of the
-// door, full inside. Off until the page has had a tap or a key press (browsers block sound before that), and
+// Music you hear as you get near a club or the lounge: muffled through the walls, clearer in front of the
+// door, full inside. Each club has its own sound (components/world/clubAudio.ts). Off until the page has had a tap or a key press (browsers block sound before that), and
 // it follows the game's sound settings (mute, master and music volume).
 
-const SOURCES: Record<string, Style> = { club: 'club', bar: 'lounge' };
-const RANGE = 34;
+const SOURCES: Record<string, Style> = { club: 'club', bar: 'lounge', yard: 'afro', warehouse: 'techno', jazz: 'jazz', beach: 'beach' };
+/** how far past a venue's walls you still hear it */
+const SPILL = 16;
+/** garden and beach clubs have low walls and no roof, so less of the sound is muffled outside */
+const OPEN_AIR = new Set(['yard', 'beach']);
 
 export function VenueMusic() {
   const model = useWorld((s) => s.model);
   const g = model?.geometry;
-  const all = useMemo(() => (g ? placeVenues(g.contentRadius, g.boundaryRadius) : []), [g]);
+  const country = useWorld((s) => s.country);
+  const all = useMemo(() => (g ? placeVenues(g.contentRadius, g.boundaryRadius, country) : []), [g, country]);
   const venues = useMemo(() => all.filter((v) => SOURCES[v.id]), [all]);
   const [unlocked, setUnlocked] = useState(isAudioUnlocked);
   const muted = useSoundSettings((s) => s.muted);
@@ -38,7 +42,7 @@ export function VenueMusic() {
         if (d < bd) (bd = d), (best = v);
       }
       const inside = best ? Math.max(best.w, best.d) / 2 : 0;
-      const vol = best && bd < RANGE ? Math.min(1, 1 - (bd - inside) / (RANGE - inside)) : 0;
+      const vol = best && bd < inside + SPILL ? Math.min(1, 1 - (bd - inside) / SPILL) : 0;
       setAt(vol > 0 && best ? { name: best.name, emoji: best.emoji } : null);
       if (vol > 0 && best && unlocked && !muted) {
         // inside: clear. Outside: the walls muffle it, less so standing in front of the open door.
@@ -47,7 +51,8 @@ export function VenueMusic() {
         const k = WALK_IN[best.id];
         const { lx, lz } = venueLocal(best, sx, sz);
         const facingDoor = k && lz > 0 && Math.abs(lx) < k.door / 2 + lz * 0.6 ? Math.max(0, 1 - (lz - k.d / 2) / 14) : 0;
-        play(SOURCES[best.id], inV ? vol : vol * 0.8, inV ? 0 : 1 - facingDoor * 0.65);
+        const muffle = inV ? 0 : (1 - facingDoor * 0.65) * (OPEN_AIR.has(best.id) ? 0.45 : 1);
+        play(SOURCES[best.id], inV ? vol : vol * 0.8, muffle);
       } else stop();
     }, 200);
     return () => {

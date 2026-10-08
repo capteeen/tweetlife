@@ -3,6 +3,7 @@ import { useWorld } from '@/components/world/store';
 import { airportLayout, pathLength, route, type Pt } from '@/lib/world/layout';
 import { terminalLayout } from '@/lib/world/terminal';
 import { BLOCK_D, BLOCK_W, SIDEWALK } from '@/lib/world/geometry';
+import { plotEntrance } from '@/lib/world/country-map';
 import { placeVenues, type PlacedVenue } from '@/lib/life/venues';
 import { tripSeconds } from '@/lib/life/transport';
 import { firstDayStep, type FirstDayStepId, type FirstDayView } from '@/lib/life/firstDaySteps';
@@ -85,11 +86,13 @@ function routeFrom(from: Pt, to: Pt): Pt[] {
 }
 
 /**
- * Where "home" is in the city: the street outside your own block. Today every player's city is their own,
- * so that is the corner you spawn on. With shared country rooms it becomes your plot's front step:
- * `const m = useWorld.getState().mine; return m ? plotEntrance(m.slot).front : null` (lib/world/country-map.ts).
+ * Where "home" is in the city: the front step of your own block in your home country (shared country rooms,
+ * lib/world/country-map.ts). Before your block is on the map, or in a country that isn't yours, it is the
+ * default spawn corner by Capital Square.
  */
 export function homeSpot(): Pt {
+  const s = useWorld.getState();
+  if (s.mine && s.countryMap && s.mine.country === s.country) return plotEntrance(s.mine.slot).front;
   // the default spawn corner (DEFAULT_SPAWN in components/world/Player.tsx), on the pavement of the first block
   return { x: BLOCK_W / 2 + SIDEWALK / 2, z: -(BLOCK_D / 2 + SIDEWALK / 2) };
 }

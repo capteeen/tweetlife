@@ -19,6 +19,8 @@ export function FirstDayGuide({ place }: { place: 'city' | 'home' }) {
   const me = useWorld((s) => s.life?.me ?? null);
   const fd = useWorld((s) => s.life?.firstDay ?? null);
   const hasModel = useWorld((s) => !!s.model?.geometry);
+  // your block on the shared country map (it can land after the map): the beacon re-aims at it
+  const mineKey = useWorld((s) => (s.mine && s.countryMap ? `${s.mine.country}:${s.mine.slot}:${s.country}` : ''));
   const selectedVenue = useWorld((s) => s.selectedVenue?.id ?? null);
   const furnitureKey = useWorld((s) => (s.life?.furniture ?? []).filter((f) => f.paid > 0).length);
   const txKey = useWorld((s) => s.life?.txs?.[0]?.id ?? '');
@@ -82,7 +84,7 @@ export function FirstDayGuide({ place }: { place: 'city' | 'home' }) {
     else if (step === 'ride' || step === 'furniture') s.setGuide({ ...homeSpot(), label: 'Home' });
     else s.setGuide(null);
     return () => useWorld.getState().setGuide(null);
-  }, [place, step, hasModel]);
+  }, [place, step, hasModel, mineKey]);
 
   // steps that leave a record (a buy, a shift, a coin) tick themselves as soon as the record exists
   useEffect(() => {

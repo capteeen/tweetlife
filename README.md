@@ -57,6 +57,8 @@ Requirements: Node 18.17+, Postgres, Redis, ffmpeg (timelapse only), an X develo
 5. Presence (optional): `npx partykit env add PRESENCE_SECRET` with the same value as in `.env`, then
    `npm run party:deploy` and set `NEXT_PUBLIC_PARTYKIT_HOST` to the deployed host. Without it worlds work, just
    without live visitors and chat (the bottom bar shows `—` for visitors online, never a fake number).
+   After that, `.github/workflows/party-deploy.yml` redeploys it whenever `party/` changes on the default branch,
+   once the `PARTYKIT_LOGIN` and `PARTYKIT_TOKEN` (`npx partykit token generate`) repository secrets are set.
 6. Sign in with X as the operator. Your world is queued and built from your timeline. In `/my-world` set access to
    **public** and put your handle in `OPERATOR_HANDLE` — it is then embedded on `/`, labelled as the real account it is.
 

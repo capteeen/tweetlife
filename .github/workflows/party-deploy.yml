@@ -1,0 +1,51 @@
+# Deploys the presence server (party/, PartyKit) whenever it changes on the default branch, so merges that
+# touch multiplayer go live without anyone running `npm run party:deploy` by hand. Vercel does not do this.
+#
+# One-time setup (repo Settings > Secrets and variables > Actions):
+#   PARTYKIT_LOGIN  the GitHub username the PartyKit project was first deployed with
+#   PARTYKIT_TOKEN  from `npx partykit token generate`, run once while logged in as that user
+# Variables already set on the project (PRESENCE_SECRET) are kept between deploys.
+name: Deploy presence server
+
+on:
+  push:
+    branches: [claude/friendly-einstein-35hp0b]
+    paths: ['party/**', 'partykit.json', 'package-lock.json']
+  workflow_dispatch:
+
+concurrency:
+  group: party-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check secrets
+        id: secrets
+        env:
+          PARTYKIT_LOGIN: ${{ secrets.PARTYKIT_LOGIN }}
+          PARTYKIT_TOKEN: ${{ secrets.PARTYKIT_TOKEN }}
+        run: |
+          if [ -z "$PARTYKIT_LOGIN" ] || [ -z "$PARTYKIT_TOKEN" ]; then
+            echo "::warning::PARTYKIT_LOGIN and PARTYKIT_TOKEN are not set, skipping the presence server deploy"
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v4
+        if: steps.secrets.outputs.ok == 'true'
+      - uses: actions/setup-node@v4
+        if: steps.secrets.outputs.ok == 'true'
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install
+        if: steps.secrets.outputs.ok == 'true'
+        run: npm ci
+      - name: Deploy
+        if: steps.secrets.outputs.ok == 'true'
+        env:
+          PARTYKIT_LOGIN: ${{ secrets.PARTYKIT_LOGIN }}
+          PARTYKIT_TOKEN: ${{ secrets.PARTYKIT_TOKEN }}
+        run: npm run party:deploy

@@ -5,7 +5,7 @@ import type * as THREE from 'three';
 // there toward a pose by `w` (0..1) so moves ease in and out. Kept apart from Figure.tsx so other animation
 // work (props in the hand, balloons) can change the figure without touching these.
 
-export type FigureAct = 'dance' | 'stretch' | 'rest' | 'pushups' | 'selfie';
+export type FigureAct = 'dance' | 'stretch' | 'rest' | 'pushups' | 'selfie' | 'cheer';
 
 export type Rig = {
   body: THREE.Group | null;
@@ -134,6 +134,24 @@ const MOVES: Record<FigureAct, (r: Rig, t: number, w: number) => void> = {
       rot(arm, 'x', -tilt + 0.95 * down, w);
       rot(arm, 'z', side * 0.18, w);
       rot(elbow, 'x', -1.6 * down, w);
+    }
+  },
+
+  // A fan's cheer: little hops, both arms up waving overhead, head up. Each figure's own `t` keeps a crowd out of step.
+  cheer(r, t, w) {
+    const hop = Math.max(0, Math.sin(t * Math.PI * 3.2));
+    lift(r.body, 0.07 * hop, w);
+    rot(r.body, 'z', 0.05 * Math.sin(t * 2.1), w);
+    rot(r.head, 'x', -0.22, w);
+    for (const [leg, knee] of [[r.lLeg, r.lKnee], [r.rLeg, r.rKnee]] as const) {
+      rot(leg, 'x', -0.12 * (1 - hop), w);
+      rot(knee, 'x', 0.25 * (1 - hop), w);
+    }
+    for (const [arm, elbow, side] of [[r.lArm, r.lElbow, -1], [r.rArm, r.rElbow, 1]] as const) {
+      const wave = Math.sin(t * 7 + (side > 0 ? 0 : 1.4));
+      rot(arm, 'x', -2.75, w);
+      rot(arm, 'z', side * (0.35 + 0.18 * wave), w);
+      rot(elbow, 'x', -0.2 - 0.2 * wave, w);
     }
   },
 

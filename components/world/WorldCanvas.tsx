@@ -19,6 +19,7 @@ import { Marks } from './Marks';
 import { Peers, Residents } from './Residents';
 import { CityResidents } from './CityResidents';
 import { BalloonFeed } from './Balloons';
+import { Crowds } from './Crowd';
 import { useWorld } from './store';
 
 // The scene. `mode`:
@@ -132,6 +133,7 @@ function Scene(props: SceneProps) {
         <>
           <Player structures={geometry.structures} blocks={geometry.blocks} grid={geometry.grid} boundaryRadius={R} contentRadius={geometry.contentRadius} spawn={spawn ?? null} />
           <Peers blocks={geometry.blocks} grid={geometry.grid} boundaryRadius={R} />
+          <Crowds blocks={geometry.blocks} grid={geometry.grid} boundaryRadius={R} />
           <BalloonFeed />
         </>
       )}

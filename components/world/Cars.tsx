@@ -6,6 +6,7 @@ import type { CityGrid } from '@/lib/world/geometry';
 import { prng, hashString } from '@/lib/world/seed';
 import { CAR_PARTS, TRAFFIC_MODELS, carMaterial, carParts, carSpec, type CarModel } from './carModels';
 import { useWorld } from './store';
+import { followerPos } from './Crowd';
 
 // Ambient traffic: detailed low-poly cars following the road grid on the right-hand lane. At each intersection a car
 // goes straight or turns (curving through the junction), and it slows behind the car ahead in its lane.
@@ -200,15 +201,20 @@ export function Cars({ count: wanted, grid, handle, player = false }: { count: n
         else if (gap < GAP + 8) target = Math.min(target, ((gap - GAP) / 8) * c.cruise);
       }
       if (me) {
-        // the player in front of the bumper and within the car's width: ease off, then stop short of them
+        // the player (or a follower in their crowd) in front of the bumper and within the car's width: ease off,
+        // then stop short of them
         const fx = Math.sin(c.rot), fz = Math.cos(c.rot);
-        const rx = me.x - c.x, rz = me.z - c.z;
-        const ahead = rx * fx + rz * fz, side = Math.abs(rx * fz - rz * fx);
-        const gap = ahead - c.len / 2 - PLAYER_GAP;
-        if (ahead > 0 && side < PLAYER_HALF && gap < 10) {
-          target = gap < 0.5 ? 0 : Math.min(target, (gap / 10) * c.cruise);
-          if (gap < 6) honk = true;
-        }
+        const check = (p: { x: number; z: number }, isMe: boolean) => {
+          const rx = p.x - c.x, rz = p.z - c.z;
+          const ahead = rx * fx + rz * fz, side = Math.abs(rx * fz - rz * fx);
+          const gap = ahead - c.len / 2 - PLAYER_GAP;
+          if (ahead > 0 && side < PLAYER_HALF && gap < 10) {
+            target = gap < 0.5 ? 0 : Math.min(target, (gap / 10) * c.cruise);
+            if (gap < 6 && isMe) honk = true;
+          }
+        };
+        check(me, true);
+        for (const p of followerPos.values()) check(p, false);
       }
       c.speed += (target - c.speed) * Math.min(1, dt * 4);
     }

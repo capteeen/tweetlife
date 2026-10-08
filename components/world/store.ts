@@ -8,6 +8,7 @@ import type { Look } from '@/lib/life/look';
 import type { HomeItem } from '@/lib/life/home';
 import type { ActivityId } from '@/lib/life/activities';
 import type { Citizenship } from '@/lib/life/citizen';
+import type { Crowd, CrowdNotice } from '@/lib/life/crowd';
 
 /** An everyday activity in progress (dance, stretch...): the avatar plays it until `until` or until you move. */
 export type Doing = { id: ActivityId; until: number } | null;
@@ -80,6 +81,10 @@ export type WorldState = {
   residentSays: Record<string, { text: string; at: number }>;
   /** your conversation with each resident this visit */
   residentChats: Record<string, ResidentMsg[]>;
+  /** follower crowds around you and the people near you (times already in local clock) */
+  crowds: Crowd[];
+  /** someone you follow just posted and their crowd is gathering */
+  crowdNotices: CrowdNotice[];
 
   setModel: (m: WorldModel, skyline: boolean, me: Me) => void;
   select: (p: Placed | null) => void;
@@ -112,6 +117,9 @@ export type WorldState = {
   selectResident: (id: string | null) => void;
   residentSay: (id: string, text: string) => void;
   pushResidentChat: (id: string, m: ResidentMsg) => void;
+  setCrowds: (c: Crowd[]) => void;
+  pushCrowdNotices: (n: CrowdNotice[]) => void;
+  dropCrowdNotice: (id: string) => void;
 };
 
 export const useWorld = create<WorldState>((set) => ({
@@ -141,6 +149,8 @@ export const useWorld = create<WorldState>((set) => ({
   selectedResident: null,
   residentSays: {},
   residentChats: {},
+  crowds: [],
+  crowdNotices: [],
   setModel: (model, skyline, me) => set({ model, skyline, me }),
   select: (selected) => set({ selected, ...(selected ? { selectedPeer: null, selectedVenue: null, selectedResident: null } : {}) }),
   setLit: (ids) => set({ lit: new Set(ids) }),
@@ -187,5 +197,8 @@ export const useWorld = create<WorldState>((set) => ({
   selectResident: (selectedResident) =>
     set({ selectedResident, ...(selectedResident ? { selected: null, selectedPeer: null, selectedVenue: null } : {}) }),
   residentSay: (id, text) => set((s) => ({ residentSays: { ...s.residentSays, [id]: { text, at: Date.now() } } })),
+  setCrowds: (crowds) => set({ crowds }),
+  pushCrowdNotices: (n) => set((s) => ({ crowdNotices: [...s.crowdNotices.filter((x) => !n.some((y) => y.id === x.id)), ...n].slice(-3) })),
+  dropCrowdNotice: (id) => set((s) => ({ crowdNotices: s.crowdNotices.filter((x) => x.id !== id) })),
   pushResidentChat: (id, m) => set((s) => ({ residentChats: { ...s.residentChats, [id]: [...(s.residentChats[id] ?? []).slice(-29), m] } })),
 }));

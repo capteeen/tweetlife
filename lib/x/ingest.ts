@@ -6,6 +6,7 @@ import { getMe, getTweetsByIds, getUserTweets } from './api';
 import { accessTokenFor } from './oauth';
 import { classifyTweet } from '../world/classify';
 import type { XMedia, XTweet } from './types';
+import { crowdForNewPosts } from '../life/crowd';
 
 // Ingestion: turn the owner's real timeline into Structure rows, one page at a time,
 // so the world is walkable while the rest of the history is still arriving.
@@ -28,7 +29,7 @@ async function publishProgress(worldId: string, p: Progress) {
   await redis().set(progressKey(worldId), JSON.stringify({ ...p, at: Date.now() }), 'EX', 3600).catch(() => {});
 }
 
-function structureRows(worldId: string, ownerId: string, tweets: XTweet[], media: Map<string, XMedia>) {
+export function structureRows(worldId: string, ownerId: string, tweets: XTweet[], media: Map<string, XMedia>) {
   return tweets
     .filter((t) => t.created_at) // a post with no created_at cannot be placed; X always sends it when requested
     .map((t) => {
@@ -151,6 +152,8 @@ export async function ingestTimeline(run: IngestRun, kind: Extract<RunKind, 'fir
     data: { ingestState: 'live', newestPostId: newestSeen, lastSyncAt: new Date(), nextSyncAt: new Date(Date.now() + 6 * 3600 * 1000) },
   });
   await redis().del(progressKey(world.id)).catch(() => {});
+  // a fresh post found by the sync brings the owner's followers out (once per post; see lib/life/crowd.ts)
+  if (kind === 'incremental' && progress.postsWritten > 0) await crowdForNewPosts(world.id).catch((e) => console.error('[crowd]', (e as Error).message));
   return { ...progress, done: true };
 }
 

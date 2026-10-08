@@ -110,7 +110,7 @@ function NamedResident({ r, route, venues, blocks, grid, boundaryRadius, interac
   );
 }
 
-function Bubble({ text, at }: { text: string; at: number }) {
+export function Bubble({ text, at }: { text: string; at: number }) {
   const [phase, setPhase] = useState<'on' | 'fading' | 'gone'>(() => (Date.now() - at < BUBBLE_MS ? 'on' : 'gone'));
   useEffect(() => {
     const left = BUBBLE_MS - (Date.now() - at);

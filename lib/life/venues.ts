@@ -2,6 +2,7 @@ import type { Stats } from './stats';
 import type { ActivityId } from './activities';
 import { WALK_IN } from '@/lib/world/interiors';
 import { SPARE_SLOTS, airportLayout, districtOf, slotAngle, venueRingRadius } from '@/lib/world/layout';
+import { districtName, themeOf } from '@/lib/world/cityThemes';
 
 // Venues: the city's services, in districts on a ring just outside the post blocks so they are never
 // mistaken for posts. Same set in every world; placement is deterministic from the city size.
@@ -110,12 +111,15 @@ export const VENUE_H = 6;
 /**
  * Venues sit in districts on a ring just outside the city, facing the centre (see lib/world/layout.ts).
  * The airport is the terminal on the airport island. `boundaryRadius` defaults to the smallest a world gets.
+ * `country` only renames venues and districts (Club Moon is Club Yellow in BNB City); ids and places stay.
  */
-export function placeVenues(contentRadius: number, boundaryRadius = contentRadius + 30): PlacedVenue[] {
+export function placeVenues(contentRadius: number, boundaryRadius = contentRadius + 30, country?: string | null): PlacedVenue[] {
   const r = venueRingRadius(contentRadius);
+  const names = themeOf(country).venues;
   const spare = [...SPARE_SLOTS];
   let extra = 0;
-  return VENUES.map((v) => {
+  return VENUES.map((base) => {
+    const v = names[base.id] ? { ...base, name: names[base.id].name, emoji: names[base.id].emoji ?? base.emoji } : base;
     if (v.id === 'airport') {
       const t = airportLayout(contentRadius, boundaryRadius).terminal;
       return { ...v, x: t.x, z: t.z, rot: -Math.PI / 2, w: t.w, d: t.d, h: 7, district: 'Airport island', custom: true };
@@ -127,6 +131,6 @@ export function placeVenues(contentRadius: number, boundaryRadius = contentRadiu
     const a = slot === undefined ? slotAngle(extra++ * 2 + 1) : slotAngle(slot);
     const x = Math.cos(a) * rr, z = Math.sin(a) * rr;
     const k = WALK_IN[v.id];
-    return { ...v, x, z, rot: Math.atan2(-x, -z), w: k?.w ?? VENUE_W, d: k?.d ?? VENUE_D, h: k?.h ?? VENUE_H, district: dd?.name ?? 'Downtown', walkIn: !!k };
+    return { ...v, x, z, rot: Math.atan2(-x, -z), w: k?.w ?? VENUE_W, d: k?.d ?? VENUE_D, h: k?.h ?? VENUE_H, district: dd ? districtName(dd.id, dd.name, country) : 'Downtown', walkIn: !!k };
   });
 }

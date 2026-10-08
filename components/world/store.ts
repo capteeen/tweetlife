@@ -9,6 +9,7 @@ import type { HomeItem } from '@/lib/life/home';
 import type { ActivityId } from '@/lib/life/activities';
 import type { Citizenship } from '@/lib/life/citizen';
 import type { Crowd, CrowdNotice } from '@/lib/life/crowd';
+import { DEFAULT_COUNTRY, type CountryId } from '@/lib/world/countries';
 
 /** An everyday activity in progress (dance, stretch...): the avatar plays it until `until` or until you move. */
 export type Doing = { id: ActivityId; until: number } | null;
@@ -52,6 +53,8 @@ type Me = { id: string; handle: string; isOwner: boolean } | null;
 
 export type WorldState = {
   model: WorldModel | null;
+  /** the country whose capital is drawn around you (lib/world/countries.ts); Solana until set */
+  country: CountryId;
   skyline: boolean; // true = outside view (no walking)
   me: Me;
   selected: Placed | null;
@@ -87,6 +90,7 @@ export type WorldState = {
   crowdNotices: CrowdNotice[];
 
   setModel: (m: WorldModel, skyline: boolean, me: Me) => void;
+  setCountry: (c: CountryId) => void;
   select: (p: Placed | null) => void;
   setLit: (ids: string[]) => void;
   toggleLit: (id: string, lit: boolean, count: number) => void;
@@ -124,6 +128,8 @@ export type WorldState = {
 
 export const useWorld = create<WorldState>((set) => ({
   model: null,
+  country: DEFAULT_COUNTRY,
+  setCountry: (country) => set({ country }),
   skyline: true,
   me: null,
   selected: null,

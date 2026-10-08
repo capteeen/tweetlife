@@ -25,6 +25,7 @@ import { CountryPrompt } from '@/components/citizen/CountryPrompt';
 import { useLife } from '@/components/life/useLife';
 import { enterVenue } from '@/components/life/travel';
 import { placeVenues } from '@/lib/life/venues';
+import { isCountryId } from '@/lib/world/countries';
 
 const WorldCanvas = dynamic(() => import('./WorldCanvas').then((m) => m.WorldCanvas), { ssr: false });
 
@@ -40,7 +41,9 @@ type Me = { id: string; handle: string; isOwner: boolean } | null;
 type Skyline = Pick<WorldModel, 'handle' | 'ownerName' | 'ownerAvatar' | 'followersCount' | 'structureCount' | 'biome' | 'accountCreatedAt' | 'geometry' | 'marks' | 'paths'>;
 
 // `backdrop`: the title screen's background — the slow orbit view with no chrome at all.
-export function WorldClient({ handle, spawnPostId, embed, backdrop }: { handle: string; spawnPostId?: string; embed?: boolean; backdrop?: boolean }) {
+// `country` (?country=bnb) picks which country's capital is drawn; without it the store keeps its current
+// country (Solana by default), which nationality and flights set with useWorld.getState().setCountry.
+export function WorldClient({ handle, spawnPostId, embed, backdrop, country }: { handle: string; spawnPostId?: string; embed?: boolean; backdrop?: boolean; country?: string }) {
   const [payload, setPayload] = useState<Payload | null>(null);
   const [progress, setProgress] = useState<{ placed: number; postCount: number; ingestState: string; ingestError: string | null } | null>(null);
   const setModel = useWorld((s) => s.setModel);
@@ -48,6 +51,16 @@ export function WorldClient({ handle, spawnPostId, embed, backdrop }: { handle: 
   const setSpawn = useWorld((s) => s.setSpawn);
   const model = useWorld((s) => s.model);
   const [ready, setReady] = useState(false);
+  // a ?country link wins; otherwise you start in your home country (your nationality, Solana until picked)
+  const homeCountry = useWorld((s) => s.life?.me?.citizen?.country);
+  const homeApplied = useRef(false);
+  useEffect(() => {
+    if (isCountryId(country)) useWorld.getState().setCountry(country);
+    else if (!homeApplied.current && isCountryId(homeCountry)) {
+      homeApplied.current = true;
+      useWorld.getState().setCountry(homeCountry);
+    }
+  }, [country, homeCountry]);
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/world/${encodeURIComponent(handle)}`, { cache: 'no-store' });
@@ -211,12 +224,12 @@ export function WorldClient({ handle, spawnPostId, embed, backdrop }: { handle: 
             <button
               className="pointer-events-auto absolute bottom-20 [@media(any-pointer:coarse)]:bottom-56 left-1/2 z-20 -translate-x-1/2 rounded-full chrome px-4 py-2 text-sm font-semibold hover:bg-white/10"
               onClick={() => {
-                const v = placeVenues(g.contentRadius, g.boundaryRadius).find((x) => x.id === nearVenue);
+                const v = placeVenues(g.contentRadius, g.boundaryRadius, useWorld.getState().country).find((x) => x.id === nearVenue);
                 if (v) enterVenue(v);
               }}
             >
               {(() => {
-                const v = placeVenues(g.contentRadius, g.boundaryRadius).find((x) => x.id === nearVenue);
+                const v = placeVenues(g.contentRadius, g.boundaryRadius, useWorld.getState().country).find((x) => x.id === nearVenue);
                 return v ? `${v.emoji} Enter ${v.name}` : 'Enter';
               })()}
             </button>

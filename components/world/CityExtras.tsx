@@ -6,10 +6,13 @@ import { Text } from '@react-three/drei';
 import type { CityGrid, Placed } from '@/lib/world/geometry';
 import { PALETTES, type Biome } from '@/lib/world/biomes';
 import { prng, hashString } from '@/lib/world/seed';
+import { COUNTRIES } from '@/lib/world/countries';
+import { districtName, themeOf, themedPalette, type CityTheme } from '@/lib/world/cityThemes';
+import { useWorld } from './store';
+import { Landmark, WelcomeArch } from './Landmarks';
 import {
   DISTRICTS, RING_ROAD_W, RING_SLOTS, airportLayout, billboardSpots, ringRoadRadius, slotAngle, venueRingRadius, type Airport, type Rect,
 } from '@/lib/world/layout';
-import { useWorld } from './store';
 
 // Everything around the post city that makes it a city: the ring road and its traffic, spur roads,
 // district names on the ground, billboards, palms, and the airport island with its bridge.
@@ -24,7 +27,9 @@ const tmpColor = new THREE.Color();
 type Props = { contentRadius: number; boundaryRadius: number; grid: CityGrid; hasCity: boolean; biome: string; handle: string; structures: Placed[]; player?: boolean };
 
 export function CityExtras({ contentRadius, boundaryRadius, grid, hasCity, biome, handle, structures, player = false }: Props) {
-  const pal = PALETTES[(biome as Biome) in PALETTES ? (biome as Biome) : 'meadow'];
+  const country = useWorld((s) => s.country);
+  const theme = themeOf(country);
+  const pal = themedPalette(PALETTES[(biome as Biome) in PALETTES ? (biome as Biome) : 'meadow'], country);
   const rr = ringRoadRadius(contentRadius);
   const ap = useMemo(() => airportLayout(contentRadius, boundaryRadius), [contentRadius, boundaryRadius]);
   const R = boundaryRadius;
@@ -68,15 +73,9 @@ export function CityExtras({ contentRadius, boundaryRadius, grid, hasCity, biome
   const ads = useMemo(() => {
     const top = structures.find((s) => s.isLandmark && s.text) ?? null;
     const quote = top?.text ? `“${top.text.replace(/https?:\/\/\S+/g, '').trim().slice(0, 70)}${top.text.length > 70 ? '…' : ''}”` : 'Every post is a building.';
-    return [
-      { title: `@${handle}`, sub: quote, from: '#1D9BF0', to: '#0B3B66' },
-      { title: 'CLUB MOON', sub: 'Dance tonight. Everyone sees.', from: '#FF5D8F', to: '#5B1A6B' },
-      { title: 'THE TRENCHES', sub: 'Live memecoins. Ape with bags.', from: '#06D6A0', to: '#0B4D3B' },
-      { title: 'YOUR AD HERE', sub: 'Billboards for rent soon', from: '#FFD166', to: '#B5651D' },
-      { title: 'FLY PRIVATE', sub: 'Jets at the Airport hangar', from: '#BFE3FF', to: '#3A6EA5' },
-      { title: 'SUYA SPOT', sub: 'Pepper. Smoke. Gas.', from: '#E63946', to: '#5C1A1F' },
-    ];
-  }, [structures, handle]);
+    // the owner's own board first, then the country's
+    return [{ title: `@${handle}`, sub: quote, from: '#1D9BF0', to: '#0B3B66' }, ...theme.ads];
+  }, [structures, handle, theme]);
   const spots = useMemo(() => billboardSpots(contentRadius, boundaryRadius), [contentRadius, boundaryRadius]);
 
   const labelR = Math.min(venueRingRadius(contentRadius) + 11, R - 3.5);
@@ -110,8 +109,8 @@ export function CityExtras({ contentRadius, boundaryRadius, grid, hasCity, biome
           const x = Math.cos(a) * labelR, z = Math.sin(a) * labelR;
           return (
             <group key={d.id} position={[x, 0.08, z]} rotation={[0, Math.atan2(-Math.cos(a), -Math.sin(a)), 0]}>
-              <Text font={FONT} rotation={[-Math.PI / 2, 0, 0]} fontSize={2.6} letterSpacing={0.18} color="#FFFFFF" fillOpacity={0.75} anchorX="center" anchorY="middle">
-                {d.name.toUpperCase()}
+              <Text font={FONT} rotation={[-Math.PI / 2, 0, 0]} fontSize={2.6} letterSpacing={0.18} color={theme.label} fillOpacity={0.8} anchorX="center" anchorY="middle">
+                {districtName(d.id, d.name, country).toUpperCase()}
               </Text>
             </group>
           );
@@ -119,10 +118,12 @@ export function CityExtras({ contentRadius, boundaryRadius, grid, hasCity, biome
       <Text font={FONT} position={[R + 14, 0.05 - 0.4, -ap.island.d / 2 + 12]} rotation={[-Math.PI / 2, 0, Math.PI / 2]} fontSize={3.2} letterSpacing={0.3} color="#FFFFFF" fillOpacity={0.6} anchorX="center">
         THE LAGOON
       </Text>
-      {hasCity && <AirportScene ap={ap} grass={pal.lush} />}
+      {hasCity && <AirportScene ap={ap} grass={pal.lush} theme={theme} />}
+      {hasCity && <WelcomeArch ap={ap} country={country} />}
+      <Landmark boundaryRadius={R} country={country} sand={pal.sand} grass={pal.lush} />
       {hasCity && spots.map((s, i) => <BillboardSign key={i} {...s} ad={ads[i % ads.length]} />)}
       {hasCity && <Palms items={palms} />}
-      {hasCity && <RingTraffic r={rr} handle={handle} player={player} />}
+      {hasCity && <RingTraffic r={rr} handle={handle} player={player} colors={theme.traffic} />}
     </group>
   );
 }
@@ -164,23 +165,23 @@ function RingRoad({ r }: { r: number }) {
 }
 
 /** Buses, vans, yellow cabs and cars going round the ring road, both ways. */
-function RingTraffic({ r, handle, player }: { r: number; handle: string; player: boolean }) {
+function RingTraffic({ r, handle, player, colors }: { r: number; handle: string; player: boolean; colors: string[] }) {
   const body = useRef<THREE.InstancedMesh>(null);
   const top = useRef<THREE.InstancedMesh>(null);
   const cars = useMemo(() => {
     const rnd = prng(hashString(handle + '|ring'));
     const kinds = [
-      { s: [2.4, 2.2, 8.5], c: '#1F4E79', topH: 0.15 },
-      { s: [2, 1.6, 4.6], c: '#F4F1DE', topH: 0.2 },
-      { s: [1.7, 0.6, 3.8], c: '#F7C600', topH: 0.55 },
-      { s: [1.7, 0.6, 3.6], c: '#E63946', topH: 0.55 },
-      { s: [1.7, 0.6, 3.6], c: '#F4F1DE', topH: 0.55 },
+      { s: [2.4, 2.2, 8.5], c: colors[0], topH: 0.15 },
+      { s: [2, 1.6, 4.6], c: colors[1], topH: 0.2 },
+      { s: [1.7, 0.6, 3.8], c: colors[2], topH: 0.55 },
+      { s: [1.7, 0.6, 3.6], c: colors[3], topH: 0.55 },
+      { s: [1.7, 0.6, 3.6], c: colors[4], topH: 0.55 },
     ];
     return Array.from({ length: 12 }, (_, i) => {
       const cruise = (5 + rnd() * 4) / r;
       return { ...kinds[i % kinds.length], dir: i % 2 ? 1 : -1, a: rnd() * Math.PI * 2, cruise, speed: cruise };
     });
-  }, [r, handle]);
+  }, [r, handle, colors]);
   const geo = useMemo(() => new THREE.BoxGeometry(1, 1, 1), []);
   useEffect(() => {
     const b = body.current;
@@ -347,8 +348,9 @@ function Slab({ r, y, h, color, rough = 1 }: { r: Rect; y: number; h: number; co
   );
 }
 
-function AirportScene({ ap, grass }: { ap: Airport; grass: string }) {
+function AirportScene({ ap, grass, theme }: { ap: Airport; grass: string; theme: CityTheme }) {
   const rw = ap.runway;
+  const flag = COUNTRIES[theme.country].theme;
   const marks = useMemo(() => {
     const out: { x: number; z: number; w: number; d: number }[] = [];
     for (let z = -rw.d / 2 + 16; z < rw.d / 2 - 16; z += 7) out.push({ x: rw.x, z, w: 0.35, d: 3.5 }); // centreline
@@ -421,7 +423,7 @@ function AirportScene({ ap, grass }: { ap: Airport; grass: string }) {
         </mesh>
       ))}
       <Text font={FONT} position={[ap.terminal.x - ap.terminal.w / 2 - 2.6, 6.6, ap.terminal.z]} rotation={[0, -Math.PI / 2, 0]} fontSize={1.4} color="#1B2436" anchorX="center" anchorY="middle">
-        TWEETLIFE INTERNATIONAL
+        {(theme.venues.airport?.name ?? 'Tweetlife International').toUpperCase()}
       </Text>
       {/* jet bridges to the gates */}
       {ap.gates.map((g, i) => (
@@ -431,7 +433,7 @@ function AirportScene({ ap, grass }: { ap: Airport; grass: string }) {
         </mesh>
       ))}
       {ap.gates.map((g, i) => (
-        <Airliner key={i} position={[g.x, 0, g.z]} rotation={-Math.PI / 2} tail={['#1D9BF0', '#E63946', '#06D6A0'][i % 3]} />
+        <Airliner key={i} position={[g.x, 0, g.z]} rotation={-Math.PI / 2} tail={[flag.primary, flag.secondary, flag.accent][i % 3]} />
       ))}
       {/* car park */}
       <Slab r={ap.carPark} y={0.05} h={0.06} color="#4A4F57" />
@@ -452,7 +454,7 @@ function AirportScene({ ap, grass }: { ap: Airport; grass: string }) {
       </mesh>
       <mesh position={[ap.tower.x, ap.tower.h + 1.2, ap.tower.z]} castShadow>
         <cylinderGeometry args={[ap.tower.r * 1.7, ap.tower.r * 1.3, 2.4, 10]} />
-        <meshStandardMaterial color="#3D7FB8" roughness={0.1} metalness={0.5} emissive="#3D7FB8" emissiveIntensity={0.25} />
+        <meshStandardMaterial color={flag.primary} roughness={0.1} metalness={0.5} emissive={flag.primary} emissiveIntensity={0.25} />
       </mesh>
       <mesh position={[ap.tower.x, ap.tower.h + 2.8, ap.tower.z]}>
         <cylinderGeometry args={[ap.tower.r * 1.9, ap.tower.r * 1.9, 0.5, 10]} />
@@ -462,7 +464,7 @@ function AirportScene({ ap, grass }: { ap: Airport; grass: string }) {
         <cylinderGeometry args={[0.08, 0.08, 2, 4]} />
         <meshStandardMaterial color="#E63946" emissive="#E63946" emissiveIntensity={1.4} />
       </mesh>
-      <TakeOff ap={ap} />
+      <TakeOff ap={ap} tail={flag.primary} />
     </group>
   );
 }
@@ -528,7 +530,7 @@ function Airliner({ position, rotation, tail, scale = 1 }: { position: [number, 
 }
 
 /** Every 40s a plane rolls down the runway and climbs out over the water. */
-function TakeOff({ ap }: { ap: Airport }) {
+function TakeOff({ ap, tail }: { ap: Airport; tail: string }) {
   const ref = useRef<THREE.Group>(null);
   const rw = ap.runway;
   useFrame(({ clock }) => {
@@ -556,7 +558,7 @@ function TakeOff({ ap }: { ap: Airport }) {
   });
   return (
     <group ref={ref}>
-      <Airliner position={[0, 0, 0]} rotation={0} tail="#8338EC" />
+      <Airliner position={[0, 0, 0]} rotation={0} tail={tail} />
     </group>
   );
 }

@@ -21,6 +21,7 @@ import { CityResidents } from './CityResidents';
 import { BalloonFeed } from './Balloons';
 import { Crowds } from './Crowd';
 import { useWorld } from './store';
+import { themeOf, themedPalette } from '@/lib/world/cityThemes';
 
 // The scene. `mode`:
 //  - 'walk'     : admitted visitor, third-person controls
@@ -46,9 +47,11 @@ const PHONE = typeof window !== 'undefined' && !!window.matchMedia?.('(any-point
 
 export function WorldCanvas(props: SceneProps) {
   const { geometry, biome } = props;
-  const pal = PALETTES[(biome as Biome) in PALETTES ? (biome as Biome) : 'meadow'];
+  const country = useWorld((s) => s.country);
+  const pal = themedPalette(PALETTES[(biome as Biome) in PALETTES ? (biome as Biome) : 'meadow'], country);
+  const sky = themeOf(country).sky;
   const { horizon } = useMemo(() => skyColors(geometry.skyT), [geometry.skyT]);
-  const fogColor = useMemo(() => horizon.clone().lerp(new THREE.Color(pal.fog), 0.5), [horizon, pal.fog]);
+  const fogColor = useMemo(() => horizon.clone().lerp(new THREE.Color(sky.horizon), sky.amount).lerp(new THREE.Color(pal.fog), 0.5), [horizon, pal.fog, sky]);
   const R = geometry.boundaryRadius;
   return (
     <Canvas
@@ -80,6 +83,7 @@ export function WorldCanvas(props: SceneProps) {
 function Scene(props: SceneProps) {
   const { geometry, marks, paths, biome, handle, showMetrics, mode, spawn, still, onReady } = props;
   const sun = useMemo(() => sunFor(geometry.skyT), [geometry.skyT]);
+  const theme = themeOf(useWorld((s) => s.country));
   const R = geometry.boundaryRadius;
   const called = useRef(false);
   useFrame(() => {
@@ -91,8 +95,8 @@ function Scene(props: SceneProps) {
   const sunPos: [number, number, number] = [R * 0.55, R * sun.elevation, -R * 0.6];
   return (
     <>
-      <Sky t={geometry.skyT} radius={R * 5 + 300} />
-      <hemisphereLight args={['#DCE8F5', '#6B6A5A', 1.15]} />
+      <Sky t={geometry.skyT} radius={R * 5 + 300} tint={theme.sky} />
+      <hemisphereLight key={theme.country} args={[theme.light, '#6B6A5A', 1.15]} />
       <ambientLight intensity={0.25} />
       <directionalLight
         position={sunPos}

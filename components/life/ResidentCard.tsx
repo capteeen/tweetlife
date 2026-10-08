@@ -24,7 +24,7 @@ export function ResidentCard() {
 
   const doing = useMemo(() => {
     if (!r || !geometry) return '';
-    const venues = placeVenues(geometry.contentRadius, geometry.boundaryRadius);
+    const venues = placeVenues(geometry.contentRadius, geometry.boundaryRadius, useWorld.getState().country);
     const route = buildRoutes(RESIDENTS, venues, geometry.contentRadius)[RESIDENTS.indexOf(r)];
     if (!route) return '';
     const p = poseAt(route, Date.now() / 1000);

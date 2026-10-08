@@ -15,9 +15,10 @@ const schema = z.object({
   X_GLOBAL_BURST: z.coerce.number().int().positive().default(5),
   X_USER_RATE_PER_SEC: z.coerce.number().positive().default(0.5),
   X_USER_BURST: z.coerce.number().int().positive().default(3),
-  // Pay-per-use bills $0.005 for every post read, so this is the price of a new player's city: 500 posts = $2.50.
-  // A country plot shows a player's best 72 posts; 500 recent posts is plenty to pick them from. X's own ceiling is 3200.
-  X_FIRST_BUILD_MAX_POSTS: z.coerce.number().int().positive().max(3200).default(500),
+  // Pay-per-use bills $0.005 for every post read: a new player's city reads their newest 10 posts ($0.05) and the
+  // rest of their plot is plain buildings (lib/world/filler.ts). A sync after a long absence reads at most this many
+  // new posts too. X's own ceiling is 3200.
+  X_FIRST_BUILD_MAX_POSTS: z.coerce.number().int().positive().max(3200).default(10),
   // Estimated X spend per UTC day, in dollars. At 80% optional calls (metrics refresh, follower lists, automatic
   // post checks) stop; at 100% every X call waits for midnight UTC. 0 turns the cap off.
   X_DAILY_SPEND_CAP_USD: z.coerce.number().nonnegative().default(5),

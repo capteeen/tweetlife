@@ -163,7 +163,7 @@ export async function checkForNewPost(user: User, opts: { auto: boolean }): Prom
   if (!ok) return { state: 'wait', retryIn: Math.max(1, await redis().ttl(kCheck(user.id))) };
   try {
     const { token, user: fresh } = await accessTokenFor(user);
-    const page = await getUserTweets({ accessToken: token, userId: user.id, maxWaitMs: 8000 }, user.id, { sinceId: world.newestPostId, maxResults: 5 });
+    const page = await getUserTweets({ accessToken: token, userId: user.id, maxWaitMs: 8000 }, user.id, { sinceId: world.newestPostId, maxResults: 5, exclude: 'retweets,replies' });
     const rows = structureRows(world.id, user.id, page.tweets, page.media);
     if (!rows.length) return { state: 'none' };
     await db.structure.createMany({ data: rows, skipDuplicates: true });

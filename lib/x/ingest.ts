@@ -11,7 +11,6 @@ import { crowdForNewPosts } from '../life/crowd';
 // Ingestion: turn the owner's real timeline into Structure rows, one page at a time,
 // so the world is walkable while the rest of the history is still arriving.
 
-const PAGE_SIZE = 100;
 const WORKER_MAX_WAIT = 10 * 60 * 1000;
 /** Metrics are re-read for posts this recent. Likes and reposts mostly land in a post's first days. */
 const METRICS_DAYS = 7;
@@ -106,6 +105,8 @@ export type StepOptions = {
 export async function ingestTimeline(run: IngestRun, kind: Extract<RunKind, 'first_build' | 'incremental'>, opts: StepOptions = {}) {
   const { world, ctx } = await ownerContext(run.worldId);
   const maxPosts = env().X_FIRST_BUILD_MAX_POSTS;
+  // X pages hold 5 to 100 posts; a small cap reads one small page instead of paying for 100
+  const pageSize = Math.min(100, Math.max(5, maxPosts));
   const progress: Progress = { postsWritten: run.postsWritten, pagesFetched: run.pagesFetched, calls: run.calls };
 
   await db.world.update({ where: { id: world.id }, data: { ingestState: 'building', ingestError: null } });
@@ -128,7 +129,9 @@ export async function ingestTimeline(run: IngestRun, kind: Extract<RunKind, 'fir
       paginationToken,
       sinceId,
       untilId,
-      maxResults: PAGE_SIZE,
+      maxResults: pageSize,
+      // reposts and replies to others don't stand on a plot, so they aren't worth paying to read
+      exclude: 'retweets,replies',
     });
     progress.calls++;
     progress.pagesFetched++;

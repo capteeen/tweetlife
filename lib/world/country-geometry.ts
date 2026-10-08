@@ -1,4 +1,4 @@
-import { BLOCK_D, BLOCK_W, LOTS_PER_BLOCK, PITCH_X, PITCH_Z, ROAD, SIDEWALK, buildWorld, type Block, type CityGrid, type Placed, type StructureRow, type TerrainClass, type WorldGeometry } from './geometry';
+import { BLOCK_D, BLOCK_W, LOTS_PER_BLOCK, PITCH_X, PITCH_Z, ROAD, SIDEWALK, boundaryRadiusFor, buildWorld, type Block, type CityGrid, type Placed, type StructureRow, type TerrainClass, type WorldGeometry } from './geometry';
 import { CAPITAL_SLOT, PLOT_BLOCKS, plotBlocks, plotCell } from './country-map';
 
 // A country's map as one WorldGeometry (pure, so scripts/check-world.ts can check it): every player's plot
@@ -65,7 +65,8 @@ export function composeCountryGeometry(plots: PlotInput[], now?: Date): { geomet
     blocks,
     grid,
     outside: 'lush',
-    boundaryRadius: contentRadius + 45,
+    // past the plots, the venue ring and the nightlife row behind it (boundaryRadiusFor keeps the clubs on land)
+    boundaryRadius: Math.max(contentRadius + 45, boundaryRadiusFor(0, contentRadius)),
     contentRadius,
     // a country keeps its own clock: early afternoon
     skyPhase: 'noon',

@@ -12,9 +12,8 @@ import { buildRoutes, poseAt } from './residentPaths';
 type Spot = { x: number; z: number };
 
 /**
- * Everyone online in this place. Today that is the presence peers of the room you are in; when countries become
- * shared rooms (one presence room per country, with a light roster of everyone every few seconds), point this at
- * that roster and every headcount follows.
+ * Everyone online in this place: the room's peers, including the `far` ones known only from the country room's
+ * roster, so a club across the map still counts the people in it. Repoint this if presence ever moves elsewhere.
  */
 export function livePeople(): Spot[] {
   const s = useWorld.getState();

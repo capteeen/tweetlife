@@ -22,6 +22,7 @@ import { CityMap, TripBanner } from '@/components/life/CityMap';
 import { VenueMusic } from '@/components/life/VenueMusic';
 import { GameAudio } from '@/components/audio/GameAudio';
 import { Welcome } from '@/components/life/Welcome';
+import { FirstDayGuide } from '@/components/life/FirstDay';
 import { CountryPrompt } from '@/components/citizen/CountryPrompt';
 import { FlightOverlay } from '@/components/life/FlightOverlay';
 import { AirportDesk } from '@/components/life/AirportDesk';
@@ -269,6 +270,7 @@ export function WorldClient({ handle, spawnPostId, embed, backdrop, country }: {
           <HUD model={model} online={online} canAct={!!me} sendChat={sendChat} chatAvailable={model.chatEnabled && connected} />
           <TouchSticks />
           {!embed && <Welcome />}
+          {!embed && <FirstDayGuide place="city" />}
           {!embed && (
             <div className="pointer-events-none absolute left-3 top-3 z-10 hidden text-xs text-white/50 sm:block [@media(hover:none)]:hidden">WASD to walk · drag to look · tap a structure</div>
           )}

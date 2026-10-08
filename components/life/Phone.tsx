@@ -16,6 +16,7 @@ import { countryOf } from '@/lib/world/countries';
 import { SoundSettings } from '@/components/audio/SoundSettings';
 import { RelationshipsApp } from './RelationshipsApp';
 import { useLove } from './loveClient';
+import { firstDayActions } from './firstDay';
 
 /** Buys at or above this many bags ask "Sure?" first. */
 const BIG_SPEND = 1000;
@@ -31,6 +32,7 @@ const APPS: { id: PhoneApp; label: string; emoji: string; bg: string }[] = [
   { id: 'market', label: 'Market', emoji: '🛍️', bg: 'linear-gradient(135deg,#FF5D8F,#E63946)' },
   { id: 'garage', label: 'Garage', emoji: '🚗', bg: 'linear-gradient(135deg,#6B7280,#1B2436)' },
   { id: 'house', label: 'House', emoji: '🏠', bg: 'linear-gradient(135deg,#F28C28,#C99A5B)' },
+  { id: 'wardrobe', label: 'Wardrobe', emoji: '👕', bg: 'linear-gradient(135deg,#FF5D8F,#8338EC)' },
   { id: 'rich', label: 'Rich list', emoji: '👑', bg: 'linear-gradient(135deg,#FFD089,#B8A382)' },
   { id: 'gist', label: 'Gist', emoji: '💬', bg: 'linear-gradient(135deg,#1D9BF0,#2EC4B6)' },
   { id: 'love', label: 'Relationships', emoji: '💞', bg: 'linear-gradient(135deg,#FF5D8F,#8338EC)' },
@@ -119,6 +121,8 @@ export function Phone({ sendSocial, handle }: { sendSocial: SocialSend; handle: 
             <IdApp />
           ) : phone.app === 'love' ? (
             <RelationshipsApp />
+          ) : phone.app === 'wardrobe' ? (
+            <WardrobeApp />
           ) : (
             <SettingsApp handle={handle} />
           )}
@@ -755,15 +759,41 @@ function IdApp() {
   );
 }
 
+/** The Wardrobe: outfits are changed here, not at sign-up (the sign-up creator is one screen). Opens the full creator. */
+function WardrobeApp() {
+  const me = useWorld((s) => s.life?.me ?? null);
+  if (!me) return null;
+  const back = typeof window !== 'undefined' ? window.location.pathname : `/w/${me.handle}`;
+  return (
+    <div className="mt-3 space-y-3 text-sm">
+      <div className="rounded-2xl bg-white/5 p-4 text-center">
+        <div className="text-5xl">👕</div>
+        <p className="mt-2 font-semibold">Your wardrobe</p>
+        <p className="mt-1 text-white/65">Tops, bottoms, shoes, hair and the rest. Try things on and see them on your character in 3D.</p>
+      </div>
+      <a className="btn w-full !rounded-2xl !py-3" href={`/create?wardrobe=1&next=${encodeURIComponent(back)}`}>
+        Open the wardrobe
+      </a>
+    </div>
+  );
+}
+
 function SettingsApp({ handle }: { handle: string }) {
   const me = useWorld((s) => s.me);
+  const tour = useWorld((s) => s.life?.firstDay?.state);
+  const signedIn = useWorld((s) => !!s.life?.me);
   return (
     <div className="mt-3 space-y-2 text-sm">
       <SoundSettings />
       {me && (
-        <a className="btn w-full" href={`/create?next=${encodeURIComponent(`/w/${handle}`)}`}>
+        <a className="btn w-full" href={`/create?wardrobe=1&next=${encodeURIComponent(`/w/${handle}`)}`}>
           👕 Change my look
         </a>
+      )}
+      {signedIn && (tour === null || tour === 'skipped') && (
+        <button className="btn-ghost w-full" onClick={() => firstDayActions.start().catch(() => {})}>
+          🧭 Take the first-day tour
+        </button>
       )}
       {me && (
         <button className="btn-ghost w-full" onClick={() => { useWorld.getState().closePhone(); showWelcomeAgain(); }}>

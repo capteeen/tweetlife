@@ -10,12 +10,12 @@ import { homeOf, whereIs } from './flights';
 
 // Player profiles for the life layer. Everyone who signs in gets one with a welcome of 10,000 bags —
 // in-world points, never money — and a house with the starter kit. A new player picks their look in the
-// avatar creator before walking in.
+// one-screen creator, then the guided first day (lib/life/firstDay.ts) walks them through their first minutes.
 
 export async function ensurePlayer(userId: string): Promise<Player> {
   const existing = await db.player.findUnique({ where: { id: userId } });
   if (existing) return tick(existing);
-  const p = await db.player.create({ data: { id: userId, lookPending: true, txs: { create: { kind: 'welcome', amount: 10000, note: 'Welcome to the trenches' } } } });
+  const p = await db.player.create({ data: { id: userId, lookPending: true, firstDay: 'active', txs: { create: { kind: 'welcome', amount: 10000, note: 'Welcome to the trenches' } } } });
   // the real Solana wallet is created alongside (keys encrypted at rest)
   await ensureWallet(userId).catch((e) => console.error('[wallet] create failed', (e as Error).message));
   await ensureStarterKit(userId);

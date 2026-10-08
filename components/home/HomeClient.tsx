@@ -10,6 +10,7 @@ import { Phone } from '@/components/life/Phone';
 import { FurnitureCard } from '@/components/life/FurnitureCard';
 import { useLife } from '@/components/life/useLife';
 import { Welcome } from '@/components/life/Welcome';
+import { FirstDayGuide } from '@/components/life/FirstDay';
 import { SignInButton } from '@/components/ui/Chrome';
 import { hasPower, type HomeView } from '@/lib/life/home';
 import { useHome } from './store';
@@ -174,6 +175,7 @@ export function HomeClient({ handle, residentId }: { handle?: string; residentId
       <RequestNotices />
       <TouchSticks />
       {home.mine && <Welcome />}
+      {home.mine && <FirstDayGuide place="home" />}
       <div className="pointer-events-none absolute left-3 top-3 z-10 hidden text-xs text-white/50 sm:block [@media(hover:none)]:hidden">WASD to walk · tap furniture · tap the door to leave</div>
     </div>
   );

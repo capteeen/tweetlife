@@ -96,11 +96,14 @@ function Scene(props: SceneProps) {
     }
   });
   const sunPos: [number, number, number] = [R * 0.55, R * sun.elevation, -R * 0.6];
+  // how far into the night the sky is: dims the fill light, turns the street lights on, brightens lit windows
+  const dark = THREE.MathUtils.smoothstep(geometry.skyT, 0.7, 0.92);
+  const night = dark > 0.3;
   return (
     <>
       <Sky t={geometry.skyT} radius={R * 5 + 300} tint={theme.sky} />
-      <hemisphereLight key={theme.country} args={[theme.light, '#6B6A5A', 1.15]} />
-      <ambientLight intensity={0.25} />
+      <hemisphereLight key={theme.country} args={[dark > 0 ? new THREE.Color(theme.light).lerp(new THREE.Color('#8FA3C8'), dark) : theme.light, '#6B6A5A', 1.15 * (1 - 0.45 * dark)]} />
+      <ambientLight intensity={0.25 * (1 - 0.4 * dark)} />
       <directionalLight
         position={sunPos}
         intensity={sun.intensity}
@@ -115,7 +118,7 @@ function Scene(props: SceneProps) {
         shadow-camera-near={1}
         shadow-camera-far={R * 4}
       />
-      <City blocks={geometry.blocks} grid={geometry.grid} outside={geometry.outside} boundaryRadius={R} biome={biome} handle={handle} paths={paths} structures={geometry.structures} />
+      <City blocks={geometry.blocks} grid={geometry.grid} outside={geometry.outside} boundaryRadius={R} biome={biome} handle={handle} paths={paths} structures={geometry.structures} player={mode === 'walk'} night={night} />
       <CityExtras
         contentRadius={geometry.contentRadius}
         boundaryRadius={R}
@@ -130,7 +133,7 @@ function Scene(props: SceneProps) {
       {geometry.structures.length > 0 && <Terminal contentRadius={geometry.contentRadius} boundaryRadius={R} />}
       <Cars count={geometry.cars} grid={geometry.grid} handle={handle} player={mode === 'walk'} />
       {geometry.structures.length > 0 && <Venues contentRadius={geometry.contentRadius} boundaryRadius={R} interactive={mode === 'walk'} />}
-      <Structures structures={geometry.structures} showMetrics={showMetrics} interactive={mode === 'walk'} />
+      <Structures structures={geometry.structures} showMetrics={showMetrics} interactive={mode === 'walk'} night={night} />
       {/* ambient-occlusion stand-in: one baked contact shadow pass under everything */}
       <ContactShadows frames={1} position={[0, 0.3, 0]} scale={geometry.contentRadius * 2.1 + 20} blur={2} opacity={0.4} far={14} resolution={1024} />
       <Marks marks={marks} />

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { db } from '@/lib/db';
 import { redis } from '@/lib/redis';
 import { bad, requirePlayer } from '@/lib/life/auth';
+import { lockedReason } from '@/lib/life/record';
 import { setStats } from '@/lib/life/player';
 import { applyDelta, moodOf } from '@/lib/life/stats';
 import { venueById } from '@/lib/life/venues';
@@ -20,6 +21,8 @@ export async function POST(req: NextRequest) {
   if ('error' in r) return r.error;
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return bad('venueId and actionId required');
+  const locked = lockedReason(r.player);
+  if (locked) return bad(locked, 403);
   const venue = venueById(parsed.data.venueId);
   const action = venue?.actions.find((a) => a.id === parsed.data.actionId);
   if (!venue || !action) return bad('No such action');

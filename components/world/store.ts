@@ -15,9 +15,10 @@ import type { JobBoard, JobId } from '@/lib/life/jobs';
 import type { CabinId } from '@/lib/life/flights';
 import type { FirstDayView } from '@/lib/life/firstDaySteps';
 import type { CountryMark, PlotModel } from '@/lib/world/country';
+import type { CrimeRecord } from '@/lib/life/crimeRules';
 
 /** An everyday activity in progress (dance, stretch...): the avatar plays it until `until` or until you move. */
-export type Doing = { id: ActivityId; until: number } | null;
+export type Doing = { id: ActivityId; until: number; /** turn to face this spot while it plays (a fight) */ face?: { x: number; z: number } } | null;
 
 /** `far`: known only from the room's roster (beyond the interest radius): on the map, not drawn. */
 export type Peer = { id: string; handle: string; x: number; z: number; yaw: number; at: number; ride?: string | null; act?: FigureAct | null; far?: boolean };
@@ -57,7 +58,13 @@ export type LifeMe = {
   citizen: Citizenship;
   /** the country you are in right now, and your home country */
   location?: CountryId; home?: CountryId;
+  /** wanted stars, priors, cell and bail, dazed, Peaceful mode (lib/life/record.ts) */
+  record?: CrimeRecord;
 };
+/** A crime against you that you can still report (app/api/life/crime). */
+export type Incident = { id: string; kind: string; offender: string; byResident: boolean; amount: number; outcome: string; at: string; expiresAt: string };
+/** The arrest playing out: an officer walks up and cuffs someone (you, or another player) before the cell. */
+export type ArrestFx = { at: number; x: number; z: number; who: 'me' | string; text: string };
 export type WalletData = {
   address: string;
   cluster: 'devnet' | 'mainnet-beta';
@@ -138,6 +145,9 @@ export type WorldState = {
   crowdNotices: CrowdNotice[];
   /** where the first-day guide is pointing (a beacon in the world), or null */
   guide: { x: number; z: number; label: string } | null;
+  /** crimes against you that you can still report */
+  incidents: Incident[];
+  arrestFx: ArrestFx | null;
 
   setModel: (m: WorldModel, skyline: boolean, me: Me) => void;
   setCountry: (c: CountryId) => void;
@@ -189,6 +199,9 @@ export type WorldState = {
   airport: AirportState;
   patchAirport: (p: Partial<AirportState>) => void;
   setGuide: (g: { x: number; z: number; label: string } | null) => void;
+  setIncidents: (i: Incident[]) => void;
+  setArrestFx: (a: ArrestFx | null) => void;
+  patchRecord: (r: CrimeRecord) => void;
 };
 
 export const useWorld = create<WorldState>((set) => ({
@@ -233,6 +246,8 @@ export const useWorld = create<WorldState>((set) => ({
   flight: null,
   airport: { pass: null, cleared: false, sheet: null, zone: 'outside' },
   guide: null,
+  incidents: [],
+  arrestFx: null,
   setModel: (model, skyline, me) => set({ model, skyline, me }),
   setCountryMap: (countryMap, mine) => set((s) => ({ countryMap, ...(mine !== undefined ? { mine } : {}), block: countryMap ? s.block : null })),
   setBlock: (block) =>
@@ -324,6 +339,9 @@ export const useWorld = create<WorldState>((set) => ({
   pushCrowdNotices: (n) => set((s) => ({ crowdNotices: [...s.crowdNotices.filter((x) => !n.some((y) => y.id === x.id)), ...n].slice(-3) })),
   dropCrowdNotice: (id) => set((s) => ({ crowdNotices: s.crowdNotices.filter((x) => x.id !== id) })),
   setGuide: (guide) => set({ guide }),
+  setIncidents: (incidents) => set({ incidents }),
+  setArrestFx: (arrestFx) => set({ arrestFx }),
+  patchRecord: (record) => set((s) => (s.life?.me ? { life: { ...s.life, me: { ...s.life.me, record } } } : {})),
   pushResidentChat: (id, m) => set((s) => ({ residentChats: { ...s.residentChats, [id]: [...(s.residentChats[id] ?? []).slice(-29), m] } })),
   setFlight: (flight) => set({ flight }),
   patchAirport: (p) => set((s) => ({ airport: { ...s.airport, ...p } })),

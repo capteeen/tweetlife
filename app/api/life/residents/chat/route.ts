@@ -5,6 +5,7 @@ import { residentById, residentPrompt } from '@/lib/life/residents';
 import { cannedReply, deepseekReply, takeQuota } from '@/lib/life/residentChat';
 import { chatAffinity } from '@/lib/life/loveServer';
 import { talkingPoints } from '@/lib/life/suggestions';
+import { reputationLine } from '@/lib/life/crime';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,6 +50,8 @@ export async function POST(req: NextRequest) {
     clout: p.clout,
     // a government knows what its citizens have been asking for
     points: who.office && who.country ? await talkingPoints(who.country).catch(() => []) : [],
+    // a record makes them wary (lib/life/crime.ts)
+    reputation: reputationLine(p),
   });
   const reply = await deepseekReply(system, b.messages.slice(-10));
   return NextResponse.json(reply ? { reply, source: 'ai', affinity } : { reply: cannedReply(who, said), source: 'canned', affinity });

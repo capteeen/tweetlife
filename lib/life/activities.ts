@@ -4,7 +4,9 @@ import type { Stats } from './stats';
 // a selfie. Same shape as a furniture action (a duration, what it does to Vibes / Clout / Gas), plus a cooldown so
 // resting can't be farmed. Walking costs gas by distance; sleeping (the bed at home) is how you get it back.
 
-export type ActivityId = 'dance' | 'stretch' | 'rest' | 'pushups' | 'selfie';
+export type ActivityId = 'dance' | 'stretch' | 'rest' | 'pushups' | 'selfie' | CrimeMove;
+/** moves that come from crime and police (lib/life/crimeRules.ts), never started from the activities menu */
+export type CrimeMove = 'fight' | 'dazed' | 'cuffed' | 'pickpocket';
 
 export type Activity = {
   id: ActivityId;

@@ -285,9 +285,25 @@ model Player {
   /// The guided first day (lib/life/firstDay.ts): "active" for new players, then "done" or "skipped".
   /// Null = never offered (players from before it existed); they can start it from Settings.
   firstDay    String?
-  lastTickAt  DateTime  @default(now())
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  // ---- crime and police (lib/life/crimeRules.ts). Bags only; the real Solana wallet is never touched.
+  /// wanted stars (0..5) as of `wantedAt`; one drops off for every 30 clean minutes after that
+  wanted        Int       @default(0)
+  wantedAt      DateTime?
+  /// arrests ever; they raise bail and cell time and never drop off
+  priors        Int       @default(0)
+  /// in a police station cell until then (null or past = free)
+  jailedUntil   DateTime?
+  /// what bail costs to walk out now
+  bail          Int       @default(0)
+  jailCrimeId   String?
+  /// knocked down after losing a fight: can't move or act until then
+  dazedUntil    DateTime?
+  /// Peaceful mode: can't commit or suffer crime. Can't be switched off before `peacefulLockUntil`.
+  peaceful          Boolean   @default(false)
+  peacefulLockUntil DateTime?
+  lastTickAt  DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   wallet        Wallet?
   walletTxs     WalletTx[]
@@ -473,6 +489,29 @@ model SocialRequest {
   @@index([toId, status])
   @@index([fromId, status])
   @@index([fromId, toId, kind])
+}
+
+/// A steal or a fight. The offender or the victim can be a named AI resident (residentId, no player id on that side).
+model Crime {
+  id           String    @id @default(cuid())
+  kind         String // steal | fight
+  worldId      String?
+  offenderId   String? // player id; null when a resident did it
+  offenderName String // @handle or the resident's name
+  victimId     String? // player id; null when the victim is a resident
+  victimName   String
+  residentId   String? // the resident on whichever side
+  /// bags taken (steal only)
+  amount       Int       @default(0)
+  outcome      String // stolen | caught | won | lost (fights: from the attacker's side)
+  /// what the victim did: police | complaint | dropped (null = not decided yet)
+  report       String?
+  reportedAt   DateTime?
+  arrested     Boolean   @default(false)
+  at           DateTime  @default(now())
+
+  @@index([offenderId, at])
+  @@index([victimId, at])
 }
 
 /// A step of the guided first day the player finished. One row per step, so its reward is paid exactly once.

@@ -14,9 +14,11 @@ export const DISTRICTS: District[] = [
   { id: 'strip', name: 'The Strip', color: '#FF5D8F', slots: [8, 9, 10], venues: ['club', 'bar', 'suya'] },
   { id: 'trenches', name: 'Trenches Quarter', color: '#06D6A0', slots: [11, 12, 13, 14], venues: ['tech', 'exchange', 'bank', 'hustle'] },
   { id: 'civic', name: 'Government Hill', color: '#C9A227', slots: [3], venues: ['capitol'] },
+  // the police station (lib/life/police.ts), between Wellness Row and the Strip
+  { id: 'police', name: 'Police Plaza', color: '#2B59C3', slots: [7], venues: ['police'] },
 ];
 /** Slots between districts. New venues that no district names land here, in this order. */
-export const SPARE_SLOTS = [7, 15];
+export const SPARE_SLOTS = [15];
 /**
  * Billboards stand on the inner side of the ring road between the spare slots and the next district, facing the
  * traffic, so whatever takes a spare slot keeps a clear view of its door from the city.

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { friendlySolanaError } from '@/lib/solana/errors';
 import { db } from '@/lib/db';
 import { bad, requirePlayer } from '@/lib/life/auth';
 import { airdrop, explorerUrl } from '@/lib/solana/wallet';
@@ -15,6 +16,6 @@ export async function POST() {
     await db.walletTx.create({ data: { playerId: r.player.id, kind: 'airdrop', lamports: BigInt(1e9), signature: sig, note: 'devnet faucet' } });
     return NextResponse.json({ ok: true, signature: sig, url: explorerUrl(sig) });
   } catch (e) {
-    return bad((e as Error).message.slice(0, 200), 503);
+    return bad(friendlySolanaError(e), 503);
   }
 }

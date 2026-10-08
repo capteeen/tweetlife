@@ -46,7 +46,7 @@ export function PostCard({ handle, showMetrics, canAct }: { handle: string; show
   };
 
   return (
-    <div className="pointer-events-auto absolute left-1/2 top-4 z-20 w-[min(92vw,420px)] -translate-x-1/2 rounded-2xl chrome p-4 text-[15px]">
+    <div className="pointer-events-auto absolute left-1/2 top-16 z-20 w-[min(92vw,420px)] -translate-x-1/2 rounded-2xl chrome p-4 text-[15px]">
       <div className="mb-2 flex items-center justify-between text-xs text-white/55">
         <span>
           {KIND_LABEL[s.kind] ?? 'Post'} · {dateShort(s.postedAt)}

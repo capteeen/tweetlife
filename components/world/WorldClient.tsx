@@ -19,6 +19,7 @@ import { CityMap, TripBanner } from '@/components/life/CityMap';
 import { VenueMusic } from '@/components/life/VenueMusic';
 import { Welcome } from '@/components/life/Welcome';
 import { useLife } from '@/components/life/useLife';
+import { enterVenue } from '@/components/life/travel';
 import { placeVenues } from '@/lib/life/venues';
 
 const WorldCanvas = dynamic(() => import('./WorldCanvas').then((m) => m.WorldCanvas), { ssr: false });
@@ -93,7 +94,6 @@ export function WorldClient({ handle, spawnPostId, embed, backdrop }: { handle: 
   const { online, sendChat, sendSocial, connected } = usePresence(handle, admitted);
   useLife(admitted && !backdrop);
   const nearVenue = useWorld((s) => s.nearVenue);
-  const selectVenue = useWorld((s) => s.selectVenue);
   const selectedVenue = useWorld((s) => s.selectedVenue);
   const toasts = useWorld((s) => s.toasts);
   const dropToast = useWorld((s) => s.dropToast);
@@ -202,7 +202,7 @@ export function WorldClient({ handle, spawnPostId, embed, backdrop }: { handle: 
               className="pointer-events-auto absolute bottom-20 [@media(any-pointer:coarse)]:bottom-56 left-1/2 z-20 -translate-x-1/2 rounded-full chrome px-4 py-2 text-sm font-semibold hover:bg-white/10"
               onClick={() => {
                 const v = placeVenues(g.contentRadius, g.boundaryRadius).find((x) => x.id === nearVenue);
-                if (v) selectVenue(v);
+                if (v) enterVenue(v);
               }}
             >
               {(() => {

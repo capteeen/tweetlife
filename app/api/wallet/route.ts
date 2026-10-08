@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { friendlySolanaError } from '@/lib/solana/errors';
 import { db } from '@/lib/db';
 import { requirePlayer } from '@/lib/life/auth';
 import { balances, cluster, ensureWallet, explorerUrl } from '@/lib/solana/wallet';
@@ -16,7 +17,7 @@ export async function GET() {
   try {
     bal = await balances(w.publicKey);
   } catch (e) {
-    error = `Could not read the chain: ${(e as Error).message.slice(0, 160)}`;
+    error = friendlySolanaError(e, 'Could not read your balance right now. Try again in a bit.');
   }
   const txs = await db.walletTx.findMany({ where: { playerId: r.player.id }, orderBy: { at: 'desc' }, take: 30 });
   return NextResponse.json(

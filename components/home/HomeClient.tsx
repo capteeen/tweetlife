@@ -100,7 +100,7 @@ export function HomeClient({ handle }: { handle?: string }) {
       <TopHUD online={null} handle={home.owner.handle} />
       {/* top-left: my stats and moves, whose house, and the light situation */}
       <div className="pointer-events-auto absolute left-3 top-16 z-10 flex flex-col gap-2">
-        {home.mine && <StatBars inline />}
+        {home.mine && <StatBars inline atHome />}
         <div className="rounded-2xl chrome px-3 py-2 text-xs">
           <div className="font-semibold">🏠 {home.mine ? 'Your house' : `@${home.owner.handle}'s house`}</div>
           <div className={power ? 'text-emerald-300' : 'text-amber-200'}>

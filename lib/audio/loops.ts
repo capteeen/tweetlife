@@ -76,7 +76,7 @@ const BUILD: Record<string, Builder> = {
       sources: start(e, n, n2, wob),
       update: (p, t) => {
         lp.frequency.setTargetAtTime(160 + (p.busy ?? 0.5) * 220, t, 0.5);
-        g2.gain.setTargetAtTime(0.06 + (p.busy ?? 0.5) * 0.14, t, 0.5);
+        g2.gain.setTargetAtTime(0.04 + (p.busy ?? 0.5) * 0.09, t, 0.5);
       },
     };
   },
@@ -360,8 +360,9 @@ const BUILD: Record<string, Builder> = {
         const rate = Math.max(0.3, p.rate ?? 1);
         const hard = p.hard ?? 0.5;
         next = t + 0.5 / rate;
-        if (inhale) hiss(e, out, t, { dur: 0.35 / rate, gain: 0.14 + hard * 0.16, filter: 'bandpass', f: 1600, f2: 2200, q: 1.2, attack: 0.1 / rate });
-        else hiss(e, out, t, { dur: 0.3 / rate, gain: 0.2 + hard * 0.25, filter: 'bandpass', f: 950, f2: 700, q: 1, attack: 0.04 });
+        // close to the mic: loud enough to sit on top of the city
+        if (inhale) hiss(e, out, t, { dur: 0.35 / rate, gain: 0.5 + hard * 0.5, filter: 'bandpass', f: 1600, f2: 2200, q: 0.8, attack: 0.1 / rate });
+        else hiss(e, out, t, { dur: 0.3 / rate, gain: 0.7 + hard * 0.7, filter: 'bandpass', f: 950, f2: 700, q: 0.7, attack: 0.04 });
         inhale = !inhale;
       },
     };

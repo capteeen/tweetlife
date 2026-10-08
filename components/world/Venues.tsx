@@ -13,7 +13,8 @@ const FONT = '/fonts/inter-600.woff';
 // The city's venues: distinct, signed, in districts on a ring just outside the post blocks, each with an
 // icon pin above it. Tap the building or the pin to open its sheet.
 export function Venues({ contentRadius, boundaryRadius, interactive }: { contentRadius: number; boundaryRadius: number; interactive: boolean }) {
-  const venues = useMemo(() => placeVenues(contentRadius, boundaryRadius), [contentRadius, boundaryRadius]);
+  const country = useWorld((s) => s.country);
+  const venues = useMemo(() => placeVenues(contentRadius, boundaryRadius, country), [contentRadius, boundaryRadius, country]);
   return (
     <group>
       {venues.map((v) => (

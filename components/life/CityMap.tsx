@@ -6,6 +6,8 @@ import { placeVenues, type PlacedVenue } from '@/lib/life/venues';
 import {
   DISTRICTS, RING_ROAD_W, RING_SLOTS, airportLayout, along, billboardSpots, onLand, ringRoadRadius, slotAngle, type Rect,
 } from '@/lib/world/layout';
+import { COUNTRIES } from '@/lib/world/countries';
+import { districtName, landmarkSpot, themeOf, themedPalette } from '@/lib/world/cityThemes';
 import { TravelPicker } from './TravelPicker';
 import { etaLabel } from './travel';
 
@@ -20,6 +22,15 @@ type View = { cx: number; cz: number; s: number };
 export function CityMap() {
   const open = useWorld((s) => s.mapOpen);
   const model = useWorld((s) => s.model);
+  const country = useWorld((s) => s.country);
+  const logo = useMemo(() => {
+    if (typeof window === 'undefined') return null;
+    const i = new Image();
+    i.src = COUNTRIES[country].logo;
+    return i;
+  }, [country]);
+  const logoRef = useRef(logo);
+  logoRef.current = logo;
   const setMapOpen = useWorld((s) => s.setMapOpen);
   const selectVenue = useWorld((s) => s.selectVenue);
   const selectPeer = useWorld((s) => s.selectPeer);
@@ -36,8 +47,8 @@ export function CityMap() {
   const layout = useMemo(() => {
     if (!g) return null;
     const ap = airportLayout(g.contentRadius, g.boundaryRadius);
-    return { ap, venues: placeVenues(g.contentRadius, g.boundaryRadius), boards: billboardSpots(g.contentRadius, g.boundaryRadius), rr: ringRoadRadius(g.contentRadius) };
-  }, [g]);
+    return { ap, venues: placeVenues(g.contentRadius, g.boundaryRadius, country), boards: billboardSpots(g.contentRadius, g.boundaryRadius), rr: ringRoadRadius(g.contentRadius) };
+  }, [g, country]);
 
   const fit = () => {
     const c = ref.current;
@@ -79,7 +90,8 @@ export function CityMap() {
     }
     const ctx = c.getContext('2d')!;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const pal = PALETTES[(model.biome as Biome) in PALETTES ? (model.biome as Biome) : 'meadow'];
+    const pal = themedPalette(PALETTES[(model.biome as Biome) in PALETTES ? (model.biome as Biome) : 'meadow'], st.country);
+    const theme = themeOf(st.country);
     const s = v.s;
     const sx = (x: number) => W / 2 + (x - v.cx) * s, sz = (z: number) => H / 2 + (z - v.cz) * s;
     const rect = (r: Rect, color: string) => {
@@ -99,6 +111,20 @@ export function CityMap() {
       ctx.arc(sx(0), sz(0), (R + k * 14) * s, 0, Math.PI * 2);
       ctx.stroke();
     }
+    // the country's landmark on its islet in the lagoon
+    const lm = landmarkSpot(R);
+    ctx.fillStyle = pal.sand;
+    ctx.beginPath();
+    ctx.arc(sx(lm.x), sz(lm.z), lm.r * s, 0, Math.PI * 2);
+    ctx.fill();
+    // the coin's real logo stands on it
+    const li = logoRef.current;
+    const ls = lm.r * 1.3 * s;
+    ctx.fillStyle = COUNTRIES[theme.country].theme.ink;
+    ctx.beginPath();
+    ctx.arc(sx(lm.x), sz(lm.z), lm.r * 0.85 * s, 0, Math.PI * 2);
+    ctx.fill();
+    if (li?.complete && li.naturalWidth) ctx.drawImage(li, sx(lm.x) - ls / 2, sz(lm.z) - ls / 2, ls, ls);
     // airport island and bridge
     rect({ ...ap.island, w: ap.island.w + 2, d: ap.island.d + 2 }, pal.sand);
     rect(ap.island, pal.lush);
@@ -270,10 +296,11 @@ export function CityMap() {
         const c = Math.cos(a), sn = Math.sin(a);
         const align: CanvasTextAlign = c < -0.3 ? 'right' : c > 0.3 ? 'left' : 'center';
         const r = R + (align === 'center' ? 4 + 12 / s : 3);
-        label(d.name.toUpperCase(), c * r, sn * r, fs, 0, 0.92, align);
+        label(districtName(d.id, d.name, st.country).toUpperCase(), c * r, sn * r, fs, 0, 0.92, align);
       }
       label('DOWNTOWN', 0, -((2 * K + 1) * pitchZ + road) / 2 + 8 / s + 2, fs, 0, 0.75);
       label('AIRPORT', ap.island.x + 4, -ap.island.d / 2 + 6, fs);
+      label(theme.landmark.name.toUpperCase(), lm.x - lm.r - 2, lm.z, fs * 0.8, -Math.PI / 2, 0.85);
     }
     label('THE LAGOON', R + 14, -ap.island.d / 4, fs, Math.PI / 2, 0.7);
     // trip route
@@ -475,7 +502,9 @@ export function CityMap() {
     <div className="pointer-events-auto fixed inset-0 z-40 flex flex-col bg-black/40 backdrop-blur-sm">
       <div className="flex items-start gap-2 px-3 pt-3">
         <div className="flex min-w-0 flex-1 flex-wrap gap-1.5 rounded-3xl chrome p-1.5 sm:flex-nowrap sm:overflow-x-auto sm:rounded-full">
-          <span className="hidden shrink-0 items-center whitespace-nowrap px-2 text-sm font-semibold sm:flex">🗺️ @{model.handle}&apos;s city</span>
+          <span className="hidden shrink-0 items-center whitespace-nowrap px-2 text-sm font-semibold sm:flex">{/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={COUNTRIES[country].logo} alt="" className="mr-1.5 h-4 w-4" />
+            {COUNTRIES[country].capital}</span>
           {chip('venues', '🏙️ Venues')}
           {chip('neighbours', '🧍 Neighbours')}
           {chip('billboards', '🪧 Billboards')}

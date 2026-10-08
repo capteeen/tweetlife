@@ -5,6 +5,8 @@ import { Line } from '@react-three/drei';
 import type { Block, CityGrid, TerrainClass } from '@/lib/world/geometry';
 import { PALETTES, type Biome } from '@/lib/world/biomes';
 import { prng, hashString } from '@/lib/world/seed';
+import { themeOf, themedPalette } from '@/lib/world/cityThemes';
+import { useWorld } from './store';
 
 // The ground of the city: countryside disc, asphalt grid, sidewalks, block slabs coloured by posting
 // cadence (lush / dry / sand), vacant lots, lane dashes, crosswalks, trees, and water past the boundary.
@@ -36,7 +38,9 @@ function clsColor(pal: (typeof PALETTES)[Biome], cls: TerrainClass) {
 }
 
 export function City({ blocks, grid, outside, boundaryRadius, biome, handle, paths }: Props) {
-  const pal = PALETTES[(biome as Biome) in PALETTES ? (biome as Biome) : 'meadow'];
+  const country = useWorld((s) => s.country);
+  const theme = themeOf(country);
+  const pal = themedPalette(PALETTES[(biome as Biome) in PALETTES ? (biome as Biome) : 'meadow'], country);
   const { K, pitchX, pitchZ, blockW, blockD, road, sidewalk } = grid;
   const cityW = (2 * K + 1) * pitchX, cityD = (2 * K + 1) * pitchZ;
   const R = boundaryRadius;
@@ -95,9 +99,10 @@ export function City({ blocks, grid, outside, boundaryRadius, biome, handle, pat
         for (let k = 0; k < m; k++) out.push({ x: v.x + (rnd() - 0.5) * (v.w - 2), z: v.z + (rnd() - 0.5) * (v.d - 2), s: 0.7 + rnd() * 0.6, dry: v.cls === 'dry' });
       }
     }
-    const density = outside === 'lush' ? 1 / 220 : outside === 'dry' ? 1 / 900 : 0;
+    // countries change how wooded the countryside is (Robinhood City sits in Sherwood Forest)
+    const density = (outside === 'lush' ? 1 / 220 : outside === 'dry' ? 1 / 900 : theme.trees > 1 ? 1 / 600 : 0) * theme.trees;
     const area = Math.PI * R * R - cityW * cityD;
-    const nOut = Math.min(900, Math.floor(Math.max(0, area) * density));
+    const nOut = Math.min(900 * Math.max(1, theme.trees), Math.floor(Math.max(0, area) * density));
     for (let k = 0; k < nOut; k++) {
       const a = rnd() * Math.PI * 2, r = Math.sqrt(rnd()) * (R - 4);
       const x = Math.cos(a) * r, z = Math.sin(a) * r;
@@ -105,7 +110,7 @@ export function City({ blocks, grid, outside, boundaryRadius, biome, handle, pat
       out.push({ x, z, s: 0.9 + rnd() * 0.8, dry: outside === 'dry' });
     }
     return out;
-  }, [blocks, outside, R, cityW, cityD, blockW, blockD, sidewalk, handle]);
+  }, [blocks, outside, R, cityW, cityD, blockW, blockD, sidewalk, handle, theme.trees]);
 
   return (
     <group>
@@ -140,7 +145,7 @@ export function City({ blocks, grid, outside, boundaryRadius, biome, handle, pat
       />
       {blocks.length > 0 && <Dashes items={dashes} w={2.2} d={0.25} color={DASH} />}
       {blocks.length > 0 && <Dashes items={stripes} w={0.8} d={road * 0.42} color={DASH} />}
-      <Trees items={trees} />
+      <Trees items={trees} canopy={theme.canopy} />
       {paths.map((p, i) =>
         p.length > 1 ? (
           <Line key={i} points={p.map((q) => [q.x, 0.32, q.z] as [number, number, number])} color="#E8DCC8" lineWidth={3} transparent opacity={0.85} />
@@ -200,7 +205,7 @@ function Dashes({ items, w, d, color }: { items: { x: number; z: number; rot: nu
   );
 }
 
-function Trees({ items }: { items: { x: number; z: number; s: number; dry: boolean }[] }) {
+function Trees({ items, canopy: green = CANOPY }: { items: { x: number; z: number; s: number; dry: boolean }[]; canopy?: string[] }) {
   const trunk = useRef<THREE.InstancedMesh>(null);
   const canopy = useRef<THREE.InstancedMesh>(null);
   const trunkGeo = useMemo(() => new THREE.CylinderGeometry(0.12, 0.18, 1, 5), []);
@@ -220,13 +225,13 @@ function Trees({ items }: { items: { x: number; z: number; s: number; dry: boole
       tmp.scale.set(1.3 * it.s, 1.5 * it.s, 1.3 * it.s);
       tmp.updateMatrix();
       c.setMatrixAt(i, tmp.matrix);
-      const palette = it.dry ? CANOPY_DRY : CANOPY;
+      const palette = it.dry ? CANOPY_DRY : green;
       c.setColorAt(i, tmpColor.set(palette[Math.abs(Math.round(it.x * 7 + it.z * 13)) % palette.length]));
     });
     t.count = c.count = items.length;
     t.instanceMatrix.needsUpdate = c.instanceMatrix.needsUpdate = true;
     if (c.instanceColor) c.instanceColor.needsUpdate = true;
-  }, [items]);
+  }, [items, green]);
   if (items.length === 0) return null;
   return (
     <group>

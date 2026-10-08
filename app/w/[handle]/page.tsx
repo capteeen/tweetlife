@@ -19,6 +19,6 @@ export async function generateMetadata({ params }: { params: { handle: string } 
   };
 }
 
-export default function WorldPage({ params, searchParams }: { params: { handle: string }; searchParams: { embed?: string; backdrop?: string } }) {
-  return <WorldClient handle={params.handle} embed={searchParams.embed === '1'} backdrop={searchParams.backdrop === '1'} />;
+export default function WorldPage({ params, searchParams }: { params: { handle: string }; searchParams: { embed?: string; backdrop?: string; country?: string } }) {
+  return <WorldClient handle={params.handle} embed={searchParams.embed === '1'} backdrop={searchParams.backdrop === '1'} country={searchParams.country} />;
 }

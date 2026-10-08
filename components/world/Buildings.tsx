@@ -6,6 +6,7 @@ import { useFrame, type ThreeEvent } from '@react-three/fiber';
 import type { Placed } from '@/lib/world/geometry';
 import { planBuilding, type Part, type PartGeo, type PartMat, type PlanInput } from '@/lib/world/buildings';
 import { useWorld } from './store';
+import { facadeRecolor } from '@/lib/world/cityThemes';
 
 // Post buildings, drawn from lib/world/buildings.ts plans. Every part of every building goes into one
 // InstancedMesh per (geometry, material) pair, so the whole city is a dozen draw calls. Massing (bodies,
@@ -76,14 +77,15 @@ function inputFor(s: Placed, tops: Set<string>): PlanInput {
   };
 }
 
-function writePart(mesh: THREE.InstancedMesh, i: number, s: Placed, p: Part) {
+function writePart(mesh: THREE.InstancedMesh, i: number, s: Placed, p: Part, recolor: Map<string, string>) {
+  const hex = recolor.get(p.color) ?? p.color;
   const c = Math.cos(s.rot), sn = Math.sin(s.rot);
   tmp.position.set(s.x + p.x * c + p.z * sn, s.y + p.y + p.sy / 2, s.z - p.x * sn + p.z * c);
   tmp.rotation.set(p.rx, s.rot + p.ry, 0, 'YXZ');
   tmp.scale.set(p.sx, p.sy, p.sz);
   tmp.updateMatrix();
   mesh.setMatrixAt(i, tmp.matrix);
-  mesh.setColorAt(i, p.k === 1 ? colorOf(p.color) : tmpColor.copy(colorOf(p.color)).multiplyScalar(p.k));
+  mesh.setColorAt(i, p.k === 1 ? colorOf(hex) : tmpColor.copy(colorOf(hex)).multiplyScalar(p.k));
 }
 
 type Group = { mesh: THREE.InstancedMesh | null; owners: Int32Array };
@@ -91,6 +93,8 @@ type Group = { mesh: THREE.InstancedMesh | null; owners: Int32Array };
 export function Buildings({ items, interactive, detailRadius = 120 }: { items: Placed[]; interactive: boolean; detailRadius?: number }) {
   const select = useWorld((s) => s.select);
   const playerPos = useWorld((s) => s.playerPos);
+  // each country repaints awnings, roofs, signs and glass in its coin's colours
+  const recolor = facadeRecolor(useWorld((s) => s.country));
 
   const tops = useMemo(() => {
     // the top piece of every stack (thread towers) gets the crown
@@ -130,7 +134,7 @@ export function Buildings({ items, interactive, detailRadius = 120 }: { items: P
       if (!g?.mesh) continue;
       const mesh = g.mesh;
       list.forEach(({ s, p, owner }, i) => {
-        writePart(mesh, i, s, p);
+        writePart(mesh, i, s, p, recolor);
         g.owners[i] = owner;
       });
       g.mesh.count = list.length;
@@ -138,14 +142,14 @@ export function Buildings({ items, interactive, detailRadius = 120 }: { items: P
       if (g.mesh.instanceColor) g.mesh.instanceColor.needsUpdate = true;
       g.mesh.computeBoundingSphere();
     }
-  }, [mass]);
+  }, [mass, recolor]);
 
-  const last = useRef({ x: NaN, z: NaN, items: null as Placed[] | null });
+  const last = useRef({ x: NaN, z: NaN, items: null as Placed[] | null, recolor: null as Map<string, string> | null });
   useFrame(() => {
     const { x: px, z: pz } = playerPos;
     const l = last.current;
-    if (l.items === items && Math.hypot(px - l.x, pz - l.z) < 8) return;
-    last.current = { x: px, z: pz, items };
+    if (l.items === items && l.recolor === recolor && Math.hypot(px - l.x, pz - l.z) < 8) return;
+    last.current = { x: px, z: pz, items, recolor };
     const counts = new Map<string, number>();
     const cache = detailCache.current;
     const near = items
@@ -164,7 +168,7 @@ export function Buildings({ items, interactive, detailRadius = 120 }: { items: P
         if (!g?.mesh) continue;
         const n = counts.get(k) ?? 0;
         if (n >= MAX_DETAIL) continue;
-        writePart(g.mesh, n, s, p);
+        writePart(g.mesh, n, s, p, recolor);
         g.owners[n] = i;
         counts.set(k, n + 1);
       }

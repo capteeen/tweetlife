@@ -65,6 +65,8 @@ const ROOF = ['#B5482F', '#8C3B2E', '#5B5F66', '#3E5A73', '#9C6B3E', '#6F4A3A'];
 const AWNING = ['#D94F3D', '#2F7F6F', '#E0A63A', '#3C6FB0', '#8E4FA0', '#3E8E4E'];
 const SIGN = ['#1F2933', '#F5F0E6', '#C0392B', '#1E5AA8', '#E7B23A', '#2D7A4F'];
 const DARK_GLASS = ['#34485A', '#3B5064', '#41586E', '#36495A', '#4A5A6C'];
+/** colour sets a country can swap for its own (lib/world/cityThemes.ts) */
+export const FACADE = { PAINT, GLASS, FRAME, ROOF, AWNING, SIGN, DARK_GLASS } as const;
 const TRIM = '#F4EFE6';
 const DOOR = ['#5B3A29', '#3B2A20', '#2F4858', '#6B2E2E', '#24323A'];
 const LIT = ['#FFD9A0', '#FFE6B8', '#FFCF8A', '#FFF1D2'];

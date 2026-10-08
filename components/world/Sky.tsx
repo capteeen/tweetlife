@@ -10,8 +10,16 @@ const vert = `varying vec3 vWorld; void main(){ vec4 w = modelMatrix * vec4(posi
 const frag = `uniform vec3 uHorizon; uniform vec3 uZenith; varying vec3 vWorld;
 void main(){ float h = normalize(vWorld).y; float f = smoothstep(-0.05, 0.6, h); gl_FragColor = vec4(mix(uHorizon, uZenith, f), 1.0); }`;
 
-export function Sky({ t, radius }: { t: number; radius: number }) {
-  const { horizon, zenith } = useMemo(() => skyColors(t), [t]);
+/** `tint` pulls the dome towards a country's colours (lib/world/cityThemes.ts). */
+export function Sky({ t, radius, tint }: { t: number; radius: number; tint?: { horizon: string; zenith: string; amount: number } }) {
+  const { horizon, zenith } = useMemo(() => {
+    const c = skyColors(t);
+    if (tint) {
+      c.horizon.lerp(new THREE.Color(tint.horizon), tint.amount);
+      c.zenith.lerp(new THREE.Color(tint.zenith), tint.amount);
+    }
+    return c;
+  }, [t, tint]);
   const uniforms = useMemo(() => ({ uHorizon: { value: horizon }, uZenith: { value: zenith } }), [horizon, zenith]);
   return (
     <mesh scale={[radius, radius, radius]} frustumCulled={false}>

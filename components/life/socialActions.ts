@@ -3,6 +3,7 @@ import type { LifeMe } from '@/components/world/store';
 import type { SocialSend } from './useLife';
 import { houseUrl, loveActions } from './loveClient';
 import { DATES, KINDS, MAX_PARTNERS, type BondView, type LoveState, type RequestKind } from '@/lib/life/love';
+import { TROUBLE_GROUP } from './troubleActions';
 
 // What you can do with someone from a chat: a list of groups of actions, shown by SocialMenu in the player card
 // (PeerCard) and the AI resident card (ResidentCard). To add actions, add a group here: each action says who it
@@ -130,4 +131,4 @@ export const LOVE_GROUP: SocialGroup = {
 };
 
 /** Every group of actions, in the order they show. Add yours here. */
-export const SOCIAL_GROUPS: SocialGroup[] = [LOVE_GROUP];
+export const SOCIAL_GROUPS: SocialGroup[] = [LOVE_GROUP, TROUBLE_GROUP];

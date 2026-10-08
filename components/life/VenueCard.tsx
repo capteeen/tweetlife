@@ -5,6 +5,7 @@ import { lifeActions, type SocialSend } from './useLife';
 import { TravelPicker } from './TravelPicker';
 import { CoinCounter } from './CoinCounter';
 import { Departures } from './Departures';
+import { PoliceDesk } from './CrimeHUD';
 import { airportLayout, inRect } from '@/lib/world/layout';
 import { placeVenues, type PlacedVenue } from '@/lib/life/venues';
 import { statDelta } from '@/lib/life/statNames';
@@ -159,6 +160,7 @@ export function VenueCard({ sendSocial }: { sendSocial: SocialSend }) {
       )}
       {me && <WorkHere venueId={venue.id} here={here} gas={me.gas} />}
       {me && here && venue.id === 'exchange' && <CoinCounter />}
+      {me && venue.id === 'police' && <PoliceDesk />}
       {me && !here && venue.id === 'exchange' && <p className="mt-2 text-xs text-white/50">Get to the counter to buy coins with bags.</p>}
       {me && !here && venue.actions.length > 0 && <p className="mt-2 text-xs text-white/50">Get there to do any of these.</p>}
       {msg && <p className="mt-2 text-xs text-white/70">{msg}</p>}

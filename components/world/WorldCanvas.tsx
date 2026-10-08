@@ -17,6 +17,7 @@ import { Structures } from './Structures';
 import { Player } from './Player';
 import { Marks } from './Marks';
 import { Peers, Residents } from './Residents';
+import { PoliceStation } from './PoliceStation';
 import { CityResidents } from './CityResidents';
 import { BalloonFeed } from './Balloons';
 import { Crowds } from './Crowd';
@@ -143,6 +144,7 @@ function Scene(props: SceneProps) {
       {geometry.structures.length > 0 && (
         <CityResidents contentRadius={geometry.contentRadius} boundaryRadius={R} blocks={geometry.blocks} grid={geometry.grid} interactive={mode === 'walk'} />
       )}
+      {geometry.structures.length > 0 && <PoliceStation contentRadius={geometry.contentRadius} boundaryRadius={R} blocks={geometry.blocks} grid={geometry.grid} />}
       {mode === 'walk' && (
         <>
           <Player structures={geometry.structures} blocks={geometry.blocks} grid={geometry.grid} boundaryRadius={R} contentRadius={geometry.contentRadius} spawn={spawn ?? null} />

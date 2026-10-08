@@ -13,6 +13,8 @@ export type NationalRules = {
   stipend: number;
   /** extra pay on Hustle Hub shifts, 0..1 (0.2 = +20%) */
   shiftBonus: number;
+  /** bail at this country's police station, as a multiple of the usual (lib/life/crimeRules.ts bailFor) */
+  bail: number;
   /** the national perk in plain words, for the venue sheet */
   perk: string;
 };
@@ -33,7 +35,7 @@ export const GOVERNMENTS: Record<CountryId, Government> = {
     country: 'solana',
     house: 'Solana State House',
     blurb: 'Where Ansem runs the country between charts.',
-    rules: { tradeTax: 0.01, stipend: 300, shiftBonus: 0, perk: 'Lowest fees in the land: 1% on coin sales' },
+    rules: { tradeTax: 0.01, stipend: 300, shiftBonus: 0, bail: 1, perk: 'Lowest fees in the land: 1% on coin sales' },
     addresses: [
       'Fellow Solanans: the network is fast, the bags are faster. Today is a good day to touch grass, then touch the Trenches.',
       'I have one message for the nation: conviction. Paper hands will be studied by historians.',
@@ -48,7 +50,7 @@ export const GOVERNMENTS: Record<CountryId, Government> = {
     country: 'bnb',
     house: 'BNB Build House',
     blurb: 'CZ\'s office. The sign on the door says "4".',
-    rules: { tradeTax: 0.02, stipend: 500, shiftBonus: 0.2, perk: 'Builders get paid: Hustle Hub shifts pay 20% more' },
+    rules: { tradeTax: 0.02, stipend: 500, shiftBonus: 0.2, bail: 1.25, perk: 'Builders get paid: Hustle Hub shifts pay 20% more' },
     addresses: [
       'Build, build, build. Today\'s national holiday is cancelled so we can keep building.',
       'To every BNBian who posted FUD this morning: 4. That is the whole address.',
@@ -63,7 +65,7 @@ export const GOVERNMENTS: Record<CountryId, Government> = {
     country: 'robinhood',
     house: 'Robinhood Capitol',
     blurb: 'Vlad\'s Capitol. Commission-free since day one.',
-    rules: { tradeTax: 0, stipend: 200, shiftBonus: 0, perk: 'Markets for the people: 0% tax on coin sales' },
+    rules: { tradeTax: 0, stipend: 200, shiftBonus: 0, bail: 0.75, perk: 'Markets for the people: 0% tax on coin sales' },
     addresses: [
       'Citizens of Robinhood: markets are for everyone. Today, trading in the Coin Shop remains commission-free.',
       'We believe every citizen should own a piece of the action. Even if the action is a frog coin.',

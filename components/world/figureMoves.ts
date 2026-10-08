@@ -5,7 +5,7 @@ import type * as THREE from 'three';
 // there toward a pose by `w` (0..1) so moves ease in and out. Kept apart from Figure.tsx so other animation
 // work (props in the hand, balloons) can change the figure without touching these.
 
-export type FigureAct = 'dance' | 'stretch' | 'rest' | 'pushups' | 'selfie' | 'cheer' | WorkAct;
+export type FigureAct = 'dance' | 'stretch' | 'rest' | 'pushups' | 'selfie' | 'cheer' | 'fight' | 'dazed' | 'cuffed' | 'pickpocket' | WorkAct;
 /** On-shift moves for jobs (lib/life/jobs.ts): typing at a desk, pouring drinks, coaching, marshalling jets, examining. */
 export type WorkAct = 'type' | 'pour' | 'coach' | 'marshal' | 'examine';
 
@@ -156,6 +156,82 @@ const MOVES: Record<FigureAct, (r: Rig, t: number, w: number) => void> = {
       rot(arm, 'z', side * (0.35 + 0.18 * wave), w);
       rot(elbow, 'x', -0.2 - 0.2 * wave, w);
     }
+  },
+
+  // Squared up and swinging (lib/life/crimeRules.ts): guard up, bouncing, a jab then a hook, over and over.
+  fight(r, t, w) {
+    const bounce = Math.abs(Math.sin(t * Math.PI * 2.4));
+    const swing = (t * 2.6) % 2; // 0..1 left jab, 1..2 right hook
+    const jab = swing < 1 ? Math.sin(swing * Math.PI) : 0;
+    const hook = swing >= 1 ? Math.sin((swing - 1) * Math.PI) : 0;
+    lift(r.body, -0.05 + 0.03 * bounce, w);
+    rot(r.body, 'y', 0.35 * jab - 0.45 * hook, w);
+    rot(r.chest, 'x', 0.12, w);
+    rot(r.head, 'x', 0.12, w);
+    for (const [leg, knee, side] of [[r.lLeg, r.lKnee, -1], [r.rLeg, r.rKnee, 1]] as const) {
+      rot(leg, 'x', side < 0 ? -0.35 : 0.2, w);
+      rot(knee, 'x', 0.35, w);
+      rot(leg, 'z', side * 0.08, w);
+    }
+    // guard: fists by the chin; a punch throws the arm straight out
+    rot(r.lArm, 'x', -1.3 - 0.35 * jab, w);
+    rot(r.lArm, 'z', -0.25 + 0.15 * jab, w);
+    rot(r.lElbow, 'x', -1.9 + 1.75 * jab, w);
+    rot(r.rArm, 'x', -1.2 - 0.4 * hook, w);
+    rot(r.rArm, 'z', 0.3 - 0.45 * hook, w);
+    rot(r.rElbow, 'x', -2.0 + 1.2 * hook, w);
+  },
+
+  // Knocked down after losing a fight: sat on the ground, swaying, head lolling, eyes shut.
+  dazed(r, t, w) {
+    lift(r.body, -r.hipY + 0.13, w);
+    rot(r.body, 'z', 0.12 * Math.sin(t * 1.6), w);
+    rot(r.chest, 'x', 0.18, w);
+    rot(r.head, 'x', 0.35 + 0.1 * Math.sin(t * 2.1), w);
+    rot(r.head, 'z', 0.25 * Math.sin(t * 1.3), w);
+    for (const e of r.eyes) if (e) e.scale.y += (0.12 - e.scale.y) * w;
+    for (const [leg, knee, side] of [[r.lLeg, r.lKnee, -1], [r.rLeg, r.rKnee, 1]] as const) {
+      rot(leg, 'x', -1.4, w);
+      rot(knee, 'x', 0.5, w);
+      rot(leg, 'z', side * 0.22, w);
+    }
+    for (const [arm, elbow, side] of [[r.lArm, r.lElbow, -1], [r.rArm, r.rElbow, 1]] as const) {
+      rot(arm, 'x', 0.4, w);
+      rot(arm, 'z', side * 0.45, w);
+      rot(elbow, 'x', -0.3, w);
+    }
+  },
+
+  // A pickpocket's dip: hunched in close, glancing about, the right hand slipping low into someone's pocket.
+  pickpocket(r, t, w) {
+    const dip = 0.5 + 0.5 * Math.sin(t * 5);
+    lift(r.body, -0.06, w);
+    rot(r.body, 'x', 0.22, w);
+    rot(r.chest, 'x', 0.12, w);
+    rot(r.head, 'y', 0.5 * Math.sin(t * 2.2), w);
+    rot(r.head, 'x', -0.1, w);
+    for (const [leg, knee] of [[r.lLeg, r.lKnee], [r.rLeg, r.rKnee]] as const) {
+      rot(leg, 'x', -0.3, w);
+      rot(knee, 'x', 0.45, w);
+    }
+    rot(r.rArm, 'x', -0.75 - 0.15 * dip, w);
+    rot(r.rArm, 'z', -0.15, w);
+    rot(r.rElbow, 'x', -0.25 - 0.3 * dip, w);
+    rot(r.lArm, 'x', 0.2, w);
+    rot(r.lArm, 'z', -0.15, w);
+    rot(r.lElbow, 'x', -0.6, w);
+  },
+
+  // Hands cuffed behind the back, head down: being walked to the cell.
+  cuffed(r, t, w) {
+    rot(r.head, 'x', 0.3, w);
+    rot(r.chest, 'x', 0.08, w);
+    for (const [arm, elbow, side] of [[r.lArm, r.lElbow, -1], [r.rArm, r.rElbow, 1]] as const) {
+      rot(arm, 'x', 0.55, w);
+      rot(arm, 'z', side * -0.12, w);
+      rot(elbow, 'x', -0.9, w);
+    }
+    rot(r.body, 'y', 0.04 * Math.sin(t * 2), w);
   },
 
   // Phone up in the right hand, head tilted toward it, the other hand on the hip; a new pose every 1.5s.

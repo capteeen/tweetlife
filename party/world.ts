@@ -177,9 +177,22 @@ export default class WorldRoom implements Party.Server {
    * GET  /parties/world/:room              -> { online } (the bottom bar; a country's base room counts every shard)
    * GET  /parties/world/country:<id>?where=a,b -> { room, online }: the shard to join (a friend's, else one with room)
    * POST /parties/world/country:<id>       <- a shard's report
+   * GET  /parties/world/:room?who=id,id    -> { positions, shards } with the presence secret: where those visitors
+   *   are right now, so the app can check a steal or a fight is within arm's reach without taking the client's
+   *   word for it (app/api/life/crime). A base room also lists its shards, to ask next.
    */
   async onRequest(req: Party.Request) {
     const json = (o: unknown) => new Response(JSON.stringify(o), { headers: { 'content-type': 'application/json', 'access-control-allow-origin': '*' } });
+    const who = new URL(req.url).searchParams.get('who');
+    if (who) {
+      const secret = this.room.env.PRESENCE_SECRET as string | undefined;
+      if (!secret || req.headers.get('x-presence-secret') !== secret) return new Response('forbidden', { status: 403 });
+      const ids = new Set(who.split(',').slice(0, 4));
+      const positions: Record<string, { x: number; z: number; at: number }> = {};
+      for (const v of this.visitors.values()) if (ids.has(v.id) && Date.now() - v.at < 30_000) positions[v.id] = { x: v.x, z: v.z, at: v.at };
+      const shards = this.country && baseOf(this.room.id) === this.room.id ? [...this.shards.keys()].filter((id) => id !== this.room.id) : [];
+      return new Response(JSON.stringify({ positions, shards }), { headers: { 'content-type': 'application/json' } });
+    }
     if (!this.country || baseOf(this.room.id) !== this.room.id) return json({ online: this.visitors.size });
     if (req.method === 'POST') {
       const r = (await req.json().catch(() => null)) as ({ shard: string } & ShardInfo) | null;

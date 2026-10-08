@@ -70,7 +70,7 @@ export default async function How() {
         </Section>
 
         <Section title="Freshness">
-          <Rule k="First build" v="reads your newest 500 posts, writing structures page by page so the world is walkable while it builds." />
+          <Rule k="First build" v="reads your newest posts until your block is full, writing structures page by page so the world is walkable while it builds." />
           <Rule k="Then" v="while you play, an incremental sync every 6 hours fetches only new posts (since_id)." />
           <Rule k="Nightly" v="while you play, metrics are re-read for your posts from the last 7 days; older posts' metrics are effectively frozen." />
           <Rule k="When X is down" v="worlds keep serving from our database with a banner giving the last sync time." />

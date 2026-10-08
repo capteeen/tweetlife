@@ -1,4 +1,4 @@
-import type { IngestRun, RunKind } from '@prisma/client';
+import type { IngestRun, RunKind, StructureKind } from '@prisma/client';
 import { db } from '../db';
 import { env } from '../env';
 import { redis } from '../redis';
@@ -7,11 +7,16 @@ import { accessTokenFor } from './oauth';
 import { classifyTweet } from '../world/classify';
 import type { XMedia, XTweet } from './types';
 import { crowdForNewPosts } from '../life/crowd';
+import { PLOT_LOTS } from '../world/country-map';
 
 // Ingestion: turn the owner's real timeline into Structure rows, one page at a time,
 // so the world is walkable while the rest of the history is still arriving.
 
 const PAGE_SIZE = 100;
+/** Posts that stand on a plot of their own. Lamps (reposts) and sheds (replies to others) attach to a neighbour. */
+const NOT_STANDING: StructureKind[] = ['lantern', 'outbuilding'];
+/** A sync after a long absence reads at most one page of new posts; X bills every post read. */
+const INCREMENTAL_MAX_POSTS = PAGE_SIZE;
 const WORKER_MAX_WAIT = 10 * 60 * 1000;
 /** Metrics are re-read for posts this recent. Likes and reposts mostly land in a post's first days. */
 const METRICS_DAYS = 7;
@@ -117,6 +122,9 @@ export async function ingestTimeline(run: IngestRun, kind: Extract<RunKind, 'fir
   let newestSeen: string | null = world.newestPostId;
   let oldestSeen: string | null = world.oldestPostId;
   const existing = await db.structure.count({ where: { worldId: world.id } });
+  // X bills $0.005 for every post read, so a first build stops once the player's plot is full: the country map shows
+  // a player's best PLOT_LOTS posts, and reading further back would only change which ones, not how the plot looks.
+  let standing = await db.structure.count({ where: { worldId: world.id, kind: { notIn: NOT_STANDING } } });
 
   // First build resumes below our oldest known post if a previous attempt was interrupted.
   const untilId = kind === 'first_build' && oldestSeen ? oldestSeen : undefined;
@@ -137,6 +145,7 @@ export async function ingestTimeline(run: IngestRun, kind: Extract<RunKind, 'fir
     if (rows.length) {
       const res = await db.structure.createMany({ data: rows, skipDuplicates: true });
       progress.postsWritten += res.count;
+      standing += rows.filter((r) => !NOT_STANDING.includes(r.kind)).length;
     }
     if (page.newestId && (!newestSeen || BigInt(page.newestId) > BigInt(newestSeen))) newestSeen = page.newestId;
     if (page.oldestId && (!oldestSeen || BigInt(page.oldestId) < BigInt(oldestSeen))) oldestSeen = page.oldestId;
@@ -151,9 +160,8 @@ export async function ingestTimeline(run: IngestRun, kind: Extract<RunKind, 'fir
 
     const total = existing + progress.postsWritten;
     if (!page.nextToken || page.tweets.length === 0) break;
-    if (kind === 'first_build' && total >= maxPosts) break;
-    // a long gap (a player back after weeks away) reads at most a first build's worth of new posts
-    if (kind === 'incremental' && progress.postsWritten >= maxPosts) break;
+    if (kind === 'first_build' && (total >= maxPosts || standing >= PLOT_LOTS)) break;
+    if (kind === 'incremental' && progress.postsWritten >= INCREMENTAL_MAX_POSTS) break;
     paginationToken = page.nextToken;
     if (opts.deadline && Date.now() > opts.deadline) return { ...progress, done: false };
   }

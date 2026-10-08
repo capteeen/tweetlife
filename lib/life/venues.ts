@@ -96,7 +96,7 @@ export const VENUES: Venue[] = [
   },
   { id: 'dealership', name: 'Dealership', emoji: '🚗', color: '#FFD166', blurb: 'Keke to Lambo.', actions: [], app: 'market', marketKind: 'car' },
   { id: 'marina', name: 'Marina', emoji: '⚓', color: '#6FA8C7', blurb: 'Boats. Leave the shore.', actions: [], app: 'market', marketKind: 'boat' },
-  { id: 'airport', name: 'Airport', emoji: '✈️', color: '#BFE3FF', blurb: 'Runway, terminal and hangar. Buy a jet and fly over everything.', actions: [], app: 'market', marketKind: 'plane' },
+  { id: 'airport', name: 'Airport', emoji: '✈️', color: '#BFE3FF', blurb: 'Fly to another country from the departures board. Own a jet and every flight is free.', actions: [], app: 'market', marketKind: 'plane' },
   { id: 'exchange', name: 'Trenches Coin Shop', emoji: '🪙', color: '#06D6A0', blurb: 'Live memecoins over the counter. Buy with bags, watch them float on your hand.', actions: [], app: 'trenches' },
 ];
 

@@ -4,6 +4,7 @@ import { SHIFT_SECONDS, jobById, type Job, type JobBoard, type JobId } from '@/l
 import { placeVenues, type PlacedVenue } from '@/lib/life/venues';
 import { WALK_IN } from '@/lib/world/interiors';
 import { airportLayout, inRect, pathLength, ringRoadRadius, type Pt } from '@/lib/world/layout';
+import { terminalLayout } from '@/lib/world/terminal';
 import { tripSeconds } from '@/lib/life/transport';
 import { HERE, venueDoor } from './VenueCard';
 import { refreshLife } from './useLife';
@@ -82,7 +83,14 @@ function stationPath(v: PlacedVenue, from: Pt): { path: Pt[]; cam: { yaw: number
     const prev = a.gates[a.gates.length - 2] ?? { x: gate.x, z: gate.z - 18 };
     const spot = { x: gate.x, z: (gate.z + prev.z) / 2 };
     const lane = a.apron.x - a.apron.w / 2 + 1;
-    return { path: [from, { x: lane, z: from.z }, { x: lane, z: spot.z }, spot, { x: spot.x, z: spot.z + 0.05 }], cam: { yaw: Math.PI, pitch: 0.45 } };
+    const end = [{ x: lane, z: spot.z }, spot, { x: spot.x, z: spot.z + 0.05 }];
+    // crew go round the north end of the terminal (its glass walls, and security, are for passengers)
+    const t = terminalLayout(a);
+    if (from.x > t.east + 0.5) return { path: [from, { x: lane, z: from.z }, ...end], cam: { yaw: Math.PI, pitch: 0.45 } };
+    const r = t.rect, westX = t.west - 1.5, northZ = r.z + r.d / 2 + 1.5;
+    const inHall = Math.abs(from.x - r.x) < r.w / 2 && Math.abs(from.z - r.z) < r.d / 2;
+    const pts: Pt[] = inHall ? [from, t.entrance, { x: westX, z: t.entrance.z }] : [from, { x: westX, z: from.z }];
+    return { path: [...pts, { x: westX, z: northZ }, { x: lane, z: northZ }, ...end], cam: { yaw: Math.PI, pitch: 0.45 } };
   }
   const st = STATIONS[v.id];
   const k = WALK_IN[v.id];

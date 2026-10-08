@@ -16,6 +16,7 @@ import type { FigureAct } from './figureMoves';
 import { airportLayout, airportSolids, along, onLand, type Airport } from '@/lib/world/layout';
 import { RideVehicle, rideCamera, rideRider } from './RideVehicle';
 import { worldWalls } from '@/lib/world/interiors';
+import { terminalLayout, terminalWalls } from '@/lib/world/terminal';
 import { carItem } from '@/components/life/travel';
 import { playerSound } from '@/lib/audio/state';
 import { lookFor } from '@/lib/life/look';
@@ -42,7 +43,12 @@ export function Player({ structures, blocks, grid, boundaryRadius, contentRadius
   const venues = useMemo(() => placeVenues(contentRadius, boundaryRadius), [contentRadius, boundaryRadius]);
   const airport = useMemo(() => airportLayout(contentRadius, boundaryRadius), [contentRadius, boundaryRadius]);
   const obstacles = useMemo<Obstacle[]>(
-    () => [...venues.flatMap((v) => (v.walkIn ? worldWalls(v) : [{ x: v.x, z: v.z, w: v.w, d: v.d }])), ...airportSolids(airport)],
+    // the terminal is a hall you walk through: its walls block, not its footprint
+    () => [
+      ...venues.flatMap((v) => (v.walkIn ? worldWalls(v) : v.id === 'airport' ? [] : [{ x: v.x, z: v.z, w: v.w, d: v.d }])),
+      ...airportSolids(airport).filter((r) => r !== airport.terminal),
+      ...terminalWalls(terminalLayout(airport)),
+    ],
     [venues, airport],
   );
   const trip = useWorld((s) => s.trip);
@@ -55,6 +61,7 @@ export function Player({ structures, blocks, grid, boundaryRadius, contentRadius
   const ground = useRef<number | null>(null);
   const { camera, gl } = useThree();
   const group = useRef<THREE.Group>(null);
+  const tilt = useRef<THREE.Group>(null);
   const pos = useRef(new THREE.Vector3(DEFAULT_SPAWN.x, 0, DEFAULT_SPAWN.z));
   const yaw = useRef(DEFAULT_YAW); // camera orbit yaw; PI = camera north of the player, looking south into the city
   const pitch = useRef(0.45);
@@ -177,9 +184,11 @@ export function Player({ structures, blocks, grid, boundaryRadius, contentRadius
       const t = (performance.now() - tr.startedAt) / 1000 / tr.duration;
       const p = along(tr.path, t);
       if (t >= 1) {
-        const free = freeSpotNear(structures, obstacles, p.x, p.z, boundaryRadius, 'walk', airport);
+        // a plane that has climbed out leaves you up there: the flight screen takes over until the landing
+        const free = tr.fly === 'up' ? p : freeSpotNear(structures, obstacles, p.x, p.z, boundaryRadius, 'walk', airport);
         pos.current.set(free.x, pos.current.y, free.z);
         setTrip(null);
+        tr.onDone?.();
       } else {
         pos.current.set(p.x, pos.current.y, p.z);
         // turn smoothly into corners
@@ -250,7 +259,9 @@ export function Player({ structures, blocks, grid, boundaryRadius, contentRadius
     }
     // the jet climbs to cruising height; everything else sits on the ground (or the water)
     const targetAlt = riding?.kind === 'plane' && !tr ? 16 : 0;
-    altitude.current += (targetAlt - altitude.current) * Math.min(1, d * 2);
+    if (tr?.fly) altitude.current = flightAltitude(tr.fly, Math.min(1, (performance.now() - tr.startedAt) / 1000 / tr.duration));
+    else altitude.current += (targetAlt - altitude.current) * Math.min(1, d * 2);
+    if (tilt.current) tilt.current.rotation.x = tr?.fly ? flightPitch(tr.fly, Math.min(1, (performance.now() - tr.startedAt) / 1000 / tr.duration)) : 0;
     // stand on whatever surface is underfoot (road, sidewalk, block, lot); quick ease so curbs read as a step
     const floor = surfaceY(blocks, grid, pos.current.x, pos.current.z, boundaryRadius);
     ground.current = ground.current === null ? floor : ground.current + (floor - ground.current) * Math.min(1, d * 20);
@@ -336,7 +347,12 @@ export function Player({ structures, blocks, grid, boundaryRadius, contentRadius
   return (
     <group ref={group}>
       {shown && <Vehicle item={shown} />}
-      {trip && trip.mode !== 'walk' && trip.mode !== 'own' && <RideVehicle mode={trip.mode} />}
+      {trip && trip.mode !== 'walk' && trip.mode !== 'own' && (
+        // a climbing plane noses up, a landing one flares
+        <group ref={tilt}>
+          <RideVehicle mode={trip.mode} tint={trip.tint} country={trip.country} />
+        </group>
+      )}
       {ro.show && (
         <group position={[0, ro.y, 0]} scale={ro.scale}>
           <Figure seed={me?.handle ?? 'visitor'} look={me ? look : null} speedRef={speedRef} actRef={actRef} tiredRef={tiredRef} slumpRef={slumpRef} label={me ? `@${me.handle}` : undefined} labelColor="#BFE3FF" />
@@ -352,6 +368,16 @@ export function Player({ structures, blocks, grid, boundaryRadius, contentRadius
 }
 
 const PLAYER_R = 0.35;
+
+/** Height of a flight leg at progress t: taxi and roll on the ground, then climb out (up), or descend then roll out (down). */
+export function flightAltitude(leg: 'up' | 'down', t: number) {
+  if (leg === 'up') return t < 0.5 ? 0 : 70 * Math.pow((t - 0.5) / 0.5, 1.6);
+  return t > 0.5 ? 0 : 70 * Math.pow(1 - t / 0.5, 1.6);
+}
+function flightPitch(leg: 'up' | 'down', t: number) {
+  if (leg === 'up') return t > 0.5 ? -0.22 : 0;
+  return t < 0.5 ? -0.06 : 0;
+}
 
 export type MoveMode = 'walk' | 'boat' | 'plane';
 /** How far past the shore boats and planes may go (the water ring is wide). */

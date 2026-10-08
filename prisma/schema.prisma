@@ -266,6 +266,8 @@ model Player {
   lookPending Boolean  @default(false)
   /// Country id from lib/world/countries.ts, picked at sign-up. Null = not asked yet (shown once, Solana on skip).
   nationality String?
+  /// The country the player is in right now (lib/world/countries.ts id). Null = at home. Set by flights.
+  location    String?
   lastTickAt  DateTime @default(now())
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

@@ -20,6 +20,8 @@ import { Peers, Residents } from './Residents';
 import { CityResidents } from './CityResidents';
 import { BalloonFeed } from './Balloons';
 import { Crowds } from './Crowd';
+import { AirportStand } from './AirportStand';
+import { Terminal } from './Terminal';
 import { useWorld } from './store';
 import { themeOf, themedPalette } from '@/lib/world/cityThemes';
 import { WorldSounds } from '@/components/audio/WorldSounds';
@@ -124,6 +126,7 @@ function Scene(props: SceneProps) {
         structures={geometry.structures}
         player={mode === 'walk'}
       />
+      {geometry.structures.length > 0 && <Terminal contentRadius={geometry.contentRadius} boundaryRadius={R} />}
       <Cars count={geometry.cars} grid={geometry.grid} handle={handle} player={mode === 'walk'} />
       {geometry.structures.length > 0 && <Venues contentRadius={geometry.contentRadius} boundaryRadius={R} interactive={mode === 'walk'} />}
       <Structures structures={geometry.structures} showMetrics={showMetrics} interactive={mode === 'walk'} />
@@ -141,6 +144,7 @@ function Scene(props: SceneProps) {
           <Crowds blocks={geometry.blocks} grid={geometry.grid} boundaryRadius={R} />
           <BalloonFeed />
           <WorldSounds geometry={geometry} />
+          {geometry.structures.length > 0 && <AirportStand contentRadius={geometry.contentRadius} boundaryRadius={R} />}
         </>
       )}
       {mode === 'boundary' && <BoundaryOrbit radius={R} landmark={geometry.structures.find((s) => s.isLandmark) ?? null} />}

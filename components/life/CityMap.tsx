@@ -577,7 +577,8 @@ export function TripBanner() {
     const t = setInterval(() => tick((n) => n + 1), 200);
     return () => clearInterval(t);
   }, [trip]);
-  if (!trip || onShift) return null;
+  // flights have their own strip (FlightOverlay); shifts have the shift HUD
+  if (!trip || trip.fly || onShift) return null;
   const done = Math.min(1, (performance.now() - trip.startedAt) / 1000 / trip.duration);
   const left = Math.max(0, trip.duration * (1 - done));
   return (

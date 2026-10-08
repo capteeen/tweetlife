@@ -113,7 +113,7 @@ export function WorldSounds({ geometry }: { geometry: WorldGeometry }) {
       lastTrip.current = tripKey;
     }
     const kind: RideKind = trip
-      ? trip.mode === 'bus' ? 'bus' : trip.mode === 'bike' ? 'bike' : trip.mode === 'scooter' ? 'scooter' : trip.mode === 'walk' ? null : 'car'
+      ? trip.mode === 'bus' ? 'bus' : trip.mode === 'bike' ? 'bike' : trip.mode === 'scooter' ? 'scooter' : trip.mode === 'airliner' || trip.mode === 'jet' ? 'plane' : trip.mode === 'walk' ? null : 'car'
       : st.riding ? (st.riding.kind === 'boat' ? 'boat' : st.riding.kind === 'plane' ? 'plane' : st.riding.kind === 'car' ? 'car' : null) : null;
     if (kind !== loops.ride.kind) {
       loops.ride.loop?.set(0);
@@ -242,12 +242,12 @@ function onBoard(mode: string) {
   if (mode === 'bus') sfx('busDoors');
   else if (mode === 'bike') sfx('bikeBell');
   else if (mode === 'scooter') sfx('scooterBeep');
-  else if (mode !== 'walk') sfx('carDoor');
+  else if (mode !== 'walk' && mode !== 'airliner' && mode !== 'jet') sfx('carDoor');
 }
 
 function onArrive(mode: string) {
   if (mode === 'bus') sfx('busDoors');
   else if (mode === 'bike') sfx('bikeBell', { gain: 0.6 });
   else if (mode === 'scooter') sfx('scooterBeep', { gain: 0.6 });
-  else if (mode !== 'walk') sfx('carDoor');
+  else if (mode !== 'walk' && mode !== 'airliner' && mode !== 'jet') sfx('carDoor');
 }

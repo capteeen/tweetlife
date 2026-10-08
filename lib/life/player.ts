@@ -6,6 +6,7 @@ import { parseLook } from './look';
 import { citizenship } from './citizen';
 import { IDLE_STATUS } from './statNames';
 import { STARTER_KIT, furnitureById } from './home';
+import { homeOf, whereIs } from './flights';
 
 // Player profiles for the life layer. Everyone who signs in gets one with a welcome of 10,000 bags —
 // in-world points, never money — and a house with the starter kit. A new player picks their look in the
@@ -47,7 +48,7 @@ export function profileView(p: Player, handle: string, name: string, avatarUrl: 
   const m = moodOf(stats);
   // a status line is only true while its activity lasts; afterwards you are just around
   const live = p.statusUntil && p.statusUntil.getTime() > Date.now();
-  return { id: p.id, handle, name, avatarUrl, bags: p.bags, status: live ? p.status : IDLE_STATUS, statusUntil: live ? p.statusUntil!.toISOString() : null, ...stats, mood: m.mood, moodEmoji: m.emoji, look: parseLook(p.look), lookPending: p.lookPending, citizen: citizenship(p) };
+  return { id: p.id, handle, name, avatarUrl, bags: p.bags, status: live ? p.status : IDLE_STATUS, statusUntil: live ? p.statusUntil!.toISOString() : null, ...stats, mood: m.mood, moodEmoji: m.emoji, look: parseLook(p.look), lookPending: p.lookPending, citizen: citizenship(p), location: whereIs(p), home: homeOf(p) };
 }
 
 /** Rich list: bank balance + assets, in bags. (Real SOL is private and never ranked.) */

@@ -278,13 +278,14 @@ model Player {
   received   Interaction[] @relation("received")
   assets     Asset[]
   paperCoins PaperCoin[]
+  jobs       JobRecord[]
 }
 
 model BagTx {
   id       String   @id @default(cuid())
   playerId String
   player   Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
-  kind     String // buy | sell | tip_in | tip_out | quest | welcome
+  kind     String // buy | sell | tip_in | tip_out | quest | welcome | wage
   amount   Int // signed
   note     String
   at       DateTime @default(now())
@@ -377,4 +378,22 @@ model PaperCoin {
   updatedAt DateTime @updatedAt
 
   @@unique([playerId, mint])
+}
+
+/// A job you were hired for (lib/life/jobs.ts): shifts worked there (your level) and the shift in progress.
+/// One row per player and job; `active` marks the job you hold now (at most one).
+model JobRecord {
+  id             String    @id @default(cuid())
+  playerId       String
+  player         Player    @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  jobId          String
+  shifts         Int       @default(0)
+  active         Boolean   @default(false)
+  hiredAt        DateTime  @default(now())
+  /// the shift in progress: when it started and how many of its tasks are done
+  shiftStartedAt DateTime?
+  shiftTasks     Int       @default(0)
+
+  @@unique([playerId, jobId])
+  @@index([playerId, active])
 }

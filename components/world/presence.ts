@@ -68,7 +68,7 @@ export function usePresence(handle: string, enabled: boolean) {
         timer = setInterval(() => {
           const st = useWorld.getState();
           const { x, z, yaw } = st.playerPos;
-          if (sock?.readyState === 1) sock.send(JSON.stringify({ t: 'pos', x, z, yaw, ride: st.riding?.id ?? null, act: st.doing?.id ?? null }));
+          if (sock?.readyState === 1) sock.send(JSON.stringify({ t: 'pos', x, z, yaw, ride: st.riding?.id ?? null, act: st.doing?.id ?? (st.shift && !st.trip ? st.shift.act : null) }));
         }, 100);
       };
       connect(res.room);

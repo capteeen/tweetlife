@@ -569,13 +569,15 @@ export function CityMap() {
 /** Shown while you ride: what, where, and how long is left. */
 export function TripBanner() {
   const trip = useWorld((s) => s.trip);
+  // on a job shift the shift panel says where you are going
+  const onShift = useWorld((s) => !!s.shift);
   const [, tick] = useState(0);
   useEffect(() => {
     if (!trip) return;
     const t = setInterval(() => tick((n) => n + 1), 200);
     return () => clearInterval(t);
   }, [trip]);
-  if (!trip) return null;
+  if (!trip || onShift) return null;
   const done = Math.min(1, (performance.now() - trip.startedAt) / 1000 / trip.duration);
   const left = Math.max(0, trip.duration * (1 - done));
   return (

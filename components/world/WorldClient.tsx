@@ -18,6 +18,7 @@ import { FollowerCard } from '@/components/life/FollowerCard';
 import { CrowdNotices, PostButton } from '@/components/life/CrowdHUD';
 import { useCrowds } from '@/components/life/useCrowds';
 import { VenueCard } from '@/components/life/VenueCard';
+import { ShiftHUD } from '@/components/life/ShiftHUD';
 import { CityMap, TripBanner } from '@/components/life/CityMap';
 import { VenueMusic } from '@/components/life/VenueMusic';
 import { GameAudio } from '@/components/audio/GameAudio';
@@ -113,6 +114,7 @@ export function WorldClient({ handle, spawnPostId, embed, backdrop, country }: {
   useLife(admitted && !backdrop);
   const signedIn = useWorld((s) => !!s.me);
   useCrowds(handle, admitted && !backdrop, signedIn);
+  const onShift = useWorld((s) => !!s.shift);
   const nearVenue = useWorld((s) => s.nearVenue);
   const selectedVenue = useWorld((s) => s.selectedVenue);
   const toasts = useWorld((s) => s.toasts);
@@ -216,13 +218,14 @@ export function WorldClient({ handle, spawnPostId, embed, backdrop, country }: {
           <CrowdNotices world={model.handle} />
           <PostButton />
           <VenueCard sendSocial={sendSocial} />
+          <ShiftHUD />
           <Phone sendSocial={sendSocial} handle={model.handle} />
           {!lookPending && <CountryPrompt />}
           <TripBanner />
           <VenueMusic />
           {!embed && <GameAudio />}
           <CityMap />
-          {nearVenue && !selectedVenue && (
+          {nearVenue && !selectedVenue && !onShift && (
             <button
               className="pointer-events-auto absolute bottom-20 [@media(any-pointer:coarse)]:bottom-56 left-1/2 z-20 -translate-x-1/2 rounded-full chrome px-4 py-2 text-sm font-semibold hover:bg-white/10"
               onClick={() => {

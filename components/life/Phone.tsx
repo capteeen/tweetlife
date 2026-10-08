@@ -10,6 +10,7 @@ import type { Token } from '@/lib/life/trenches';
 import { lifeActions, type SocialSend } from './useLife';
 import { ConfirmButton } from '@/components/ui/ConfirmButton';
 import { MapApp } from './MapApp';
+import { JobsApp } from './JobsApp';
 import { showWelcomeAgain } from './Welcome';
 import { IdCard } from '@/components/citizen/IdCard';
 import { countryOf } from '@/lib/world/countries';
@@ -26,6 +27,7 @@ const APPS: { id: PhoneApp; label: string; emoji: string; bg: string }[] = [
   { id: 'wallet', label: 'Bank', emoji: '🏦', bg: 'linear-gradient(135deg,#FFD166,#F28C28)' },
   { id: 'solana', label: 'Solana', emoji: '◎', bg: 'linear-gradient(135deg,#9945FF,#14F195)' },
   { id: 'hustle', label: 'Hustle', emoji: '💼', bg: 'linear-gradient(135deg,#8338EC,#3A86FF)' },
+  { id: 'jobs', label: 'Jobs', emoji: '🧑‍💼', bg: 'linear-gradient(135deg,#5FB3B3,#1F4E79)' },
   { id: 'market', label: 'Market', emoji: '🛍️', bg: 'linear-gradient(135deg,#FF5D8F,#E63946)' },
   { id: 'garage', label: 'Garage', emoji: '🚗', bg: 'linear-gradient(135deg,#6B7280,#1B2436)' },
   { id: 'house', label: 'House', emoji: '🏠', bg: 'linear-gradient(135deg,#F28C28,#C99A5B)' },
@@ -94,6 +96,8 @@ export function Phone({ sendSocial, handle }: { sendSocial: SocialSend; handle: 
             <Solana sendSocial={sendSocial} prefillTo={phone.to} />
           ) : phone.app === 'hustle' ? (
             <Hustle />
+          ) : phone.app === 'jobs' ? (
+            <JobsApp preselect={phone.to} />
           ) : phone.app === 'market' ? (
             <Market kind={phone.marketKind} />
           ) : phone.app === 'garage' ? (

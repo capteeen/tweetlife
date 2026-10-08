@@ -18,6 +18,7 @@ import { RideVehicle, rideCamera, rideRider } from './RideVehicle';
 import { worldWalls } from '@/lib/world/interiors';
 import { carItem } from '@/components/life/travel';
 import { playerSound } from '@/lib/audio/state';
+import { lookFor } from '@/lib/life/look';
 
 // Third-person orbit-and-walk. WASD/arrows + mouse-drag on desktop, twin virtual sticks on mobile.
 // The avatar is a low-poly figure; the camera orbits it. Structures push the player out softly.
@@ -72,7 +73,13 @@ export function Player({ structures, blocks, grid, boundaryRadius, contentRadius
   const lastPublish = useRef(0);
   const speedRef = useRef(0);
   const me = useWorld((s) => s.me);
-  const look = useWorld((s) => s.life?.me?.look ?? null);
+  const chosenLook = useWorld((s) => s.life?.me?.look ?? null);
+  // on a job shift you wear a work shirt in the job's colours (lib/life/jobs.ts)
+  const uniform = useWorld((s) => s.shift?.uniform ?? null);
+  const look = useMemo(() => {
+    if (!uniform || !me) return chosenLook;
+    return { ...(chosenLook ?? lookFor(me.handle)), shirt: uniform, pattern: 'solid' as const };
+  }, [chosenLook, uniform, me]);
   const hand = useRef<THREE.Object3D>(null);
   const slumpRef = useSlumpRef(me?.handle ?? '');
   const actRef = useRef<FigureAct | null>(null);
@@ -203,7 +210,8 @@ export function Player({ structures, blocks, grid, boundaryRadius, contentRadius
     tiredRef.current = onFoot ? tiredness(gas) : 0;
     // an activity plays until it ends or you walk off
     if (st.doing && (len > 0.05 || riding || Date.now() > st.doing.until)) st.setDoing(null);
-    actRef.current = st.doing && !riding ? st.doing.id : null;
+    // on shift, standing at your station, you do the job's move
+    actRef.current = st.doing && !riding ? st.doing.id : st.shift?.act && !tr && !riding && len < 0.05 ? st.shift.act : null;
     let sprinting = false;
     if (len > 0) {
       mx /= Math.max(1, len);
@@ -269,9 +277,26 @@ export function Player({ structures, blocks, grid, boundaryRadius, contentRadius
       if (tr) nearest = null; // no "Enter" prompts for places you pass on a ride
       if (nearest !== useWorld.getState().nearVenue) setNearVenue(nearest);
     }
+    // turn to face your work, and swing the camera round to a requested view (your face, at your station on shift)
+    if (st.faceAim != null && !tr) {
+      let df = st.faceAim - facing.current;
+      while (df > Math.PI) df -= Math.PI * 2;
+      while (df < -Math.PI) df += Math.PI * 2;
+      facing.current += df * Math.min(1, d * 6);
+      if (Math.abs(df) < 0.02 || len > 0.05) st.setFaceAim(null);
+    }
+    if (st.camAim != null) {
+      let dy = st.camAim.yaw - yaw.current;
+      while (dy > Math.PI) dy -= Math.PI * 2;
+      while (dy < -Math.PI) dy += Math.PI * 2;
+      const dp = st.camAim.pitch - pitch.current;
+      yaw.current += dy * Math.min(1, d * 3);
+      pitch.current += dp * Math.min(1, d * 3);
+      if (Math.abs(dy) < 0.02 && Math.abs(dp) < 0.02) st.setCamAim(null);
+    }
     // camera orbit, pulled in when it would sit inside a building or when anything (a tower, a tree, a venue wall)
     // stands between it and the player
-    let dist = CAM_DIST * (tr && tr.mode !== 'walk' ? rideCamera(tr.mode) : riding?.kind === 'plane' ? 2.2 : riding ? 1.3 : 1);
+    let dist = CAM_DIST * (tr && tr.mode !== 'walk' ? rideCamera(tr.mode) : riding?.kind === 'plane' ? 2.2 : riding ? 1.3 : st.shift && !tr ? 0.6 : 1);
     const dir = new THREE.Vector3(Math.sin(yaw.current) * Math.cos(pitch.current), Math.sin(pitch.current), Math.cos(yaw.current) * Math.cos(pitch.current));
     const head = new THREE.Vector3(pos.current.x, pos.current.y + 1.3, pos.current.z);
     for (; dist >= 2.5; dist -= 0.75) {
@@ -369,6 +394,10 @@ const tmpM = new THREE.Matrix4();
 const tmpW = new THREE.Matrix4();
 const tmpBox = new THREE.Box3();
 const tmpSize = new THREE.Vector3();
+const tmpInv = new THREE.Matrix4();
+const tmpLin = new THREE.Matrix3();
+const tmpO = new THREE.Vector3();
+const tmpD = new THREE.Vector3();
 
 /** Meshes that could stand between the camera and the player: visible, solid, not the player's own figure, vehicle,
  *  balloons or name tag. Instanced sets bigger than a city's worth of props are building detail, which the masses cover. */
@@ -428,7 +457,12 @@ function clearDistance(list: THREE.Mesh[], head: THREE.Vector3, dir: THREE.Vecto
         best = Math.min(best, enters(tmpBox.copy(geo).applyMatrix4(tmpW), head, dir));
       }
     } else {
-      best = Math.min(best, enters(tmpBox.copy(geo).applyMatrix4(m.matrixWorld), head, dir));
+      // in the mesh's own frame, so a turned wall or counter (inside a venue that faces the centre) blocks only
+      // where it really is, not across its whole world-aligned box
+      tmpInv.copy(m.matrixWorld).invert();
+      tmpO.copy(head).applyMatrix4(tmpInv);
+      tmpD.copy(dir).applyMatrix3(tmpLin.setFromMatrix4(tmpInv));
+      best = Math.min(best, enters(geo, tmpO, tmpD));
     }
   }
   return best;

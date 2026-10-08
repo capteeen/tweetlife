@@ -10,7 +10,7 @@ import { airportLayout, inRect } from '@/lib/world/layout';
 import { placeVenues, type PlacedVenue } from '@/lib/life/venues';
 import { statDelta } from '@/lib/life/statNames';
 import { SHIFTS_PER_DAY, SHIFT_COST, SHIFT_SECONDS, jobsAt, levelOf, wageFor, type Job } from '@/lib/life/jobs';
-import { jobActions } from './jobs';
+import { jobActions, shiftBonus } from './jobs';
 import { citizenOf, curfew, governmentOf, pct, todaysAddress } from '@/lib/life/government';
 import { COUNTRIES } from '@/lib/world/countries';
 import { useCountry } from '@/components/world/country';
@@ -215,7 +215,7 @@ function WorkHere({ venueId, here, gas }: { venueId: string; here: boolean; gas:
               <span className="text-xl">{j.emoji}</span>
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-semibold">Hiring: {j.title}</span>
-                <span className="block text-[11px] text-white/55">{wageFor(j, level)} bags a shift · tap to apply</span>
+                <span className="block text-[11px] text-white/55">{wageFor(j, level, shiftBonus())} bags a shift · tap to apply</span>
               </span>
             </button>
           );
@@ -234,7 +234,7 @@ function WorkHere({ venueId, here, gas }: { venueId: string; here: boolean; gas:
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-bold">Start your shift · {j.levels[level - 1]}</span>
                 <span className="block text-[11px] opacity-75">
-                  {SHIFT_SECONDS}s · up to {wageFor(j, level)} bags · {statDelta(SHIFT_COST)} · {today}/{SHIFTS_PER_DAY} today
+                  {SHIFT_SECONDS}s · up to {wageFor(j, level, shiftBonus())} bags · {statDelta(SHIFT_COST)} · {today}/{SHIFTS_PER_DAY} today
                 </span>
               </span>
             </button>

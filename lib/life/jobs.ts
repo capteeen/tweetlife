@@ -105,9 +105,9 @@ export const SHIFT_STALE_SECONDS = 30 * 60;
 export const levelOf = (shifts: number) => Math.min(MAX_LEVEL, 1 + Math.floor(shifts / SHIFTS_PER_LEVEL));
 /** shifts still to go at this job before the next level (0 at the top) */
 export const toNextLevel = (shifts: number) => (levelOf(shifts) >= MAX_LEVEL ? 0 : SHIFTS_PER_LEVEL - (shifts % SHIFTS_PER_LEVEL));
-export const wageFor = (job: Job, level: number) => Math.round(job.pay * (1 + LEVEL_RAISE * (level - 1)));
+export const wageFor = (job: Job, level: number, bonus = 0) => Math.round(job.pay * (1 + LEVEL_RAISE * (level - 1)) * (1 + bonus));
 /** pay for a finished shift with `done` of the TASKS tasks done */
-export const payFor = (job: Job, level: number, done: number) => Math.round(wageFor(job, level) * (1 - MISSED_TASK_CUT * Math.max(0, TASKS - done)));
+export const payFor = (job: Job, level: number, done: number, bonus = 0) => Math.round(wageFor(job, level, bonus) * (1 - MISSED_TASK_CUT * Math.max(0, TASKS - done)));
 /** seconds into a shift when task `i` (0-based) comes up: spread across the shift, the last well before the end */
 export const taskDueAt = (i: number) => Math.round((SHIFT_SECONDS * (i + 1)) / (TASKS + 1));
 

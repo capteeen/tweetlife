@@ -1,6 +1,8 @@
 import type { Player } from '@prisma/client';
 import { db } from '../db';
 import { applyDelta } from './stats';
+import { governmentOf } from './government';
+import { whereIs } from './flights';
 import { dayStart } from './quests';
 import {
   JOBS, SHIFTS_PER_DAY, SHIFT_COST, SHIFT_SECONDS, SHIFT_STALE_SECONDS, TASKS, hireBlocker, jobById, levelOf, payFor, taskDueAt,
@@ -139,7 +141,8 @@ export async function finishShift(p: Player) {
   if (left > 1) throw new WorkError(`Keep going: ${Math.ceil(left)}s left.`, 425);
   const job = jobById(r.jobId)!;
   const level = levelOf(r.shifts);
-  const pay = payFor(job, level, r.shiftTasks);
+  // national rules: some countries pay more for a shift (BNB: +20%), wherever you are working now
+  const pay = payFor(job, level, r.shiftTasks, governmentOf(whereIs(p)).rules.shiftBonus);
   const next = applyDelta(p, SHIFT_COST);
   const out = await db.$transaction(async (tx) => {
     // claim the shift: only one finish can clear this exact start time

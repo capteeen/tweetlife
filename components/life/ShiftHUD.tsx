@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useWorld } from '@/components/world/store';
 import { SHIFT_SECONDS, TASKS, jobById, levelOf, taskDueAt, wageFor } from '@/lib/life/jobs';
-import { atVenue, jobActions, refreshJobs, workplaceOf } from './jobs';
+import { atVenue, jobActions, refreshJobs, workplaceOf, shiftBonus } from './jobs';
 import { ConfirmButton } from '@/components/ui/ConfirmButton';
 
 type Result = { emoji: string; title: string; pay: number; tasks: number; leveledUp: boolean; levelTitle: string; level: number };
@@ -133,7 +133,7 @@ export function ShiftHUD() {
             On shift · {job.levels[level - 1]}
           </div>
           <div className="text-[11px] text-white/55">
-            {wageFor(job, level)} bags with all {TASKS} tasks · {shift.tasks}/{TASKS} done
+            {wageFor(job, level, shiftBonus())} bags with all {TASKS} tasks · {shift.tasks}/{TASKS} done
           </div>
         </div>
         <span className="num text-lg font-bold">{done ? '✓' : `${left}s`}</span>

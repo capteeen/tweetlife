@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { Text } from '@react-three/drei';
 import type { ThreeEvent } from '@react-three/fiber';
-import { DANCE_FLOOR, FLOOR_Y, WALK_IN, WALL, wallsOf, type WalkIn } from '@/lib/world/interiors';
+import { FLOOR_Y, WALK_IN, WALL, wallsOf, type WalkIn } from '@/lib/world/interiors';
 import type { PlacedVenue } from '@/lib/life/venues';
 import type { FigureAct } from './figureMoves';
 import type { HomePose } from './figurePoses';
@@ -13,19 +13,20 @@ import { Figure } from './Figure';
 import { beat } from './clubAudio';
 import { DistanceDetail } from './DistanceDetail';
 import { Capitol } from './Capitol';
+import { useWorld } from './store';
+import { AfroYard, BeachClub, ClubMoon, VelvetRoom, Warehouse } from './Clubs';
 
-// Walk-in venues, open to the sky so the camera can follow you in: Club Moon (dance floor, DJ, moving
-// lights, mirror ball), the Degen Lounge (bar, booths, slow lights), the gym (racks, benches, treadmills,
-// mats), the Trenches Coin Shop (counter, live ticker, coin balloons), the government house (desk, flags,
-// podium with today's address, cabinet table, columns and a dome, all in the country's colours), and the
-// workplaces: the Clinic (beds, patients, reception), the Hustle Hub job centre (the job board, advisers) and
-// Devnet Labs (standing desks, code on every screen). Built in the venue's own frame, door at +z facing the city.
+// Walk-in venues, open to the sky so the camera can follow you in: the five clubs (components/world/Clubs.tsx),
+// the Degen Lounge (bar, booths, slow lights), the gym (racks, benches, treadmills, mats), the Trenches Coin Shop
+// (counter, live ticker, coin balloons), the government house (desk, flags, podium with today's address,
+// cabinet table, columns and a dome, all in the country's colours), and the workplaces: the Clinic (beds,
+// patients, reception), the Hustle Hub job centre (the job board, advisers) and Devnet Labs (standing desks, code
+// on every screen). Built in the venue's own frame, door at +z facing the city.
 
 const FONT = '/fonts/inter-600.woff';
-const tmp = new THREE.Object3D();
-const tmpColor = new THREE.Color();
 
 export function WalkInVenue({ v, near, onClick }: { v: PlacedVenue; near: boolean; onClick: (e: ThreeEvent<MouseEvent>) => void }) {
+  const country = useWorld((s) => s.country);
   const k = WALK_IN[v.id];
   if (!k) return null;
   const look = SHELL[v.id] ?? SHELL.club;
@@ -35,17 +36,28 @@ export function WalkInVenue({ v, near, onClick }: { v: PlacedVenue; near: boolea
         <boxGeometry args={[k.w + 3, 0.2, k.d + 6]} />
         <meshStandardMaterial color="#B9BCC2" roughness={1} />
       </mesh>
+      {!!v.approach && v.approach > 0.5 && (
+        // the path from the ring road out to a club on the nightlife row: a boardwalk to the beach club
+        <mesh position={[0, 0.09, k.d / 2 + 4.5 + v.approach / 2]} receiveShadow>
+          <boxGeometry args={[3.4, 0.18, v.approach + 0.2]} />
+          <meshStandardMaterial color={v.id === 'beach' ? '#B08B5E' : '#B9BCC2'} roughness={0.9} />
+        </mesh>
+      )}
       <mesh position={[0, FLOOR_Y - 0.02, 0]} receiveShadow onClick={onClick}>
         <boxGeometry args={[k.w - WALL, 0.04, k.d - WALL]} />
         <meshStandardMaterial color={look.floor} roughness={0.85} />
       </mesh>
-      <Shell k={k} wall={look.wall} trim={v.color} glow={near ? 1.4 : 0.8} onClick={onClick} />
+      <Shell k={k} wall={look.wall} front={look.front ?? FRONT_H} trim={v.color} glow={near ? 1.4 : 0.8} onClick={onClick} />
       <Text font={FONT} position={[0, k.h + 0.55, k.d / 2 + 0.05]} fontSize={0.95} color={v.color} anchorX="center" anchorY="middle" outlineWidth={0.03} outlineColor="#0B0E14">
         {v.name.toUpperCase()}
         <meshStandardMaterial color={v.color} emissive={v.color} emissiveIntensity={1.6} toneMapped={false} />
       </Text>
       <DistanceDetail shadowWithin={45} hideBeyond={110}>
-        {v.id === 'club' && <Club k={k} />}
+        {v.id === 'club' && <ClubMoon k={k} country={country} />}
+        {v.id === 'yard' && <AfroYard k={k} />}
+        {v.id === 'warehouse' && <Warehouse k={k} />}
+        {v.id === 'jazz' && <VelvetRoom k={k} />}
+        {v.id === 'beach' && <BeachClub k={k} />}
         {v.id === 'bar' && <Lounge k={k} />}
         {v.id === 'gym' && <Gym k={k} />}
         {v.id === 'exchange' && <CoinShop k={k} />}
@@ -58,8 +70,13 @@ export function WalkInVenue({ v, near, onClick }: { v: PlacedVenue; near: boolea
   );
 }
 
-const SHELL: Record<string, { wall: string; floor: string }> = {
+/** Walls and floor per venue; `front` is the height of the street-side wall (low so you can see in). */
+const SHELL: Record<string, { wall: string; floor: string; front?: number }> = {
   club: { wall: '#231833', floor: '#141018' },
+  yard: { wall: '#C9B79C', floor: '#7A4E32', front: 1.0 },
+  warehouse: { wall: '#5B5E63', floor: '#2B2C2F', front: 1.6 },
+  jazz: { wall: '#1B1A3A', floor: '#3B2A20' },
+  beach: { wall: '#C8A26B', floor: '#E8D3A2', front: 0.9 },
   bar: { wall: '#2A1F3D', floor: '#3A2A22' },
   gym: { wall: '#E8ECEF', floor: '#3B4048' },
   exchange: { wall: '#10302A', floor: '#D9DED8' },
@@ -71,13 +88,13 @@ const SHELL: Record<string, { wall: string; floor: string }> = {
 
 const FRONT_H = 1.3;
 
-function Shell({ k, wall, trim, glow, onClick }: { k: WalkIn; wall: string; trim: string; glow: number; onClick: (e: ThreeEvent<MouseEvent>) => void }) {
+function Shell({ k, wall, front, trim, glow, onClick }: { k: WalkIn; wall: string; front: number; trim: string; glow: number; onClick: (e: ThreeEvent<MouseEvent>) => void }) {
   const walls = useMemo(() => wallsOf(k), [k]);
   return (
     <group>
       {walls.map((r, i) => {
         // the street side is a low wall so you can see in from the road (and the camera can follow you in)
-        const h = i >= 3 ? FRONT_H : k.h;
+        const h = i >= 3 ? front : k.h;
         return (
         <group key={i}>
           <mesh position={[r.x, FLOOR_Y + h / 2, r.z]} castShadow receiveShadow onClick={onClick}>
@@ -122,173 +139,6 @@ function Npc({ seed, act, position, rot = 0 }: { seed: string; act: FigureAct | 
   return (
     <group position={position} rotation={[0, rot, 0]}>
       <Figure seed={seed} actRef={actRef} speedRef={speed} dim />
-    </group>
-  );
-}
-
-// ------------------------------------------------------------------ Club Moon
-
-const { n: N, tile: T, tileH, z: floorZ } = DANCE_FLOOR;
-const FLOOR_COLORS = ['#FF2E88', '#00E5FF', '#FFD60A', '#7B2CFF', '#00F5A0', '#FF6B00'];
-
-function Club({ k }: { k: WalkIn }) {
-  const tiles = useRef<THREE.InstancedMesh>(null);
-  const tileGeo = useMemo(() => new THREE.BoxGeometry(T - 0.06, tileH, T - 0.06), []);
-  const beams = useRef<THREE.Group>(null);
-  const ball = useRef<THREE.Mesh>(null);
-  const speakers = useRef<THREE.Group>(null);
-  const lA = useRef<THREE.PointLight>(null);
-  const lB = useRef<THREE.PointLight>(null);
-  useEffect(() => {
-    const m = tiles.current;
-    if (!m) return;
-    for (let i = 0; i < N * N; i++) {
-      const x = (i % N) - (N - 1) / 2, z = Math.floor(i / N) - (N - 1) / 2;
-      tmp.position.set(DANCE_FLOOR.x + x * T, DANCE_FLOOR.top - tileH / 2, floorZ + z * T);
-      tmp.rotation.set(0, 0, 0);
-      tmp.scale.set(1, 1, 1);
-      tmp.updateMatrix();
-      m.setMatrixAt(i, tmp.matrix);
-    }
-    m.instanceMatrix.needsUpdate = true;
-  }, []);
-  useFrame(({ clock }) => {
-    const b = beat('club');
-    const bar = Math.floor(b / 4);
-    const pulse = Math.pow(1 - (b % 1), 3);
-    const m = tiles.current;
-    if (m) {
-      for (let i = 0; i < N * N; i++) {
-        const x = i % N, z = Math.floor(i / N);
-        const on = (x + z + bar) % 3 === Math.floor(b) % 3 || ((x * 7 + z * 3 + Math.floor(b)) % 5 === 0);
-        const c = FLOOR_COLORS[(x + z * 2 + bar) % FLOOR_COLORS.length];
-        tmpColor.set(c).multiplyScalar(on ? 1.2 + pulse * 1.8 : 0.12);
-        m.setColorAt(i, tmpColor);
-      }
-      if (m.instanceColor) m.instanceColor.needsUpdate = true;
-    }
-    if (beams.current) {
-      beams.current.children.forEach((g, i) => {
-        const t = clock.elapsedTime * (0.7 + i * 0.13) + i;
-        g.rotation.x = Math.sin(t) * 0.55;
-        g.rotation.z = Math.cos(t * 1.3) * 0.55;
-        const mat = ((g.children[0] as THREE.Mesh).material as THREE.MeshBasicMaterial);
-        mat.color.set(FLOOR_COLORS[(i + bar) % FLOOR_COLORS.length]);
-        mat.opacity = 0.14 + pulse * 0.16;
-      });
-    }
-    if (ball.current) ball.current.rotation.y = clock.elapsedTime * 0.8;
-    if (speakers.current) speakers.current.children.forEach((s) => s.scale.setScalar(1 + pulse * 0.12));
-    if (lA.current) {
-      lA.current.color.set(FLOOR_COLORS[bar % FLOOR_COLORS.length]);
-      lA.current.intensity = 8 + pulse * 22;
-    }
-    if (lB.current) {
-      lB.current.color.set(FLOOR_COLORS[(bar + 3) % FLOOR_COLORS.length]);
-      lB.current.intensity = 8 + (1 - pulse) * 14;
-    }
-  });
-  const trussY = FLOOR_Y + k.h + 0.4;
-  const backZ = -k.d / 2 + WALL;
-  return (
-    <group>
-      <instancedMesh ref={tiles} args={[tileGeo, undefined, N * N]} frustumCulled={false}>
-        <meshStandardMaterial color="#FFFFFF" emissive="#FFFFFF" emissiveIntensity={0.0} roughness={0.3} toneMapped={false} />
-      </instancedMesh>
-      {/* tiles lit from inside: the emissive comes from the instance colour */}
-      <TileGlow tiles={tiles} />
-      {/* DJ booth and decks */}
-      {box([0, FLOOR_Y + 0.55, backZ + 1.4], [4, 1.1, 1.2], '#0F0F14', { metalness: 0.4 })}
-      {box([0, FLOOR_Y + 1.12, backZ + 1.4], [4.1, 0.06, 1.25], '#FF2E88', { emissive: '#FF2E88', emissiveIntensity: 1.5, toneMapped: false })}
-      {[-0.9, 0.9].map((x) => (
-        <Deck key={x} position={[x, FLOOR_Y + 1.18, backZ + 1.4]} />
-      ))}
-      <Npc seed="dj-moon" act="dance" position={[0, FLOOR_Y, backZ + 0.55]} />
-      {/* speakers */}
-      <group ref={speakers}>
-        {[-1, 1].map((s) => (
-          <group key={s} position={[s * (k.w / 2 - 1.2), FLOOR_Y, backZ + 0.8]}>
-            {box([0, 1.1, 0], [1.4, 2.2, 1.1], '#111')}
-            {[0.6, 1.6].map((y) => (
-              <mesh key={y} position={[0, y, 0.56]} rotation={[Math.PI / 2, 0, 0]}>
-                <cylinderGeometry args={[0.4, 0.45, 0.06, 16]} />
-                <meshStandardMaterial color="#2A2A2A" metalness={0.5} />
-              </mesh>
-            ))}
-          </group>
-        ))}
-      </group>
-      {/* side bar */}
-      {box([-k.w / 2 + 1, FLOOR_Y + 0.55, 2.6], [1, 1.1, 4], '#3A1F4A')}
-      {box([-k.w / 2 + 1, FLOOR_Y + 1.12, 2.6], [1.1, 0.06, 4.1], '#00E5FF', { emissive: '#00E5FF', emissiveIntensity: 1.2, toneMapped: false })}
-      {/* lighting truss over the floor */}
-      {[-1, 1].flatMap((sx) => [-1, 1].map((sz) => box([sx * 4, (FLOOR_Y + trussY) / 2, floorZ + sz * 4], [0.2, trussY - FLOOR_Y, 0.2], '#5A5F68', { metalness: 0.7 }, `${sx}${sz}`)))}
-      {[-1, 1].map((s) => box([0, trussY, floorZ + s * 4], [8.2, 0.22, 0.22], '#5A5F68', { metalness: 0.7 }, `x${s}`))}
-      {[-1, 1].map((s) => box([s * 4, trussY, floorZ], [0.22, 0.22, 8.2], '#5A5F68', { metalness: 0.7 }, `z${s}`))}
-      {/* moving-head beams */}
-      <group ref={beams}>
-        {[-3, -1, 1, 3].flatMap((x) => [-4, 4].map((z) => (
-          <group key={`${x}${z}`} position={[x, trussY - 0.1, floorZ + z]}>
-            <mesh position={[0, -2.1, 0]}>
-              <coneGeometry args={[0.9, 4.2, 16, 1, true]} />
-              <meshBasicMaterial color="#FF2E88" transparent opacity={0.2} blending={THREE.AdditiveBlending} depthWrite={false} side={THREE.DoubleSide} />
-            </mesh>
-          </group>
-        )))}
-      </group>
-      {/* mirror ball */}
-      <mesh position={[0, trussY - 0.1, floorZ]} >
-        <cylinderGeometry args={[0.02, 0.02, 0.8, 4]} />
-        <meshStandardMaterial color="#888" />
-      </mesh>
-      <mesh ref={ball} position={[0, trussY - 0.9, floorZ]} castShadow>
-        <icosahedronGeometry args={[0.55, 1]} />
-        <meshStandardMaterial color="#E8E8F0" metalness={1} roughness={0.12} flatShading emissive="#8888AA" emissiveIntensity={0.4} />
-      </mesh>
-      <pointLight ref={lA} position={[-2, FLOOR_Y + 3, floorZ]} distance={14} decay={1.6} />
-      <pointLight ref={lB} position={[2, FLOOR_Y + 3, floorZ]} distance={14} decay={1.6} />
-      {/* the crowd */}
-      <Npc seed="club-ada" act="dance" position={[-1.6, DANCE_FLOOR.top, floorZ - 0.8]} rot={0.4} />
-      <Npc seed="club-tunde" act="dance" position={[1.4, DANCE_FLOOR.top, floorZ + 0.6]} rot={-0.6} />
-      <Npc seed="club-zee" act="dance" position={[0.2, DANCE_FLOOR.top, floorZ - 2.2]} rot={3} />
-      <Npc seed="club-bisola" act="selfie" position={[-k.w / 2 + 2.2, FLOOR_Y, 2]} rot={Math.PI / 2} />
-    </group>
-  );
-}
-
-/** The dance-floor tiles' material glows with their instance colour. */
-function TileGlow({ tiles }: { tiles: React.RefObject<THREE.InstancedMesh> }) {
-  useEffect(() => {
-    const m = tiles.current;
-    if (!m) return;
-    const mat = m.material as THREE.MeshStandardMaterial;
-    mat.onBeforeCompile = (shader) => {
-      // use the per-instance colour as emissive too, so lit tiles read as lights at night
-      shader.fragmentShader = shader.fragmentShader.replace(
-        '#include <emissivemap_fragment>',
-        '#include <emissivemap_fragment>\n#ifdef USE_INSTANCING_COLOR\n totalEmissiveRadiance += vColor * 0.9;\n#endif',
-      );
-    };
-    mat.needsUpdate = true;
-  }, [tiles]);
-  return null;
-}
-
-function Deck({ position }: { position: [number, number, number] }) {
-  const ref = useRef<THREE.Mesh>(null);
-  useFrame((_, dt) => {
-    if (ref.current) ref.current.rotation.y += dt * 3.5;
-  });
-  return (
-    <group position={position}>
-      <mesh ref={ref}>
-        <cylinderGeometry args={[0.38, 0.38, 0.05, 20]} />
-        <meshStandardMaterial color="#1A1A1A" metalness={0.3} roughness={0.4} />
-      </mesh>
-      <mesh position={[0, 0.03, 0]}>
-        <cylinderGeometry args={[0.1, 0.1, 0.02, 12]} />
-        <meshStandardMaterial color="#FFD60A" emissive="#FFD60A" emissiveIntensity={0.8} />
-      </mesh>
     </group>
   );
 }

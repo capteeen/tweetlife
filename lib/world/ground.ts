@@ -1,5 +1,5 @@
 import { groundHeightAt, type Block, type CityGrid } from './geometry';
-import { DANCE_FLOOR, FLOOR_Y, WALK_IN } from './interiors';
+import { WALK_IN, walkInFloorAt } from './interiors';
 import { DISTRICTS, RING_ROAD_W, RING_SLOTS, airportLayout, inRect, ringRoadRadius, slotAngle, type Airport, type Rect } from './layout';
 import { placeVenues, type PlacedVenue } from '../life/venues';
 import { TERMINAL_FLOOR } from './terminal';
@@ -7,12 +7,15 @@ import { TERMINAL_FLOOR } from './terminal';
 // One answer to "how high is the ground here?" for everyone who stands on it: the player, visitors, residents,
 // crowds and cars, indoors and out. It mirrors the surfaces the scene draws, so feet land on what you see:
 // City.tsx (road grid, sidewalks, blocks, lots, countryside), CityExtras.tsx (ring road, spurs, district ground,
-// airport road, bridge and island), Terminal.tsx (the terminal hall), Venues.tsx (plazas) and Interiors.tsx (venue floors, the club's dance floor).
+// airport road, bridge and island), Terminal.tsx (the terminal hall), Venues.tsx (plazas), Interiors.tsx and Clubs.tsx
+// (venue floors, the clubs' dance floors, the beach club's boardwalk).
 // If one of those surfaces moves, move its number here too; scripts/check-world.ts walks the world and fails on
 // a mismatch it can see (walkers below a floor, things floating).
 
 // Tops of the surfaces outside the post grid (the grid's own are in geometry.ts).
 export const PLAZA_TOP = 0.2;
+export const BOARDWALK_TOP = 0.18;
+export const BOARDWALK_W = 3.4;
 const DISTRICT_TOP = 0.0;
 const COUNTRYSIDE_TOP = -0.05;
 const WATER_TOP = 0;
@@ -99,11 +102,10 @@ export function venueFloorAt(venues: PlacedVenue[], x: number, z: number): numbe
     const { lx, lz } = toVenueFrame(v, x, z);
     const k = WALK_IN[v.id];
     if (k) {
-      if (Math.abs(lx) < k.w / 2 && Math.abs(lz) < k.d / 2) {
-        if (v.id === 'club' && Math.abs(lx - DANCE_FLOOR.x) < DANCE_FLOOR.size / 2 && Math.abs(lz - DANCE_FLOOR.z) < DANCE_FLOOR.size / 2) return DANCE_FLOOR.top;
-        return FLOOR_Y;
-      }
+      if (Math.abs(lx) < k.w / 2 && Math.abs(lz) < k.d / 2) return walkInFloorAt(v.id, lx, lz);
       if (Math.abs(lx) < (k.w + 3) / 2 && lz > -k.d / 2 - 1.5 && lz < k.d / 2 + 4.5) return PLAZA_TOP;
+      // the path out to a club on the nightlife row (Interiors.tsx)
+      if (v.approach && v.approach > 0.5 && Math.abs(lx) < BOARDWALK_W / 2 && lz >= k.d / 2 + 4.5 && lz < k.d / 2 + 4.6 + v.approach) return BOARDWALK_TOP;
     } else if (Math.abs(lx) < (v.w + 6) / 2 && Math.abs(lz) < (v.d + 6) / 2) return PLAZA_TOP;
   }
   return null;

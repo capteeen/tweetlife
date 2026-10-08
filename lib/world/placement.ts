@@ -1,7 +1,7 @@
 import type { Block, CityGrid, Placed } from './geometry';
 import { RING_ROAD_W, billboardSpots, inRect, type BillboardSpot } from './layout';
 import { WALK_IN } from './interiors';
-import { taxiLinks, terrainOf, toVenueFrame, type Terrain } from './ground';
+import { BOARDWALK_W, taxiLinks, terrainOf, toVenueFrame, type Terrain } from './ground';
 
 // Where things may stand. Anything scattered over the world (trees, palms, lamps, benches, signs, kiosks,
 // billboards, parked cars, resident spots) asks canPlace() first, so nothing lands on a road, a crossing, a
@@ -58,6 +58,8 @@ export function zoneAt(s: Site, x: number, z: number): Zone {
     const doorHalf = (k?.door ?? 2.2) / 2 + 1;
     if (Math.abs(lx) <= doorHalf && lz > v.d / 2 && lz <= v.d / 2 + 5) return 'door';
     if (k ? Math.abs(lx) < (k.w + 3) / 2 && lz > -k.d / 2 - 1.5 && lz < k.d / 2 + 4.5 : Math.abs(lx) < (v.w + 6) / 2 && Math.abs(lz) < (v.d + 6) / 2) return 'plaza';
+    // the path out to a club on the nightlife row counts as its door approach
+    if (k && v.approach && v.approach > 0.5 && Math.abs(lx) <= BOARDWALK_W / 2 + 1 && lz >= k.d / 2 + 4.5 && lz <= k.d / 2 + 5 + v.approach) return 'door';
   }
   if (s.hasCity) {
     const ap = s.airport;

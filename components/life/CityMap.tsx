@@ -11,6 +11,8 @@ import { COUNTRIES } from '@/lib/world/countries';
 import { districtName, landmarkSpot, themeOf, themedPalette } from '@/lib/world/cityThemes';
 import { TravelPicker } from './TravelPicker';
 import { etaLabel } from './travel';
+import { CLUB_IDS, isClub } from '@/lib/world/interiors';
+import { useClubHeadcounts, vibeOf, type Headcount } from '@/components/world/headcount';
 
 // The city map: districts, roads, the lagoon and the airport, venue pins, neighbours and you.
 // Drag to pan, scroll or pinch to zoom. Tap a pin for its sheet, or tap anywhere on land to ride there.
@@ -50,6 +52,11 @@ export function CityMap() {
     const ap = airportLayout(g.contentRadius, g.boundaryRadius);
     return { ap, venues: placeVenues(g.contentRadius, g.boundaryRadius, country), boards: billboardSpots(g.contentRadius, g.boundaryRadius), rr: ringRoadRadius(g.contentRadius) };
   }, [g, country]);
+  // live headcounts for the club pins and the nightlife list
+  const counts = useClubHeadcounts(open && layout ? layout.venues : null, g?.contentRadius ?? null);
+  const countsRef = useRef<Record<string, Headcount>>({});
+  countsRef.current = counts;
+  const [nightlife, setNightlife] = useState(false);
 
   const fit = () => {
     const c = ref.current;
@@ -345,6 +352,20 @@ export function CityMap() {
         ctx.textBaseline = 'middle';
         ctx.fillStyle = '#000';
         ctx.fillText(vn.emoji, px, pz + 1);
+        // how many are in each club right now
+        const n = isClub(vn.id) ? countsRef.current[vn.id]?.total ?? 0 : 0;
+        if (n > 0) {
+          const label = n > 99 ? '99+' : String(n);
+          ctx.font = '700 10px Inter, system-ui, sans-serif';
+          const bw = Math.max(16, ctx.measureText(label).width + 8);
+          ctx.fillStyle = '#FF2E63';
+          ctx.beginPath();
+          ctx.roundRect(px + 6, pz - 20, bw, 16, 8);
+          ctx.fill();
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillText(label, px + 6 + bw / 2, pz - 11.5);
+          ctx.font = '15px system-ui, sans-serif';
+        }
       }
       ctx.font = '600 11px Inter, system-ui, sans-serif';
       ctx.textAlign = 'center';
@@ -526,6 +547,15 @@ export function CityMap() {
           {chip('venues', '🏙️ Venues')}
           {chip('neighbours', '🧍 Neighbours')}
           {chip('billboards', '🪧 Billboards')}
+          <button
+            className={`shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium transition sm:px-3 sm:py-1.5 sm:text-sm ${nightlife ? 'bg-white text-black' : 'bg-white/10 text-white/80 hover:bg-white/20'}`}
+            onClick={() => {
+              setNightlife((n) => !n);
+              setPin(null);
+            }}
+          >
+            🎧 Nightlife
+          </button>
           <button className="shrink-0 whitespace-nowrap rounded-full bg-white/10 px-2.5 py-1 text-xs font-medium sm:px-3 sm:py-1.5 sm:text-sm text-white/80 hover:bg-white/20" onClick={() => layout && jump(layout.ap.island.x, 0, 4)}>
             ✈️ Airport
           </button>
@@ -567,7 +597,43 @@ export function CityMap() {
             </button>
           ))}
         </div>
-        {!pin && <p className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full chrome px-3 py-1 text-xs text-white/70">Tap a pin to visit · tap anywhere to ride there</p>}
+        {!pin && !nightlife && <p className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full chrome px-3 py-1 text-xs text-white/70">Tap a pin to visit · tap anywhere to ride there</p>}
+        {!pin && nightlife && layout && (
+          <div className="absolute bottom-3 left-1/2 max-h-[60%] w-[min(94vw,580px)] -translate-x-1/2 overflow-y-auto rounded-3xl chrome p-3">
+            <div className="flex items-center justify-between px-1 pb-2">
+              <div className="text-base font-bold">🎧 Nightlife · who&apos;s out tonight</div>
+              <button className="rounded-full px-2 py-0.5 hover:bg-white/10" onClick={() => setNightlife(false)} aria-label="Close">
+                ✕
+              </button>
+            </div>
+            {layout.venues
+              .filter((vn) => (CLUB_IDS as readonly string[]).includes(vn.id))
+              .sort((a, b) => (counts[b.id]?.total ?? 0) - (counts[a.id]?.total ?? 0))
+              .map((vn) => {
+                const c = counts[vn.id];
+                const vibe = vibeOf(c?.total ?? 0, vn.capacity);
+                return (
+                  <button key={vn.id} className="flex w-full items-center gap-3 rounded-2xl px-2 py-2 text-left hover:bg-white/10" onClick={() => openVenue(vn)}>
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xl" style={{ background: vn.color + '33' }}>
+                      {vn.emoji}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-semibold">{vn.name}</span>
+                      <span className="block truncate text-xs text-white/55">
+                        {vn.district} · {vn.blurb}
+                      </span>
+                    </span>
+                    <span className="shrink-0 text-right">
+                      <span className="num block text-sm font-bold">{c?.total ?? 0} inside</span>
+                      <span className="block text-xs text-white/60">
+                        {vibe.emoji} {vibe.label}
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
+          </div>
+        )}
         {pin && (
           <div className="absolute bottom-3 left-1/2 w-[min(94vw,580px)] -translate-x-1/2 rounded-3xl chrome p-4">
             <div className="flex items-center justify-between">

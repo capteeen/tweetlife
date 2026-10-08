@@ -12,7 +12,7 @@ export const metadata: Metadata = { title: 'Create your look', robots: { index: 
 // anyone can come back later from the phone's Settings to change their look.
 export default async function CreatePage({ searchParams }: { searchParams: { next?: string } }) {
   const raw = searchParams.next ?? '';
-  const next = raw.startsWith('/') && !raw.startsWith('//') ? raw : '/my-world';
+  const next = raw.startsWith('/') && !raw.startsWith('//') ? raw : '/play';
   const user = await getUser();
   if (!user) {
     return (

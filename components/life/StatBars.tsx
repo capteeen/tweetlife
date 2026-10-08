@@ -17,12 +17,38 @@ const effects = (a: Activity) =>
 export function StatBars({ inline = false }: { inline?: boolean }) {
   const me = useWorld((s) => s.life?.me ?? null);
   const riding = useWorld((s) => s.riding);
+  const narrow = useNarrow();
+  const [open, setOpen] = useState(false);
   if (!me) return null;
   const rows: { k: string; v: number; e: string; c: string }[] = [
     { k: 'Vibes', v: me.vibes, e: '🎉', c: '#FF5D8F' },
     { k: 'Clout', v: me.clout, e: '💬', c: '#1D9BF0' },
     { k: 'Gas', v: me.gas, e: '⚡', c: me.gas < TIRED ? '#F97316' : '#FFD166' },
   ];
+  // on phones the panel folds into one chip so it doesn't cover a third of the screen; tap to open it
+  if (narrow && !open) {
+    return (
+      <button
+        className={`pointer-events-auto flex items-center gap-2 rounded-full chrome py-1 pl-1 pr-3 text-xs ${inline ? '' : 'absolute left-3 top-16 z-10'}`}
+        onClick={() => setOpen(true)}
+        aria-label="Show your stats and moves"
+      >
+        {me.avatarUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={me.avatarUrl} alt="" className="h-6 w-6 rounded-full" />
+        ) : (
+          <span className="h-6 w-6 rounded-full bg-white/10" />
+        )}
+        {rows.map((r) => (
+          <span key={r.k} className="num flex items-center gap-0.5 whitespace-nowrap">
+            {r.e}
+            <span style={{ color: r.c }}>{r.v}</span>
+          </span>
+        ))}
+        <span className="text-white/50">▾</span>
+      </button>
+    );
+  }
   return (
     <div className={`pointer-events-auto w-48 rounded-2xl chrome p-3 text-xs ${inline ? '' : 'absolute left-3 top-16 z-10'}`}>
       <div className="mb-2 flex items-center gap-2">
@@ -36,6 +62,11 @@ export function StatBars({ inline = false }: { inline?: boolean }) {
           <div className="truncate font-semibold">@{me.handle}</div>
           <div className="truncate text-white/55">{riding ? `${riding.emoji} riding the ${riding.name}` : me.status}</div>
         </div>
+        {narrow && (
+          <button className="ml-auto rounded-full px-1.5 py-0.5 text-white/60 hover:bg-white/10" onClick={() => setOpen(false)} aria-label="Fold your stats away">
+            ▴
+          </button>
+        )}
       </div>
       {rows.map((r) => (
         <div key={r.k} className="mb-1.5 flex items-center gap-2">
@@ -54,6 +85,19 @@ export function StatBars({ inline = false }: { inline?: boolean }) {
       {!riding && <Moves gas={me.gas} />}
     </div>
   );
+}
+
+/** Phone-width screens, where the full panel would cover too much of the world. */
+function useNarrow() {
+  const [narrow, setNarrow] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 640px)');
+    const on = () => setNarrow(mq.matches);
+    on();
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, []);
+  return narrow;
 }
 
 function Moves({ gas }: { gas: number }) {

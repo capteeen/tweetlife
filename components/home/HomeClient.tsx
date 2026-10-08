@@ -9,6 +9,7 @@ import { StatBars } from '@/components/life/StatBars';
 import { Phone } from '@/components/life/Phone';
 import { FurnitureCard } from '@/components/life/FurnitureCard';
 import { useLife } from '@/components/life/useLife';
+import { Welcome } from '@/components/life/Welcome';
 import { SignInButton } from '@/components/ui/Chrome';
 import { hasPower, type HomeView } from '@/lib/life/home';
 import { useHome } from './store';
@@ -114,7 +115,7 @@ export function HomeClient({ handle }: { handle?: string }) {
       </div>
       <FurnitureCard onRefresh={load} />
       <Phone sendSocial={noop} handle={home.owner.handle} />
-      <div className="pointer-events-none absolute right-3 top-16 z-30 flex w-[min(80vw,320px)] flex-col gap-2">
+      <div className="pointer-events-none absolute right-3 top-16 z-30 flex w-[min(80vw,320px)] flex-col gap-2 max-sm:left-3 max-sm:top-28 max-sm:w-auto">
         {toasts.map((t) => (
           <div key={t.id} className="rounded-2xl chrome px-3 py-2 text-sm shadow-lg">
             {t.text}
@@ -135,6 +136,7 @@ export function HomeClient({ handle }: { handle?: string }) {
         </span>
       </div>
       <TouchSticks />
+      {home.mine && <Welcome />}
       <div className="pointer-events-none absolute left-3 top-3 z-10 hidden text-xs text-white/50 sm:block [@media(hover:none)]:hidden">WASD to walk · tap furniture · tap the door to leave</div>
     </div>
   );

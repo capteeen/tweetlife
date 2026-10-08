@@ -9,6 +9,7 @@ import { FURNITURE, SLOT_LABEL, furnitureById, resaleValue, type Slot } from '@/
 import type { Token } from '@/lib/life/trenches';
 import { lifeActions, type SocialSend } from './useLife';
 import { MapApp } from './MapApp';
+import { showWelcomeAgain } from './Welcome';
 
 // The phone: a grid of apps over the world. Everything here reads real data — live token prices,
 // your real holdings and ledger, real people on the rich list — with bags as in-world points.
@@ -716,6 +717,11 @@ function SettingsApp({ handle }: { handle: string }) {
         <a className="btn w-full" href={`/create?next=${encodeURIComponent(`/w/${handle}`)}`}>
           👕 Change my look
         </a>
+      )}
+      {me && (
+        <button className="btn-ghost w-full" onClick={() => { useWorld.getState().closePhone(); showWelcomeAgain(); }}>
+          👋 Show the welcome again
+        </button>
       )}
       {me?.isOwner && (
         <Link className="btn w-full" href="/my-world">

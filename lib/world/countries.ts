@@ -29,6 +29,8 @@ export type Country = {
   /** coin ticker, shown on the flag and passport */
   ticker: string;
   flag: string;
+  /** the coin's official logo mark, a square SVG in its brand colours (public/countries/) */
+  logo: string;
   president: string;
   /** X handle of the president, without @ */
   presidentHandle: string;
@@ -40,6 +42,7 @@ export type Country = {
 export const COUNTRIES: Record<CountryId, Country> = {
   solana: {
     id: 'solana',
+    logo: '/countries/solana.svg',
     name: 'Solana',
     capital: 'Solana City',
     demonym: 'Solanan',
@@ -52,6 +55,7 @@ export const COUNTRIES: Record<CountryId, Country> = {
   },
   bnb: {
     id: 'bnb',
+    logo: '/countries/bnb.svg',
     name: 'BNB',
     capital: 'BNB City',
     demonym: 'BNBian',
@@ -64,6 +68,7 @@ export const COUNTRIES: Record<CountryId, Country> = {
   },
   robinhood: {
     id: 'robinhood',
+    logo: '/countries/robinhood.svg',
     name: 'Robinhood',
     capital: 'Robinhood City',
     demonym: 'Robinhooder',

@@ -43,11 +43,9 @@ export function CountryPicker({ onDone, compact = false }: { onDone: (c: Citizen
             >
               <div className="relative h-full rounded-[14px] p-4" style={{ background: `radial-gradient(circle at 85% 0%, ${c.theme.primary}33, transparent 60%), ${c.theme.ink}` }}>
                 <div className="flex items-start gap-3">
-                  <span
-                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-2xl font-bold"
-                    style={{ background: `linear-gradient(135deg, ${g1}, ${g2})`, color: c.theme.ink }}
-                  >
-                    {c.flag}
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-black/60 ring-1 ring-white/10">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={c.logo} alt={`${c.name} logo`} className="h-7 w-7" />
                   </span>
                   <div className="min-w-0">
                     <p className="text-lg font-semibold leading-tight">{c.name}</p>

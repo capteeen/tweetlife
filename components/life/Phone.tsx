@@ -735,7 +735,9 @@ function IdApp() {
       <IdCard holder={{ name: me.name, handle: me.handle, avatarUrl: me.avatarUrl, look: me.look }} citizen={me.citizen} />
       <div className="rounded-2xl bg-white/5 p-3 text-white/75">
         <p>
-          {c.flag} Citizen of <b className="text-white">{c.name}</b>, home city {c.capital}. President: {c.president}.
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={c.logo} alt="" className="mr-1 inline h-4 w-4 align-[-2px]" />
+          Citizen of <b className="text-white">{c.name}</b>, home city {c.capital}. President: {c.president}.
         </p>
         {!me.citizen.nationality && <p className="mt-1 text-white/55">You have not picked a nationality yet, so you count as Solanan.</p>}
       </div>

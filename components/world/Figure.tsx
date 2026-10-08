@@ -39,9 +39,11 @@ type Props = {
   tiredRef?: React.MutableRefObject<number>;
   /** never draw finer than this level of detail (1 = no face or hands): for drivers half hidden behind glass */
   minLod?: number;
+  /** an empty group placed in the right hand, for things held by a string or in the palm */
+  handRef?: React.Ref<THREE.Group>;
 };
 
-export function Figure({ seed, look: chosen, speedRef, label, labelColor = '#FFFFFF', dim = false, alwaysWalk = false, actRef, tiredRef, slumpRef, sash, minLod = 0 }: Props) {
+export function Figure({ seed, look: chosen, speedRef, label, labelColor = '#FFFFFF', dim = false, alwaysWalk = false, actRef, tiredRef, slumpRef, sash, minLod = 0, handRef }: Props) {
   const look = useMemo(() => withCapAsHat(chosen ?? lookFor(seed)), [chosen, seed]);
   const lArm = useRef<THREE.Group>(null);
   const rArm = useRef<THREE.Group>(null);
@@ -238,6 +240,7 @@ export function Figure({ seed, look: chosen, speedRef, label, labelColor = '#FFF
                 <mesh position={[0, -0.28, 0.005]} scale={[0.035, 0.06, 0.045]} geometry={smallBall()} userData={NEAR}>
                   {skin()}
                 </mesh>
+                {side > 0 && handRef && <group ref={handRef} position={[0, -0.3, 0.01]} />}
                 {side > 0 && actRef && (
                   <mesh ref={phone} visible={false} position={[0, -0.31, 0.045]} rotation={[0.4, 0, 0]} geometry={geo('phone', () => new THREE.BoxGeometry(0.075, 0.14, 0.014))}>
                     <meshStandardMaterial color="#2B3245" roughness={0.25} metalness={0.3} />

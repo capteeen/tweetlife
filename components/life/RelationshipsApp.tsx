@@ -75,6 +75,25 @@ function Avatar({ who }: { who: PersonRef }) {
   );
 }
 
+/** Talk to an AI resident from the phone: opens their chat card over the city. */
+function ChatButton({ who }: { who: PersonRef }) {
+  const inCity = useWorld((s) => !!s.model && !s.skyline);
+  if (who.kind !== 'resident' || !inCity) return null;
+  return (
+    <button
+      data-chat={who.id}
+      className="rounded-full bg-white/10 px-2.5 py-1 text-xs hover:bg-white/15"
+      onClick={() => {
+        const s = useWorld.getState();
+        s.closePhone();
+        s.selectResident(who.id);
+      }}
+    >
+      💬 Chat
+    </button>
+  );
+}
+
 const fmtDay = (iso: string) => new Date(iso).toLocaleDateString('en', { month: 'short', day: 'numeric' });
 
 function Partners({ list }: { list: BondView[] }) {
@@ -114,6 +133,7 @@ function Partners({ list }: { list: BondView[] }) {
                   💞 Dating since {fmtDay(b.datingSince ?? b.since)} · {b.dates} date{b.dates === 1 ? '' : 's'}
                 </div>
               </div>
+              <ChatButton who={b.who} />
               <a href={houseUrl(b.who)} className="rounded-full bg-white/10 px-2.5 py-1 text-xs hover:bg-white/15">
                 🏠 Visit
               </a>
@@ -263,6 +283,7 @@ function Talking({ list }: { list: BondView[] }) {
               <div className="text-[11px] text-white/55">💬 Talking since {fmtDay(b.since)}</div>
             )}
           </div>
+          <ChatButton who={b.who} />
         </li>
       ))}
       <li className="pt-1 text-[11px] text-white/45">AI residents warm up as you chat (+2 a message, up to +20 a day), visit (+5) and date (+8). They say yes to a visit from 15 and to a date from 40.</li>

@@ -11,10 +11,17 @@ import { askLine, hostSide, type RequestView } from '@/lib/life/love';
 export function RequestNotices() {
   const notices = useLove((s) => s.notices);
   const me = useWorld((s) => s.life?.me ?? null);
+  const openPhone = useWorld((s) => s.openPhone);
   if (!me || !notices.length) return null;
+  // phones have room for one card at a time; the rest wait in the Relationships app
   return (
-    <div className="pointer-events-none absolute left-1/2 top-16 z-[35] flex w-[min(94vw,400px)] -translate-x-1/2 flex-col gap-2 max-sm:top-28">
+    <div className="pointer-events-none absolute left-1/2 top-16 z-[35] flex w-[min(94vw,400px)] -translate-x-1/2 flex-col gap-2 max-sm:top-40 max-sm:[&>[data-notice]:nth-child(n+2)]:hidden">
       {notices.map((n) => (n.status === 'pending' ? <Incoming key={n.id} r={n} /> : <Answer key={n.id} r={n} />))}
+      {notices.length > 1 && (
+        <button className="pointer-events-auto self-center rounded-full chrome px-3 py-1 text-xs sm:hidden" onClick={() => openPhone('love')}>
+          +{notices.length - 1} more in Relationships
+        </button>
+      )}
     </div>
   );
 }
@@ -35,7 +42,9 @@ function Incoming({ r }: { r: RequestView }) {
       if (r.kind === 'invite' || r.kind === 'visit') {
         const hostIsThem = hostSide(r.kind) === 'from';
         useWorld.getState().pushToast(hostIsThem ? `🏠 Heading to ${nameOf(r.who)}'s place` : `🏠 ${nameOf(r.who)} is coming over. Heading home`, 'love');
-        router.push(hostIsThem ? houseUrl(r.who) : '/home');
+        const to = hostIsThem ? houseUrl(r.who) : '/home';
+        if (location.pathname === to) location.reload();
+        else router.push(to);
       } else if (r.kind === 'date') {
         useWorld.getState().pushToast(`💞 You and ${nameOf(r.who)} are dating now`, 'love');
       }

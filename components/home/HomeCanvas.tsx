@@ -15,6 +15,9 @@ import { placementFor, type Placement } from './poses';
 import { FurnitureMesh } from './Furniture';
 import { playerSound } from '@/lib/audio/state';
 import { FootstepSounds } from '@/components/audio/FootstepSounds';
+import { decodeUse, encodeUse, houseMe, useHousePeers, type HousePeer } from './presence';
+import { useLookOf } from '@/components/life/useLook';
+import { residentById } from '@/lib/life/residents';
 
 // The house, seen the way the reference shows it: a fixed three-quarter view of one room with two walls,
 // a door and a window. The avatar walks with WASD / the left stick; tap a piece of furniture to open it.
@@ -88,6 +91,8 @@ function Room({ home, handle, onExit }: { home: HomeView; handle: string | null;
       ))}
       <ContactShadows frames={1} position={[0, 0.01, 0]} scale={ROOM_W + 4} blur={2.2} opacity={0.45} far={6} resolution={1024} />
       <Walker placed={placed} handle={handle} />
+      <HousePeers me={handle} />
+      <ResidentsHere home={home} placed={placed} />
     </>
   );
 }
@@ -314,6 +319,11 @@ function Walker({ placed, handle }: { placed: Furniture[]; handle: string | null
       group.current.position.copy(pos.current);
       group.current.rotation.set(0, facing.current, 0);
     }
+    // for the people in the house with me (components/home/presence.ts)
+    houseMe.x = pos.current.x;
+    houseMe.z = pos.current.z;
+    houseMe.yaw = facing.current;
+    houseMe.act = g?.settled && acting ? encodeUse(acting.item, acting.action) : st.doing?.id ?? null;
   });
 
   return (
@@ -339,4 +349,83 @@ function blocked(obstacles: { x: number; z: number; w: number; d: number }[], x:
   if (x < -hw || x > hw || z < -hd || z > hd) return true;
   for (const o of obstacles) if (Math.abs(x - o.x) < o.w / 2 + PLAYER_R && Math.abs(z - o.z) < o.d / 2 + PLAYER_R) return true;
   return false;
+}
+
+/** The other people in the house right now (host or guests), live from the house's presence room. */
+function HousePeers({ me }: { me: string | null }) {
+  const peers = useHousePeers((s) => s.peers);
+  return (
+    <>
+      {Object.values(peers)
+        .filter((p) => !me || p.handle.toLowerCase() !== me.toLowerCase())
+        .map((p) => (
+          <HousePeerFigure key={p.id} peer={p} />
+        ))}
+    </>
+  );
+}
+
+function HousePeerFigure({ peer }: { peer: HousePeer }) {
+  const ref = useRef<THREE.Group>(null);
+  const speed = useRef(0);
+  const act = useRef<FigureAct | HomePose | null>(null);
+  const look = useLookOf(peer.handle);
+  const last = useRef({ x: peer.x, z: peer.z, t: performance.now() });
+  useFrame(() => {
+    const g = ref.current;
+    if (!g) return;
+    g.position.x += (peer.x - g.position.x) * 0.25;
+    g.position.z += (peer.z - g.position.z) * 0.25;
+    g.rotation.y = peer.yaw;
+    const now = performance.now();
+    const dt = Math.max(1, now - last.current.t) / 1000;
+    const v = Math.hypot(peer.x - last.current.x, peer.z - last.current.z) / dt;
+    last.current = { x: peer.x, z: peer.z, t: now };
+    speed.current = Math.min(1, v / 5);
+    // on a piece of furniture: the same pose it has for them; otherwise an everyday move, if any
+    const use = decodeUse(peer.act);
+    act.current = use ? placementFor(use.item, use.action).pose : ((peer.act as FigureAct | null) ?? null);
+  });
+  return (
+    <group ref={ref} position={[peer.x, 0, peer.z]}>
+      <Figure seed={peer.handle} look={look} speedRef={speed} actRef={act} label={`@${peer.handle}`} labelColor="#FFB3C8" />
+    </group>
+  );
+}
+
+/** AI residents in the room: the host of a resident's house, or residents you invited over. They take a seat. */
+function ResidentsHere({ home, placed }: { home: HomeView; placed: Furniture[] }) {
+  const ids = home.resident ? [home.resident.id] : (home.guests ?? []).map((g) => g.id);
+  // seats first (sofas, chairs, the dining table), then standing spots by other pieces
+  const spots = useMemo(() => {
+    const out: Placement[] = [];
+    const order = ['seat', 'table', 'bar', 'kitchen', 'desk'];
+    const pieces = [...placed].sort((a, b) => (order.indexOf(a.slot) + 1 || 99) - (order.indexOf(b.slot) + 1 || 99));
+    for (const f of pieces) {
+      const a = f.actions.find((x) => x.pose === 'sit') ?? f.actions.find((x) => x.pose === 'stand');
+      if (a) out.push(placementFor(f, a));
+    }
+    return out;
+  }, [placed]);
+  return (
+    <>
+      {ids.map((id, i) => {
+        const r = residentById(id);
+        const at = spots[i % Math.max(1, spots.length)];
+        if (!r) return null;
+        return <ResidentGuest key={id} name={r.name} look={r.look} seed={r.id} at={at ?? null} offset={i} />;
+      })}
+    </>
+  );
+}
+
+function ResidentGuest({ name, look, seed, at, offset }: { name: string; look: import('@/lib/life/look').Look; seed: string; at: Placement | null; offset: number }) {
+  const act = useRef<FigureAct | HomePose | null>(at?.pose ?? null);
+  const speed = useRef(0);
+  const x = at?.x ?? SPAWN.x + 2 + offset, z = at?.z ?? SPAWN.z - 2;
+  return (
+    <group position={[x, 0, z]} rotation={[0, at?.facing ?? Math.PI, 0]}>
+      <Figure seed={seed} look={look} speedRef={speed} actRef={act} label={name} labelColor="#FFD089" />
+    </group>
+  );
 }

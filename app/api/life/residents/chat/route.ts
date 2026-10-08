@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { bad, requirePlayer } from '@/lib/life/auth';
 import { residentById, residentPrompt } from '@/lib/life/residents';
 import { cannedReply, deepseekReply, takeQuota } from '@/lib/life/residentChat';
+import { chatAffinity } from '@/lib/life/loveServer';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,7 +34,9 @@ export async function POST(req: NextRequest) {
 
   const quota = await takeQuota(r.player.id).catch(() => 'capped' as const);
   if (quota === 'slow') return bad(`${who.name} needs a second. Slow down small.`, 429);
-  if (quota === 'capped') return NextResponse.json({ reply: cannedReply(who, said), source: 'canned' });
+  // talking builds affinity (lib/life/love.ts), a little per message up to a daily limit
+  const affinity = await chatAffinity(r.player.id, who.id).catch(() => null);
+  if (quota === 'capped') return NextResponse.json({ reply: cannedReply(who, said), source: 'canned', affinity });
 
   const p = r.player;
   const system = residentPrompt(who, {
@@ -45,5 +48,5 @@ export async function POST(req: NextRequest) {
     clout: p.clout,
   });
   const reply = await deepseekReply(system, b.messages.slice(-10));
-  return NextResponse.json(reply ? { reply, source: 'ai' } : { reply: cannedReply(who, said), source: 'canned' });
+  return NextResponse.json(reply ? { reply, source: 'ai', affinity } : { reply: cannedReply(who, said), source: 'canned', affinity });
 }

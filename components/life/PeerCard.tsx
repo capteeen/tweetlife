@@ -1,8 +1,11 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useWorld } from '@/components/world/store';
 import { INTERACTIONS, type InteractionKind } from '@/lib/life/stats';
 import { lifeActions, type SocialSend } from './useLife';
+import { SocialMenu } from './SocialMenu';
+import { nameOf, useLove } from './loveClient';
+import type { ProfileLove } from '@/lib/life/love';
 
 // Tap another visitor: who they are, what they're doing, and what you can do with them.
 export function PeerCard({ worldId, sendSocial }: { worldId: string; sendSocial: SocialSend }) {
@@ -13,6 +16,17 @@ export function PeerCard({ worldId, sendSocial }: { worldId: string; sendSocial:
   const openPhone = useWorld((s) => s.openPhone);
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  // who they're dating is public: it shows on their card. Refetch when my own relationships change.
+  const [partners, setPartners] = useState<ProfileLove | null>(null);
+  const loveKey = useLove((s) => s.state?.bonds.map((b) => b.id + b.status).join(',') ?? '');
+  useEffect(() => {
+    setPartners(null);
+    if (!peer) return;
+    fetch(`/api/life/love?profile=${encodeURIComponent(peer.handle)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then(setPartners)
+      .catch(() => {});
+  }, [peer?.handle, loveKey]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!peer) return null;
 
   const act = async (kind: InteractionKind) => {
@@ -37,13 +51,16 @@ export function PeerCard({ worldId, sendSocial }: { worldId: string; sendSocial:
       .join(' · ');
 
   return (
-    <div className="pointer-events-auto absolute bottom-20 left-1/2 z-30 w-[min(94vw,560px)] -translate-x-1/2 rounded-3xl chrome p-4 sm:p-5">
+    <div className="pointer-events-auto absolute bottom-20 left-1/2 z-30 max-h-[72vh] w-[min(94vw,560px)] -translate-x-1/2 overflow-y-auto rounded-3xl chrome p-4 sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
           <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[#8FC57A]/30 text-xl">🧍</span>
           <div>
             <div className="text-lg font-bold leading-tight">@{peer.handle}</div>
             <div className="text-sm text-white/60">{peer.ride ? `Riding the ${peer.ride}` : 'Walking around'}</div>
+            {partners && partners.dating > 0 && (
+              <div className="mt-0.5 text-xs text-[#FFB3C8]">💞 Dating {partners.partners.map(nameOf).join(', ')}</div>
+            )}
           </div>
         </div>
         <button className="rounded-full px-2 py-0.5 hover:bg-white/10" onClick={() => selectPeer(null)} aria-label="Close">
@@ -84,6 +101,7 @@ export function PeerCard({ worldId, sendSocial }: { worldId: string; sendSocial:
         </div>
       )}
       {err && <p className="mt-2 text-xs text-rose-300">{err}</p>}
+      {me && <SocialMenu target={{ kind: 'player', handle: peer.handle }} worldId={worldId} sendSocial={sendSocial} />}
     </div>
   );
 }

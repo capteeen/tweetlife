@@ -26,6 +26,8 @@ import { CountryPrompt } from '@/components/citizen/CountryPrompt';
 import { FlightOverlay } from '@/components/life/FlightOverlay';
 import { AirportDesk } from '@/components/life/AirportDesk';
 import { useLife } from '@/components/life/useLife';
+import { useLoveSync } from '@/components/life/loveClient';
+import { RequestNotices } from '@/components/life/RequestNotices';
 import { enterVenue } from '@/components/life/travel';
 import { placeVenues } from '@/lib/life/venues';
 import { isCountryId } from '@/lib/world/countries';
@@ -116,6 +118,7 @@ export function WorldClient({ handle, spawnPostId, embed, backdrop, country }: {
   useLife(admitted && !backdrop);
   const signedIn = useWorld((s) => !!s.me);
   useCrowds(handle, admitted && !backdrop, signedIn);
+  useLoveSync(admitted && !backdrop && signedIn);
   const nearVenue = useWorld((s) => s.nearVenue);
   // inside the terminal the desks offer what to do, not an "Enter Airport" button
   const inTerminal = useWorld((s) => s.airport.zone !== 'outside');
@@ -216,7 +219,8 @@ export function WorldClient({ handle, spawnPostId, embed, backdrop, country }: {
           <StatBars />
           <PostCard handle={model.handle} showMetrics={model.showMetrics} canAct={!!me} />
           <PeerCard worldId={model.id} sendSocial={sendSocial} />
-          <ResidentCard />
+          <ResidentCard sendSocial={sendSocial} />
+          <RequestNotices />
           <FollowerCard />
           <CrowdNotices world={model.handle} />
           <PostButton />

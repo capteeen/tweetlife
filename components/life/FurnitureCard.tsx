@@ -32,6 +32,10 @@ export function FurnitureCard({ onRefresh }: { onRefresh: () => Promise<void> })
 
   if (!item || !home) return null;
   const mine = home.mine;
+  // guests (an accepted invite or visit, or dating the owner) use the furniture too; only the owner buys, moves or sells
+  const guest = !mine && !!home.access && home.access.reason !== 'owner';
+  const canUse = mine || guest;
+  const at = home.resident ? { resident: home.resident.id } : mine ? undefined : { host: home.owner.handle };
   const dark = item.needsPower && !hasPower(home.power) && !item.powerSeconds;
   const left = acting ? Math.max(0, Math.ceil((acting.until - Date.now()) / 1000)) : 0;
 
@@ -40,7 +44,7 @@ export function FurnitureCard({ onRefresh }: { onRefresh: () => Promise<void> })
     setBusy(actionId);
     setMsg(null);
     try {
-      await lifeActions.furnitureAct(item.id, actionId);
+      await lifeActions.furnitureAct(item.id, actionId, at);
       setActing({ item, action: a, until: Date.now() + a.seconds * 1000 });
       await onRefresh();
     } catch (e) {
@@ -80,7 +84,7 @@ export function FurnitureCard({ onRefresh }: { onRefresh: () => Promise<void> })
       </div>
       {!me ? (
         <p className="mt-3 text-sm text-white/60">Sign in with X to use the house.</p>
-      ) : !mine ? (
+      ) : !canUse ? (
         <p className="mt-3 text-sm text-white/60">This is @{home.owner.handle}&apos;s {item.name.toLowerCase()}. Only they can use it.</p>
       ) : dark ? (
         <p className="mt-3 rounded-2xl bg-white/5 px-3 py-2 text-sm text-amber-200">⚡ No light. NEPA has taken it — a generator or a solar inverter keeps this working.</p>
@@ -109,6 +113,7 @@ export function FurnitureCard({ onRefresh }: { onRefresh: () => Promise<void> })
           })}
         </div>
       )}
+      {guest && <p className="mt-2 text-[11px] text-white/45">You&apos;re a guest: use anything, but only {home.resident ? home.resident.name : `@${home.owner.handle}`} can buy, move or sell furniture.</p>}
       {msg && <p className="mt-2 text-xs text-white/70">{msg}</p>}
     </div>
   );

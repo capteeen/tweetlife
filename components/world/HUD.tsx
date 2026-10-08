@@ -196,7 +196,19 @@ function Chat({ sendChat }: { sendChat: (t: string) => void }) {
         {chat.length === 0 && <li className="text-white/50">Only people within earshot hear you.</li>}
         {chat.map((c) => (
           <li key={c.id}>
-            <span className="text-white/55">@{c.from}</span> {c.text}
+            {/* tap a name to see what you can do together (invite them over, ask them out...) */}
+            <button
+              className="text-white/55 hover:text-white hover:underline"
+              onClick={() => {
+                const s = useWorld.getState();
+                if (s.me?.handle.toLowerCase() === c.from.toLowerCase()) return;
+                const peer = Object.values(s.peers).find((p) => p.handle.toLowerCase() === c.from.toLowerCase());
+                s.selectPeer(peer ?? { id: `chat:${c.from}`, handle: c.from, x: c.x, z: c.z, yaw: 0, at: c.at });
+              }}
+            >
+              @{c.from}
+            </button>{' '}
+            {c.text}
           </li>
         ))}
       </ul>

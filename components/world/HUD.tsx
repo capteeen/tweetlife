@@ -50,21 +50,27 @@ export function HUD({
           ) : (
             <span className="h-7 w-7 rounded-full bg-white/10" />
           )}
-          <span className="truncate font-medium">@{model.handle}</span>
+          <span className="truncate font-medium">
+            @{model.handle}
+            <span className="hidden font-normal text-white/55 min-[480px]:inline">&apos;s world</span>
+          </span>
         </a>
         <span className="num ml-auto hidden text-white/60 sm:inline" title="Structures">
           {model.structureCount} posts
         </span>
-        <span className="num text-white/60" title="Visitors online">
-          ● {online == null ? '—' : online}
+        {/* on phones only what means something gets a spot: people here once presence is up, nothing else */}
+        <span className={`num whitespace-nowrap text-white/60 ${online == null ? 'hidden sm:inline' : ''}`} title="Visitors online">
+          <span className="text-emerald-400">●</span> {online == null ? '—' : online}
+          <span className="sm:hidden"> here</span>
         </span>
-        <span className="num text-white/60" title="Lanterns lit">
-          <span style={{ color: '#FFD089' }}>✦</span> {compact(lanterns)}
+        <span className="num hidden text-white/60 sm:inline" title="Lanterns lit">
+          <span style={{ color: '#FFD089' }}>✦</span> {compact(lanterns)} lit
         </span>
+        <span className="flex-1 sm:hidden" />
         <button className="btn-ghost !px-3 !py-1.5" onClick={() => openPhone('home')} title="Phone">
           📱 Phone
         </button>
-        <button className="btn-ghost hidden !px-3 !py-1.5 sm:inline-flex" onClick={() => setGuestbookOpen(!guestbookOpen)}>
+        <button className="btn-ghost !px-3 !py-1.5 max-sm:!hidden" onClick={() => setGuestbookOpen(!guestbookOpen)}>
           Guestbook
         </button>
         {chatAvailable && (

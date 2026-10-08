@@ -20,7 +20,8 @@ export function TopHUD({ online, handle }: { online: number | null; handle: stri
   return (
     <div className="pointer-events-auto absolute left-1/2 top-3 z-20 flex max-w-[calc(100vw-24px)] -translate-x-1/2 items-center gap-2 rounded-full chrome px-2 py-1.5 text-sm sm:gap-3 sm:px-3">
       <span className="num whitespace-nowrap px-1">
-        {icon} {day} · {time}
+        {icon} <span className="max-[420px]:hidden">{day} · </span>
+        {time}
       </span>
       <span className="h-4 w-px bg-white/15" />
       {me ? (
@@ -30,8 +31,9 @@ export function TopHUD({ online, handle }: { online: number | null; handle: stri
       ) : (
         <span className="whitespace-nowrap px-1 text-white/60">visiting @{handle}</span>
       )}
-      <span className="h-4 w-px bg-white/15" />
-      <span className="num whitespace-nowrap px-1 text-white/80" title="Visitors online in this world">
+      {/* phones have no room for this; the bottom bar shows who's here instead */}
+      <span className="h-4 w-px bg-white/15 max-[420px]:hidden" />
+      <span className="num whitespace-nowrap px-1 text-white/80 max-[420px]:hidden" title="Visitors online in this world">
         <span className="text-emerald-400">●</span> {online == null ? '—' : online} online
       </span>
       {me && (

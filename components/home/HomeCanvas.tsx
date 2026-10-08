@@ -182,7 +182,7 @@ function Walker({ placed, handle }: { placed: Furniture[]; handle: string | null
   const speedRef = useRef(0);
   const keys = useRef<Record<string, boolean>>({});
   const acting = useHome((s) => s.acting);
-  const { camera } = useThree();
+  const { camera, size } = useThree();
   const actRef = useRef<FigureAct | HomePose | null>(null);
   const tiredRef = useRef(0);
   const zzz = useRef<THREE.Group>(null);
@@ -296,7 +296,9 @@ function Walker({ placed, handle }: { placed: Furniture[]; handle: string | null
     // lying, the body runs back from the heels: aim at its middle
     const back = close?.pose.base === 'lie' ? 0.8 : 0;
     const mid = close && new THREE.Vector3(close.x - Math.sin(close.facing) * back, 0, close.z - Math.cos(close.facing) * back);
-    const camTo = mid ? mid.clone().addScaledVector(CAM.clone().sub(LOOK), 0.42) : CAM;
+    // tall phone screens are narrow: back the camera off until the whole room (and the door) fits across
+    const fit = Math.max(1, 1.3 / (size.width / Math.max(1, size.height)));
+    const camTo = mid ? mid.clone().addScaledVector(CAM.clone().sub(LOOK), 0.42 * Math.sqrt(fit)) : LOOK.clone().addScaledVector(CAM.clone().sub(LOOK), fit);
     const lookTo = mid && close ? mid.clone().setY(close.pose.seat + (back ? 0.3 : 0.75)) : LOOK;
     const ease = 1 - Math.pow(0.12, d);
     camera.position.lerp(camTo, ease);

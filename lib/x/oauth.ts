@@ -57,7 +57,7 @@ export async function consumeLoginState(state: string): Promise<{ verifier: stri
   try {
     const { payload } = await jwtVerify(raw, loginSecret());
     if (payload.state !== state) return null;
-    return { verifier: String(payload.verifier), returnTo: String(payload.returnTo ?? '/my-world'), access: payload.access as LoginAccess | undefined };
+    return { verifier: String(payload.verifier), returnTo: String(payload.returnTo ?? '/play'), access: payload.access as LoginAccess | undefined };
   } catch {
     return null;
   }

@@ -10,6 +10,7 @@ import type { Token } from '@/lib/life/trenches';
 import { lifeActions, type SocialSend } from './useLife';
 import { ConfirmButton } from '@/components/ui/ConfirmButton';
 import { MapApp } from './MapApp';
+import { showWelcomeAgain } from './Welcome';
 
 /** Buys at or above this many bags ask "Sure?" first. */
 const BIG_SPEND = 1000;
@@ -728,6 +729,11 @@ function SettingsApp({ handle }: { handle: string }) {
         <a className="btn w-full" href={`/create?next=${encodeURIComponent(`/w/${handle}`)}`}>
           👕 Change my look
         </a>
+      )}
+      {me && (
+        <button className="btn-ghost w-full" onClick={() => { useWorld.getState().closePhone(); showWelcomeAgain(); }}>
+          👋 Show the welcome again
+        </button>
       )}
       {me?.isOwner && (
         <Link className="btn w-full" href="/my-world">

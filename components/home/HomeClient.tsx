@@ -13,6 +13,9 @@ import { Welcome } from '@/components/life/Welcome';
 import { SignInButton } from '@/components/ui/Chrome';
 import { hasPower, type HomeView } from '@/lib/life/home';
 import { useHome } from './store';
+import { GameAudio } from '@/components/audio/GameAudio';
+import { HomeSounds } from '@/components/audio/HomeSounds';
+import { sfx } from '@/lib/audio/sfx';
 
 const HomeCanvas = dynamic(() => import('./HomeCanvas').then((m) => m.HomeCanvas), { ssr: false });
 
@@ -73,7 +76,10 @@ export function HomeClient({ handle }: { handle?: string }) {
     return () => clearTimeout(t);
   }, [toasts, dropToast]);
 
-  const exit = () => router.push(home ? `/w/${home.owner.handle}` : '/');
+  const exit = () => {
+    sfx('doorOpen');
+    router.push(home ? `/w/${home.owner.handle}` : '/');
+  };
   const noop = () => {};
 
   if (error) {
@@ -97,6 +103,8 @@ export function HomeClient({ handle }: { handle?: string }) {
   return (
     <div className="fixed inset-0 overflow-hidden bg-base">
       <HomeCanvas home={home} handle={home.mine ? me?.handle ?? null : home.owner.handle} onExit={exit} />
+      <GameAudio />
+      <HomeSounds />
       <TopHUD online={null} handle={home.owner.handle} />
       {/* top-left: my stats and moves, whose house, and the light situation */}
       <div className="pointer-events-auto absolute left-3 top-16 z-10 flex flex-col gap-2">

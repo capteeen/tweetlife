@@ -17,6 +17,7 @@ import { airportLayout, airportSolids, along, onLand, type Airport } from '@/lib
 import { RideVehicle, rideCamera, rideRider } from './RideVehicle';
 import { worldWalls } from '@/lib/world/interiors';
 import { carItem } from '@/components/life/travel';
+import { playerSound } from '@/lib/audio/state';
 
 // Third-person orbit-and-walk. WASD/arrows + mouse-drag on desktop, twin virtual sticks on mobile.
 // The avatar is a low-poly figure; the camera orbits it. Structures push the player out softly.
@@ -203,6 +204,7 @@ export function Player({ structures, blocks, grid, boundaryRadius, contentRadius
     // an activity plays until it ends or you walk off
     if (st.doing && (len > 0.05 || riding || Date.now() > st.doing.until)) st.setDoing(null);
     actRef.current = st.doing && !riding ? st.doing.id : null;
+    let sprinting = false;
     if (len > 0) {
       mx /= Math.max(1, len);
       mz /= Math.max(1, len);
@@ -212,6 +214,7 @@ export function Player({ structures, blocks, grid, boundaryRadius, contentRadius
       const vz = mx * s + mz * c;
       const mode: MoveMode = riding?.kind === 'plane' ? 'plane' : riding?.kind === 'boat' ? 'boat' : 'walk';
       const sprint = onFoot && !!(keys.current.ShiftLeft || keys.current.ShiftRight) && gas >= SPRINT_MIN_GAS;
+      sprinting = sprint;
       const pace = onFoot ? paceFor(gas) * (sprint ? SPRINT_MULT : 1) : 1;
       const step = SPEED * (riding?.speed ?? 1) * pace * d * Math.min(1, len);
       const nx = pos.current.x + vx * step, nz = pos.current.z + vz * step;
@@ -254,6 +257,8 @@ export function Player({ structures, blocks, grid, boundaryRadius, contentRadius
       group.current.position.copy(pos.current);
       group.current.rotation.y = facing.current;
     }
+    // for footsteps, breathing and the 3D listener (components/audio)
+    Object.assign(playerSound, { x: pos.current.x, y: pos.current.y, z: pos.current.z, speed: speedRef.current, sprint: sprinting, tired: tiredRef.current, onFoot: !riding && (!tr || tr.mode === 'walk'), surface: null });
     // venue proximity prompt
     if (state.clock.elapsedTime - lastPublish.current > 0.1) {
       let nearest: string | null = null, nd = 9;

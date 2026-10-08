@@ -7,6 +7,8 @@ import { prng, hashString } from '@/lib/world/seed';
 import { CAR_PARTS, TRAFFIC_MODELS, carMaterial, carParts, carSpec, type CarModel } from './carModels';
 import { useWorld } from './store';
 import { followerPos } from './Crowd';
+import { traffic } from '@/lib/audio/state';
+import { sfx } from '@/lib/audio/sfx';
 
 // Ambient traffic: detailed low-poly cars following the road grid on the right-hand lane. At each intersection a car
 // goes straight or turns (curving through the junction), and it slows behind the car ahead in its lane.
@@ -147,6 +149,12 @@ export function Cars({ count: wanted, grid, handle, player = false }: { count: n
     return out;
   }, [byModel]);
   useEffect(() => () => geos.forEach((g) => g.mat.dispose()), [geos]);
+  // engines and passing whooshes (components/audio/WorldSounds.tsx)
+  useEffect(() => {
+    if (!player) return;
+    traffic.set('grid', () => cars);
+    return () => void traffic.delete('grid');
+  }, [cars, player]);
 
   useEffect(() => {
     for (const [model, list] of byModel) {
@@ -186,7 +194,8 @@ export function Cars({ count: wanted, grid, handle, player = false }: { count: n
     const st = player ? useWorld.getState() : null;
     const me = st?.playerPos ?? null;
     const onTrip = !!st?.trip;
-    let honk = false;
+    // `as`: assigned inside check() below, which TypeScript can't see
+    let honk = null as Car | null;
     // car following: on a straight, the nearest car ahead heading for the same node in the same lane
     for (const c of cars) {
       let target = c.cruise;
@@ -210,7 +219,7 @@ export function Cars({ count: wanted, grid, handle, player = false }: { count: n
           const gap = ahead - c.len / 2 - PLAYER_GAP;
           if (ahead > 0 && side < PLAYER_HALF && gap < 10) {
             target = gap < 0.5 ? 0 : Math.min(target, (gap / 10) * c.cruise);
-            if (gap < 6 && isMe) honk = true;
+            if (gap < 6 && isMe) honk = c;
           }
         };
         check(me, true);
@@ -220,7 +229,7 @@ export function Cars({ count: wanted, grid, handle, player = false }: { count: n
     }
     if (honk && !onTrip && performance.now() - lastHonk.current > HONK_EVERY) {
       lastHonk.current = performance.now();
-      playHorn();
+      sfx('horn', { at: { x: honk.x, y: 1, z: honk.z } });
     }
     for (const c of cars) {
       let step = c.speed * dt;
@@ -262,37 +271,4 @@ export function Cars({ count: wanted, grid, handle, player = false }: { count: n
       ))}
     </group>
   );
-}
-
-// A short two-tone car horn, synthesised so there is no audio file to load. Browsers only allow sound after the
-// player has interacted with the page, which they have by the time they walk into the road.
-let hornCtx: AudioContext | null = null;
-function playHorn() {
-  try {
-    const AC = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!AC) return;
-    hornCtx ??= new AC();
-    const c = hornCtx;
-    if (c.state === 'suspended') void c.resume();
-    const t = c.currentTime;
-    const g = c.createGain();
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(0.12, t + 0.02);
-    g.gain.setValueAtTime(0.12, t + 0.32);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.42);
-    const lp = c.createBiquadFilter();
-    lp.type = 'lowpass';
-    lp.frequency.value = 1800;
-    g.connect(lp).connect(c.destination);
-    for (const f of [349, 440]) {
-      const o = c.createOscillator();
-      o.type = 'square';
-      o.frequency.value = f;
-      o.connect(g);
-      o.start(t);
-      o.stop(t + 0.45);
-    }
-  } catch {
-    // no audio: the brake is enough
-  }
 }

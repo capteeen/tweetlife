@@ -22,6 +22,7 @@ import { BalloonFeed } from './Balloons';
 import { Crowds } from './Crowd';
 import { useWorld } from './store';
 import { themeOf, themedPalette } from '@/lib/world/cityThemes';
+import { WorldSounds } from '@/components/audio/WorldSounds';
 
 // The scene. `mode`:
 //  - 'walk'     : admitted visitor, third-person controls
@@ -139,6 +140,7 @@ function Scene(props: SceneProps) {
           <Peers blocks={geometry.blocks} grid={geometry.grid} boundaryRadius={R} />
           <Crowds blocks={geometry.blocks} grid={geometry.grid} boundaryRadius={R} />
           <BalloonFeed />
+          <WorldSounds geometry={geometry} />
         </>
       )}
       {mode === 'boundary' && <BoundaryOrbit radius={R} landmark={geometry.structures.find((s) => s.isLandmark) ?? null} />}

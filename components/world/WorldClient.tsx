@@ -20,6 +20,7 @@ import { useCrowds } from '@/components/life/useCrowds';
 import { VenueCard } from '@/components/life/VenueCard';
 import { CityMap, TripBanner } from '@/components/life/CityMap';
 import { VenueMusic } from '@/components/life/VenueMusic';
+import { GameAudio } from '@/components/audio/GameAudio';
 import { Welcome } from '@/components/life/Welcome';
 import { CountryPrompt } from '@/components/citizen/CountryPrompt';
 import { useLife } from '@/components/life/useLife';
@@ -219,6 +220,7 @@ export function WorldClient({ handle, spawnPostId, embed, backdrop, country }: {
           {!lookPending && <CountryPrompt />}
           <TripBanner />
           <VenueMusic />
+          {!embed && <GameAudio />}
           <CityMap />
           {nearVenue && !selectedVenue && (
             <button

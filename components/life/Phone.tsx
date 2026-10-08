@@ -13,6 +13,7 @@ import { MapApp } from './MapApp';
 import { showWelcomeAgain } from './Welcome';
 import { IdCard } from '@/components/citizen/IdCard';
 import { countryOf } from '@/lib/world/countries';
+import { SoundSettings } from '@/components/audio/SoundSettings';
 
 /** Buys at or above this many bags ask "Sure?" first. */
 const BIG_SPEND = 1000;
@@ -749,6 +750,7 @@ function SettingsApp({ handle }: { handle: string }) {
   const me = useWorld((s) => s.me);
   return (
     <div className="mt-3 space-y-2 text-sm">
+      <SoundSettings />
       {me && (
         <a className="btn w-full" href={`/create?next=${encodeURIComponent(`/w/${handle}`)}`}>
           👕 Change my look

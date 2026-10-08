@@ -13,6 +13,7 @@ import { Landmark, WelcomeArch, logoImage } from './Landmarks';
 import {
   DISTRICTS, RING_ROAD_W, RING_SLOTS, airportLayout, billboardSpots, ringRoadRadius, slotAngle, venueRingRadius, type Airport, type Rect,
 } from '@/lib/world/layout';
+import { planeSound, traffic, type TrafficCar } from '@/lib/audio/state';
 
 // Everything around the post city that makes it a city: the ring road and its traffic, spur roads,
 // district names on the ground, billboards, palms, and the airport island with its bridge.
@@ -184,6 +185,13 @@ function RingTraffic({ r, handle, player, colors }: { r: number; handle: string;
     });
   }, [r, handle, colors]);
   const geo = useMemo(() => new THREE.BoxGeometry(1, 1, 1), []);
+  // where each car is, for engine sounds (components/audio/WorldSounds.tsx)
+  const heard = useMemo<TrafficCar[]>(() => cars.map((c) => ({ x: 0, z: 0, speed: 0, big: c.s[2] > 4.7 })), [cars]);
+  useEffect(() => {
+    if (!player) return;
+    traffic.set('ring', () => heard);
+    return () => void traffic.delete('ring');
+  }, [heard, player]);
   useEffect(() => {
     const b = body.current;
     if (!b) return;
@@ -211,6 +219,7 @@ function RingTraffic({ r, handle, player, colors }: { r: number; handle: string;
       const a = c.a;
       const x = Math.cos(a) * lane, z = Math.sin(a) * lane;
       const rot = -a + (c.dir > 0 ? 0 : Math.PI);
+      Object.assign(heard[i], { x, z, speed: c.speed * lane });
       tmp.position.set(x, 0.3 + c.s[1] / 2, z);
       tmp.rotation.set(0, rot, 0);
       tmp.scale.set(c.s[0], c.s[1], c.s[2]);
@@ -553,6 +562,7 @@ function TakeOff({ ap, tail }: { ap: Airport; tail: string }) {
     const t = clock.elapsedTime % 40;
     if (t > 26) {
       g.visible = false;
+      planeSound.active = false;
       return;
     }
     g.visible = true;
@@ -569,6 +579,7 @@ function TakeOff({ ap, tail }: { ap: Airport; tail: string }) {
     }
     g.position.set(rw.x, y, z);
     g.rotation.set(pitch, 0, 0);
+    Object.assign(planeSound, { x: rw.x, y, z, active: true, thrust: t < 6 ? 0.25 : Math.min(1, 0.6 + (t - 6) * 0.05) });
   });
   return (
     <group ref={ref}>

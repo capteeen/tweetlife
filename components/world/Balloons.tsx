@@ -7,6 +7,7 @@ import { create } from 'zustand';
 import type { Balloon } from '@/lib/life/balloons';
 import { useWorld } from './store';
 import { refreshLife } from '@/components/life/useLife';
+import { sfx } from '@/lib/audio/sfx';
 
 // Bags on a string: every coin a player holds floats as a balloon tied to their hand, green when they are up on
 // it and red when they are down. Everyone in the world sees everyone's balloons, in every world they visit.
@@ -156,6 +157,14 @@ export function Balloons({ handle, hand, scale = 1, visible = true }: Props) {
   const popped = useBalloonStore((s) => s.popped);
   const list = useMemo(() => (all ?? []).filter((b) => !popped[`${h}:${b.mint}`]), [all, popped, h]);
   const scene = useThree((s) => s.scene);
+  // your own new balloon (you just bought a coin): the sound of it being blown up
+  const known = useRef<Set<string> | null>(null);
+  useEffect(() => {
+    if (!all) return;
+    const mints = new Set(all.map((b) => b.mint));
+    if (known.current && h === useWorld.getState().me?.handle.toLowerCase() && [...mints].some((m) => !known.current!.has(m))) sfx('inflate');
+    known.current = mints;
+  }, [all, h]);
   if (!list.length || !visible) return null;
   return createPortal(
     <group>
@@ -218,6 +227,7 @@ function OneBalloon({ b, i, n, hand, scale, onBurst, onGone }: { b: Balloon; i: 
       body.current.position.x = Math.sin(popT.current * 60) * 0.03 * k;
       if (k >= 1) {
         setBurst(g.position.clone());
+        sfx('rugPop', { at: g.position });
         string.visible = false;
         onBurst();
       }

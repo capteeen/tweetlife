@@ -7,6 +7,7 @@ import type { Item } from '@/lib/life/market';
 import type { Look } from '@/lib/life/look';
 import type { HomeItem } from '@/lib/life/home';
 import type { ActivityId } from '@/lib/life/activities';
+import type { Citizenship } from '@/lib/life/citizen';
 
 /** An everyday activity in progress (dance, stretch...): the avatar plays it until `until` or until you move. */
 export type Doing = { id: ActivityId; until: number } | null;
@@ -17,12 +18,13 @@ export type Trip = { mode: string; emoji: string; label: string; path: { x: numb
 export type ChatLine = { id: string; from: string; text: string; at: number; x: number; z: number };
 export type Toast = { id: string; text: string; kind: string; at: number };
 export type ResidentMsg = { role: 'user' | 'assistant'; content: string };
-export type PhoneApp = 'home' | 'trenches' | 'wallet' | 'solana' | 'hustle' | 'market' | 'garage' | 'house' | 'rich' | 'gist' | 'map' | 'guestbook' | 'settings';
+export type PhoneApp = 'home' | 'trenches' | 'wallet' | 'solana' | 'hustle' | 'market' | 'garage' | 'house' | 'rich' | 'gist' | 'map' | 'guestbook' | 'settings' | 'id';
 export type MarketKind = 'car' | 'boat' | 'plane' | 'home' | null;
 
 export type LifeMe = {
   id: string; handle: string; name: string; avatarUrl: string | null; bags: number; status: string; statusUntil: string | null;
   vibes: number; clout: number; gas: number; mood: string; moodEmoji: string; look: Look | null; lookPending: boolean;
+  citizen: Citizenship;
 };
 export type WalletData = {
   address: string;

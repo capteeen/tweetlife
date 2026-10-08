@@ -23,6 +23,8 @@ import { VenueMusic } from '@/components/life/VenueMusic';
 import { GameAudio } from '@/components/audio/GameAudio';
 import { Welcome } from '@/components/life/Welcome';
 import { CountryPrompt } from '@/components/citizen/CountryPrompt';
+import { FlightOverlay } from '@/components/life/FlightOverlay';
+import { AirportDesk } from '@/components/life/AirportDesk';
 import { useLife } from '@/components/life/useLife';
 import { enterVenue } from '@/components/life/travel';
 import { placeVenues } from '@/lib/life/venues';
@@ -52,12 +54,13 @@ export function WorldClient({ handle, spawnPostId, embed, backdrop, country }: {
   const setSpawn = useWorld((s) => s.setSpawn);
   const model = useWorld((s) => s.model);
   const [ready, setReady] = useState(false);
-  // a ?country link wins; otherwise you start in your home country (your nationality, Solana until picked)
-  const homeCountry = useWorld((s) => s.life?.me?.citizen?.country);
+  // a ?country link wins; otherwise you start where you last flew to, else your home country (your
+  // nationality, Solana until picked). A flight in progress sets the country itself.
+  const homeCountry = useWorld((s) => s.life?.me?.location ?? s.life?.me?.citizen?.country);
   const homeApplied = useRef(false);
   useEffect(() => {
     if (isCountryId(country)) useWorld.getState().setCountry(country);
-    else if (!homeApplied.current && isCountryId(homeCountry)) {
+    else if (!homeApplied.current && isCountryId(homeCountry) && !useWorld.getState().flight) {
       homeApplied.current = true;
       useWorld.getState().setCountry(homeCountry);
     }
@@ -114,6 +117,8 @@ export function WorldClient({ handle, spawnPostId, embed, backdrop, country }: {
   const signedIn = useWorld((s) => !!s.me);
   useCrowds(handle, admitted && !backdrop, signedIn);
   const nearVenue = useWorld((s) => s.nearVenue);
+  // inside the terminal the desks offer what to do, not an "Enter Airport" button
+  const inTerminal = useWorld((s) => s.airport.zone !== 'outside');
   const selectedVenue = useWorld((s) => s.selectedVenue);
   const toasts = useWorld((s) => s.toasts);
   const dropToast = useWorld((s) => s.dropToast);
@@ -219,10 +224,12 @@ export function WorldClient({ handle, spawnPostId, embed, backdrop, country }: {
           <Phone sendSocial={sendSocial} handle={model.handle} />
           {!lookPending && <CountryPrompt />}
           <TripBanner />
+          <FlightOverlay />
+          <AirportDesk />
           <VenueMusic />
           {!embed && <GameAudio />}
           <CityMap />
-          {nearVenue && !selectedVenue && (
+          {nearVenue && !selectedVenue && !(nearVenue === 'airport' && inTerminal) && (
             <button
               className="pointer-events-auto absolute bottom-20 [@media(any-pointer:coarse)]:bottom-56 left-1/2 z-20 -translate-x-1/2 rounded-full chrome px-4 py-2 text-sm font-semibold hover:bg-white/10"
               onClick={() => {

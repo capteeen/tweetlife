@@ -430,24 +430,7 @@ function AirportScene({ ap, grass, theme }: { ap: Airport; grass: string; theme:
           {e > 0 ? '36' : '18'}
         </Text>
       ))}
-      {/* terminal: glass box, white roof with an overhang, fins */}
-      <mesh position={[ap.terminal.x, 3.2, ap.terminal.z]} castShadow receiveShadow>
-        <boxGeometry args={[ap.terminal.w, 6.2, ap.terminal.d]} />
-        <meshStandardMaterial color="#8FB8D8" roughness={0.15} metalness={0.4} />
-      </mesh>
-      <mesh position={[ap.terminal.x, 6.6, ap.terminal.z]} castShadow>
-        <boxGeometry args={[ap.terminal.w + 5, 0.6, ap.terminal.d + 3]} />
-        <meshStandardMaterial color="#F4F6F8" roughness={0.7} />
-      </mesh>
-      {Array.from({ length: 13 }, (_, i) => (
-        <mesh key={i} position={[ap.terminal.x - ap.terminal.w / 2 - 0.12, 3.2, ap.terminal.z - ap.terminal.d / 2 + 2 + i * ((ap.terminal.d - 4) / 12)]}>
-          <boxGeometry args={[0.25, 6.2, 0.35]} />
-          <meshStandardMaterial color="#F4F6F8" roughness={0.7} />
-        </mesh>
-      ))}
-      <Text font={FONT} position={[ap.terminal.x - ap.terminal.w / 2 - 2.6, 6.6, ap.terminal.z]} rotation={[0, -Math.PI / 2, 0]} fontSize={1.4} color="#1B2436" anchorX="center" anchorY="middle">
-        {(theme.venues.airport?.name ?? 'Tweetlife International').toUpperCase()}
-      </Text>
+      {/* the terminal is its own walk-through hall (Terminal.tsx) */}
       {/* jet bridges to the gates */}
       {ap.gates.map((g, i) => (
         <mesh key={i} position={[(ap.terminal.x + ap.terminal.w / 2 + g.x - 4) / 2, 3.4, g.z + 2.2]} castShadow>
@@ -518,7 +501,7 @@ function Instanced({ items, color, emissive }: { items: { x: number; z: number; 
 }
 
 /** A low-poly airliner, nose towards +z before `rotation`. */
-function Airliner({ position, rotation, tail, scale = 1 }: { position: [number, number, number]; rotation: number; tail: string; scale?: number }) {
+export function Airliner({ position, rotation, tail, scale = 1 }: { position: [number, number, number]; rotation: number; tail: string; scale?: number }) {
   const white = <meshStandardMaterial color="#F4F6F8" flatShading roughness={0.5} />;
   return (
     <group position={position} rotation={[0, rotation, 0]} scale={scale}>

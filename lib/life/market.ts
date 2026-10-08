@@ -20,7 +20,7 @@ export const ITEMS: Item[] = [
   { id: 'lambo', name: 'Lambo', emoji: '🏎️', price: 25000, kind: 'car', speed: 3.2, blurb: 'For when the bag hit. Everyone will know.', color: '#E63946' },
   { id: 'speedboat', name: 'Speedboat', emoji: '🚤', price: 12000, kind: 'boat', speed: 2.6, blurb: 'Leave the shore. The water past the boundary is yours.', color: '#F4F1DE' },
   { id: 'yacht', name: 'Yacht', emoji: '🛥️', price: 60000, kind: 'boat', speed: 2.0, blurb: 'Slow, enormous, undeniable.', color: '#FFFFFF' },
-  { id: 'jet', name: 'Private jet', emoji: '🛩️', price: 150000, kind: 'plane', speed: 5.0, blurb: 'Fly over everything. Nothing can block you up here.', color: '#BFE3FF' },
+  { id: 'jet', name: 'Private jet', emoji: '🛩️', price: 150000, kind: 'plane', speed: 5.0, blurb: 'Fly over everything, and fly to any country free from the Airport.', color: '#BFE3FF' },
 ];
 
 export const itemById = (id: string) => ITEMS.find((i) => i.id === id) ?? null;

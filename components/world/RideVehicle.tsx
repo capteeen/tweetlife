@@ -1,6 +1,8 @@
 'use client';
 import { useEffect, useMemo } from 'react';
 import { CAR_PARTS, carMaterial, carParts, type CarModel } from './carModels';
+import { Plane } from './Plane';
+import type { CountryId } from '@/lib/world/countries';
 
 // The rides you can take around the city, facing +z like the figure. The bus, taxi and rideshare are the same
 // procedural models as traffic; the taxi and rideshare are open-topped so you can see yourself riding. The bike and e-scooter are built here.
@@ -82,7 +84,9 @@ function CarRide({ model, paint, rideshare }: { model: CarModel; paint: string; 
   );
 }
 
-export function RideVehicle({ mode }: { mode: string }) {
+export function RideVehicle({ mode, tint, country }: { mode: string; tint?: string; country?: CountryId }) {
+  // flights between countries: a commercial airliner in the destination's colours, or your own jet
+  if (mode === 'airliner' || mode === 'jet') return <Plane kind={mode} tint={tint} country={country} />;
   if (mode === 'bike') return <Bike />;
   if (mode === 'scooter') return <Scooter />;
   const c = CAR_RIDES[mode] ?? CAR_RIDES.taxi;
@@ -90,13 +94,14 @@ export function RideVehicle({ mode }: { mode: string }) {
 }
 
 /** How far the camera pulls back on each ride. */
-export const rideCamera = (mode: string) => (mode === 'bus' ? 1.8 : mode === 'bike' || mode === 'scooter' ? 1 : 1.35);
+export const rideCamera = (mode: string) => (mode === 'airliner' ? 3.4 : mode === 'jet' ? 2.6 : mode === 'bus' ? 1.8 : mode === 'bike' || mode === 'scooter' ? 1 : 1.35);
 
 /** Where the figure sits or stands on each ride. */
 export function rideRider(mode: string): { y: number; show: boolean; scale: number } {
   if (mode === 'bike') return { y: 0.5, show: true, scale: 0.8 };
   if (mode === 'scooter') return { y: 0.2, show: true, scale: 0.85 };
-  if (mode === 'bus') return { y: 1.2, show: false, scale: 0.85 };
+  // inside the cabin
+  if (mode === 'bus' || mode === 'airliner' || mode === 'jet') return { y: 1.2, show: false, scale: 0.85 };
   if (mode === 'rideshare') return { y: 0.75, show: true, scale: 0.85 };
   return { y: 0.55, show: true, scale: 0.85 };
 }

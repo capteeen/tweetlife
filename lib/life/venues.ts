@@ -113,7 +113,7 @@ export const VENUE_H = 6;
  * The airport is the terminal on the airport island. `boundaryRadius` defaults to the smallest a world gets.
  * `country` only renames venues and districts (Club Moon is Club Yellow in BNB City); ids and places stay.
  */
-export function placeVenues(contentRadius: number, boundaryRadius = contentRadius + 30, country?: string | null): PlacedVenue[] {
+export function placeVenues(contentRadius: number, boundaryRadius = contentRadius + 36, country?: string | null): PlacedVenue[] {
   const r = venueRingRadius(contentRadius);
   const names = themeOf(country).venues;
   const spare = [...SPARE_SLOTS];

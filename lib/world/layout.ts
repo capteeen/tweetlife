@@ -20,10 +20,12 @@ export const SPARE_SLOTS = [3, 7, 11, 15];
 export const districtOf = (venueId: string) => DISTRICTS.find((d) => d.venues.includes(venueId)) ?? null;
 export const slotAngle = (slot: number) => (slot / RING_SLOTS) * Math.PI * 2;
 
-/** Venue ring radius: just outside the posts, never so tight that neighbouring plazas touch. */
-export const venueRingRadius = (contentRadius: number) => Math.max(contentRadius + 16, (RING_SLOTS * 17) / (Math.PI * 2));
 export const RING_ROAD_W = 6;
-export const ringRoadRadius = (contentRadius: number) => venueRingRadius(contentRadius) - 11;
+/** Ring road: just outside the posts, never so tight that the venues round it crowd each other. */
+export const ringRoadRadius = (contentRadius: number) => Math.max(contentRadius + 5, (RING_SLOTS * 17) / (Math.PI * 2) - 11);
+/** Venue ring radius: far enough out that a walk-in venue's front plaza stops at the ring road's curb. */
+export const VENUE_SETBACK = 15;
+export const venueRingRadius = (contentRadius: number) => ringRoadRadius(contentRadius) + VENUE_SETBACK;
 
 export type Rect = { x: number; z: number; w: number; d: number };
 export const inRect = (r: Rect, x: number, z: number, pad = 0) => Math.abs(x - r.x) <= r.w / 2 + pad && Math.abs(z - r.z) <= r.d / 2 + pad;

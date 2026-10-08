@@ -5,7 +5,7 @@ import type { ComponentProps } from 'react';
 import * as THREE from 'three';
 import { useWorld } from './store';
 import { airportLayout, type Rect } from '@/lib/world/layout';
-import { terminalLayout, terminalWalls, type Terminal as T } from '@/lib/world/terminal';
+import { TERMINAL_FLOOR, terminalLayout, terminalWalls, type Terminal as T } from '@/lib/world/terminal';
 import { COUNTRIES, COUNTRY_LIST } from '@/lib/world/countries';
 import { CABINS, flightNumber } from '@/lib/life/flights';
 import { themeOf } from '@/lib/world/cityThemes';
@@ -18,7 +18,7 @@ import { themeOf } from '@/lib/world/cityThemes';
 const FONT = '/fonts/inter-600.woff';
 const H = 6.2; // outer walls
 const PART_H = 2.6; // the security and arrivals walls inside
-const FLOOR = 0.08;
+const FLOOR = TERMINAL_FLOOR;
 
 export function Terminal({ contentRadius, boundaryRadius }: { contentRadius: number; boundaryRadius: number }) {
   const t = useMemo(() => terminalLayout(airportLayout(contentRadius, boundaryRadius)), [contentRadius, boundaryRadius]);

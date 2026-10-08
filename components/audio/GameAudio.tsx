@@ -55,6 +55,10 @@ export function GameAudio() {
         else ui('spend', { gain: 0.8 });
       }
 
+      // a work task done on shift (lib/life/jobs.ts), and clocking in
+      if (s.shift && prev.shift && s.shift.tasks > prev.shift.tasks) ui('quest');
+      else if (s.shift && !prev.shift) ui('notify');
+
       // things that happened, announced as toasts
       if (s.toasts.length && s.toasts[s.toasts.length - 1] !== prev.toasts[prev.toasts.length - 1]) {
         const t = s.toasts[s.toasts.length - 1];

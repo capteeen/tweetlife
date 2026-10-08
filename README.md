@@ -25,7 +25,7 @@ lib/x/               THE ONLY PLACE X IS TOUCHED
   limiter.ts         Redis token buckets (global + per user token), x-rate-limit-reset pause
   budget.ts          monthly call budget (ApiCall table is the ledger of record)
   oauth.ts           OAuth 2.0 PKCE, refresh, revoke; tokens AES-256-GCM encrypted at rest
-  api.ts             typed wrappers: users/me, users/:id/tweets, tweets?ids, users/:id/following
+  api.ts             typed wrappers: users/me, users/:id/tweets, tweets?ids, users/:id/following, users/:id/followers
   ingest.ts          first build (page-by-page), incremental (since_id), nightly metrics refresh
   relationship.ts    "does visitor follow owner?" with Redis cache (24h positive / 1h negative), fails closed
 lib/world/           pure geometry: classify, city-grid layout (blocks fill chronologically from the centre), log scaling,

@@ -62,3 +62,13 @@ export async function getFollowing(ctx: Ctx, xUserId: string, paginationToken?: 
   });
   return { ids: (r.data ?? []).map((u) => u.id), nextToken: r.meta?.next_token };
 }
+
+/** The account's newest followers (X lists them most recent first), with names and avatars. One call. */
+export async function getFollowers(ctx: Ctx, xUserId: string, maxResults = 100): Promise<XUser[]> {
+  const r = await xFetch<XPage<XUser>>({
+    path: `/2/users/${xUserId}/followers`,
+    query: { max_results: maxResults, 'user.fields': 'profile_image_url,public_metrics' },
+    ...ctx,
+  });
+  return r.data ?? [];
+}

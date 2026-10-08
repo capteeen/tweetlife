@@ -14,6 +14,9 @@ import { StatBars } from '@/components/life/StatBars';
 import { Phone } from '@/components/life/Phone';
 import { PeerCard } from '@/components/life/PeerCard';
 import { ResidentCard } from '@/components/life/ResidentCard';
+import { FollowerCard } from '@/components/life/FollowerCard';
+import { CrowdNotices, PostButton } from '@/components/life/CrowdHUD';
+import { useCrowds } from '@/components/life/useCrowds';
 import { VenueCard } from '@/components/life/VenueCard';
 import { CityMap, TripBanner } from '@/components/life/CityMap';
 import { VenueMusic } from '@/components/life/VenueMusic';
@@ -94,6 +97,8 @@ export function WorldClient({ handle, spawnPostId, embed, backdrop }: { handle: 
   const admitted = !!payload && 'admitted' in payload && payload.admitted;
   const { online, sendChat, sendSocial, connected } = usePresence(handle, admitted);
   useLife(admitted && !backdrop);
+  const signedIn = useWorld((s) => !!s.me);
+  useCrowds(handle, admitted && !backdrop, signedIn);
   const nearVenue = useWorld((s) => s.nearVenue);
   const selectedVenue = useWorld((s) => s.selectedVenue);
   const toasts = useWorld((s) => s.toasts);
@@ -193,6 +198,9 @@ export function WorldClient({ handle, spawnPostId, embed, backdrop }: { handle: 
           <PostCard handle={model.handle} showMetrics={model.showMetrics} canAct={!!me} />
           <PeerCard worldId={model.id} sendSocial={sendSocial} />
           <ResidentCard />
+          <FollowerCard />
+          <CrowdNotices world={model.handle} />
+          <PostButton />
           <VenueCard sendSocial={sendSocial} />
           <Phone sendSocial={sendSocial} handle={model.handle} />
           {!lookPending && <CountryPrompt />}

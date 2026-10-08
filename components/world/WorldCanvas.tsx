@@ -28,6 +28,7 @@ import { useWorld } from './store';
 import { themeOf, themedPalette } from '@/lib/world/cityThemes';
 import { WorldSounds } from '@/components/audio/WorldSounds';
 import { PlotSigns } from './PlotSigns';
+import { ringRoadRadius } from '@/lib/world/layout';
 
 // The scene. `mode`:
 //  - 'walk'     : admitted visitor, third-person controls
@@ -134,7 +135,16 @@ function Scene(props: SceneProps) {
         player={mode === 'walk'}
       />
       {geometry.structures.length > 0 && <Terminal contentRadius={geometry.contentRadius} boundaryRadius={R} />}
-      <Cars count={geometry.cars} grid={geometry.grid} handle={handle} player={mode === 'walk'} />
+      <Cars
+        count={geometry.cars}
+        grid={geometry.grid}
+        blocks={geometry.blocks}
+        boundaryRadius={R}
+        handle={handle}
+        player={mode === 'walk'}
+        ring={geometry.structures.length > 0 ? ringRoadRadius(geometry.contentRadius) : null}
+        skyT={geometry.skyT}
+      />
       {geometry.structures.length > 0 && <Venues contentRadius={geometry.contentRadius} boundaryRadius={R} interactive={mode === 'walk'} />}
       <Structures structures={geometry.structures} showMetrics={showMetrics} interactive={mode === 'walk'} night={night} />
       {/* ambient-occlusion stand-in: one baked contact shadow pass under everything */}

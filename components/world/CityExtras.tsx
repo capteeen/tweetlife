@@ -5,7 +5,7 @@ import { useFrame } from '@react-three/fiber';
 import { Text } from '@react-three/drei';
 import type { Block, CityGrid, Placed } from '@/lib/world/geometry';
 import { PALETTES, type Biome } from '@/lib/world/biomes';
-import { prng, hashString } from '@/lib/world/seed';
+import { prng } from '@/lib/world/seed';
 import { COUNTRIES } from '@/lib/world/countries';
 import { districtName, themeOf, themedPalette, type CityTheme } from '@/lib/world/cityThemes';
 import { useWorld } from './store';
@@ -17,11 +17,10 @@ import { spurRoads } from '@/lib/world/ground';
 import {
   DISTRICTS, RING_ROAD_W, RING_SLOTS, airportLayout, billboardSpots, ringRoadRadius, slotAngle, venueRingRadius, type Rect,
 } from '@/lib/world/layout';
-import { traffic, type TrafficCar } from '@/lib/audio/state';
 import { TreeField, type TreeItem } from './Trees';
 import { withDetail } from './groundDetail';
 
-// Everything around the post city that makes it a city: the ring road and its traffic, spur roads,
+// Everything around the post city that makes it a city: the ring road (its traffic is in Cars.tsx), spur roads,
 // district names on the ground, billboards, palms, and the airport island with its bridge.
 
 const FONT = '/fonts/inter-600.woff';
@@ -104,7 +103,6 @@ export function CityExtras({ contentRadius, boundaryRadius, blocks, grid, hasCit
       <Landmark boundaryRadius={R} country={country} sand={pal.sand} grass={pal.lush} />
       {hasCity && spots.map((s, i) => <BillboardSign key={i} {...s} ad={ads[i % ads.length]} />)}
       {hasCity && <TreeField items={palms} player={player} />}
-      {hasCity && <RingTraffic r={rr} handle={handle} player={player} colors={theme.traffic} />}
     </group>
   );
 }
@@ -149,84 +147,6 @@ function RingRoad({ r }: { r: number }) {
       {/* two-way road: a yellow centre line, broken, as on the grid's streets */}
       <instancedMesh ref={ref} args={[geo, undefined, dashes.length]} frustumCulled={false}>
         <meshStandardMaterial color={YELLOW} roughness={0.9} />
-      </instancedMesh>
-    </group>
-  );
-}
-
-/** Buses, vans, yellow cabs and cars going round the ring road, both ways. */
-function RingTraffic({ r, handle, player, colors }: { r: number; handle: string; player: boolean; colors: string[] }) {
-  const body = useRef<THREE.InstancedMesh>(null);
-  const top = useRef<THREE.InstancedMesh>(null);
-  const cars = useMemo(() => {
-    const rnd = prng(hashString(handle + '|ring'));
-    const kinds = [
-      { s: [2.4, 2.2, 8.5], c: colors[0], topH: 0.15 },
-      { s: [2, 1.6, 4.6], c: colors[1], topH: 0.2 },
-      { s: [1.7, 0.6, 3.8], c: colors[2], topH: 0.55 },
-      { s: [1.7, 0.6, 3.6], c: colors[3], topH: 0.55 },
-      { s: [1.7, 0.6, 3.6], c: colors[4], topH: 0.55 },
-    ];
-    return Array.from({ length: 12 }, (_, i) => {
-      const cruise = (5 + rnd() * 4) / r;
-      return { ...kinds[i % kinds.length], dir: i % 2 ? 1 : -1, a: rnd() * Math.PI * 2, cruise, speed: cruise };
-    });
-  }, [r, handle, colors]);
-  const geo = useMemo(() => new THREE.BoxGeometry(1, 1, 1), []);
-  // where each car is, for engine sounds (components/audio/WorldSounds.tsx)
-  const heard = useMemo<TrafficCar[]>(() => cars.map((c) => ({ x: 0, z: 0, speed: 0, big: c.s[2] > 4.7 })), [cars]);
-  useEffect(() => {
-    if (!player) return;
-    traffic.set('ring', () => heard);
-    return () => void traffic.delete('ring');
-  }, [heard, player]);
-  useEffect(() => {
-    const b = body.current;
-    if (!b) return;
-    cars.forEach((c, i) => b.setColorAt(i, tmpColor.set(c.c)));
-    if (b.instanceColor) b.instanceColor.needsUpdate = true;
-  }, [cars]);
-  useFrame((_, delta) => {
-    const b = body.current, t = top.current;
-    if (!b || !t) return;
-    const dt = Math.min(delta, 0.1);
-    // brake for the player standing in the lane ahead (same rule as the grid traffic in Cars.tsx)
-    const me = player ? useWorld.getState().playerPos : null;
-    const meR = me ? Math.hypot(me.x, me.z) : 0, meA = me ? Math.atan2(me.z, me.x) : 0;
-    cars.forEach((c, i) => {
-      const lane = r + c.dir * 1.5;
-      let target = c.cruise;
-      if (me && Math.abs(meR - lane) < 1.4) {
-        let da = (meA - c.a) * c.dir;
-        da -= Math.PI * 2 * Math.floor(da / (Math.PI * 2));
-        const gap = da * lane - c.s[2] / 2 - 1;
-        if (gap < 10) target = gap < 0.5 ? 0 : Math.min(target, (gap / 10) * c.cruise);
-      }
-      c.speed += (target - c.speed) * Math.min(1, dt * 4);
-      c.a += c.speed * c.dir * dt;
-      const a = c.a;
-      const x = Math.cos(a) * lane, z = Math.sin(a) * lane;
-      const rot = -a + (c.dir > 0 ? 0 : Math.PI);
-      Object.assign(heard[i], { x, z, speed: c.speed * lane });
-      tmp.position.set(x, 0.3 + c.s[1] / 2, z);
-      tmp.rotation.set(0, rot, 0);
-      tmp.scale.set(c.s[0], c.s[1], c.s[2]);
-      tmp.updateMatrix();
-      b.setMatrixAt(i, tmp.matrix);
-      tmp.position.set(x, 0.3 + c.s[1] + c.topH / 2, z);
-      tmp.scale.set(c.s[0] * 0.85, c.topH, c.s[2] * 0.5);
-      tmp.updateMatrix();
-      t.setMatrixAt(i, tmp.matrix);
-    });
-    b.instanceMatrix.needsUpdate = t.instanceMatrix.needsUpdate = true;
-  });
-  return (
-    <group>
-      <instancedMesh ref={body} args={[geo, undefined, cars.length]} castShadow frustumCulled={false}>
-        <meshStandardMaterial flatShading roughness={0.5} metalness={0.2} />
-      </instancedMesh>
-      <instancedMesh ref={top} args={[geo, undefined, cars.length]} castShadow frustumCulled={false}>
-        <meshStandardMaterial color="#1B2436" flatShading roughness={0.3} />
       </instancedMesh>
     </group>
   );

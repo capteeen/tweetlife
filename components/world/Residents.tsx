@@ -16,6 +16,7 @@ import type { Block, CityGrid } from '@/lib/world/geometry';
 import { surfaceY } from '@/lib/world/ground';
 import { aroundRect, sidewalkLoop, type RectLoop } from '@/lib/world/sidewalks';
 import type { FigureAct } from './figureMoves';
+import type { HomePose } from './figurePoses';
 
 // Residents: ambient people whose count comes from followers_count, strolling round the blocks on the sidewalks
 // (never through buildings, venues or traffic). Peers: the real visitors currently inside, from the presence room.
@@ -87,7 +88,8 @@ function Peer({ peer, blocks, grid, boundaryRadius }: { peer: PeerT; blocks: Blo
   const item = peer.ride ? ITEMS.find((i) => i.id === peer.ride) ?? null : null;
   const ro = riderOffset(item);
   const speed = useRef(0);
-  const act = useRef<FigureAct | null>(null);
+  const act = useRef<FigureAct | HomePose | null>(null);
+  const vel = useRef(0);
   const look = useLookOf(peer.handle);
   const hand = useRef<THREE.Object3D>(null);
   const slumpRef = useSlumpRef(peer.handle);
@@ -105,8 +107,9 @@ function Peer({ peer, blocks, grid, boundaryRadius }: { peer: PeerT; blocks: Blo
     const dt = Math.max(1, now - last.current.t) / 1000;
     const v = Math.hypot(peer.x - last.current.x, peer.z - last.current.z) / dt;
     last.current = { x: peer.x, z: peer.z, t: now };
-    speed.current = Math.min(1, v / 6);
-    act.current = item ? null : peer.act ?? null;
+    vel.current += (v - vel.current) * 0.2;
+    speed.current = item ? 0 : Math.min(1, v / 6);
+    act.current = item ? ro.pose : peer.act ?? null;
   });
   return (
     <group
@@ -117,8 +120,8 @@ function Peer({ peer, blocks, grid, boundaryRadius }: { peer: PeerT; blocks: Blo
         selectPeer(peer);
       }}
     >
-      {item && <Vehicle item={item} />}
-      <group position={[0, ro.y, 0]} scale={ro.scale}>
+      {item && <Vehicle item={item} speed={() => vel.current} />}
+      <group position={ro.pos} scale={ro.scale}>
         <Figure seed={peer.handle} look={look} speedRef={speed} actRef={act} slumpRef={slumpRef} label={`@${peer.handle}`} dim={!ro.show} />
         <object3D ref={hand} position={HAND} />
       </group>

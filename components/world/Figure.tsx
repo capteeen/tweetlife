@@ -37,9 +37,11 @@ type Props = {
   actRef?: React.MutableRefObject<FigureAct | HomePose | null>;
   /** 0 = fresh, 1 = exhausted: slower steps and a slouch. Read each frame. */
   tiredRef?: React.MutableRefObject<number>;
+  /** never draw finer than this level of detail (1 = no face or hands): for drivers half hidden behind glass */
+  minLod?: number;
 };
 
-export function Figure({ seed, look: chosen, speedRef, label, labelColor = '#FFFFFF', dim = false, alwaysWalk = false, actRef, tiredRef, slumpRef, sash }: Props) {
+export function Figure({ seed, look: chosen, speedRef, label, labelColor = '#FFFFFF', dim = false, alwaysWalk = false, actRef, tiredRef, slumpRef, sash, minLod = 0 }: Props) {
   const look = useMemo(() => withCapAsHat(chosen ?? lookFor(seed)), [chosen, seed]);
   const lArm = useRef<THREE.Group>(null);
   const rArm = useRef<THREE.Group>(null);
@@ -77,7 +79,7 @@ export function Figure({ seed, look: chosen, speedRef, label, labelColor = '#FFF
   };
 
   useFrame(({ camera }, dt) => {
-    if (root.current) applyLod(root.current, camera, lod.current);
+    if (root.current) applyLod(root.current, camera, lod.current, minLod);
     const target = alwaysWalk ? 1 : speedRef?.current ?? 0;
     cur.current += (target - cur.current) * Math.min(1, dt * 8);
     const s = cur.current;
@@ -337,13 +339,14 @@ function swingSkirt(skirt: THREE.Object3D, l: THREE.Object3D, r: THREE.Object3D)
 const NEAR_D = 22, MID_D = 55, HYST = 3;
 const castsShadow = new WeakMap<THREE.Object3D, boolean>();
 const tmpPos = new THREE.Vector3();
-function applyLod(root: THREE.Object3D, camera: THREE.Camera, st: { level: number; tick: number }) {
+function applyLod(root: THREE.Object3D, camera: THREE.Camera, st: { level: number; tick: number }, minLevel: number) {
   const d = root.getWorldPosition(tmpPos).distanceTo(camera.position);
   let level = st.level < 0 ? (d < NEAR_D ? 0 : d < MID_D ? 1 : 2) : st.level;
   if (level === 0 && d > NEAR_D + HYST) level = 1;
   if (level === 1 && d < NEAR_D - HYST) level = 0;
   if (level === 1 && d > MID_D + HYST) level = 2;
   if (level === 2 && d < MID_D - HYST) level = 1;
+  level = Math.max(level, minLevel);
   // re-apply now and then too, so meshes added by a look change pick up the current level
   if (level === st.level && ++st.tick < 30) return;
   st.level = level;

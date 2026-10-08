@@ -14,7 +14,7 @@ import { placeVenues } from '@/lib/life/venues';
 import { SPRINT_MIN_GAS, SPRINT_MULT, paceFor, tiredness, walkCost } from '@/lib/life/activities';
 import { lifeActions } from '@/components/life/useLife';
 import type { FigureAct } from './figureMoves';
-import { airportLayout, airportSolids, along, onLand, type Airport } from '@/lib/world/layout';
+import { airportLayout, airportSolids, along, onLand, pathLength, type Airport } from '@/lib/world/layout';
 import { RideVehicle, rideCamera, rideRider } from './RideVehicle';
 import { worldWalls } from '@/lib/world/interiors';
 import { terminalLayout, terminalWalls } from '@/lib/world/terminal';
@@ -23,6 +23,10 @@ import { playerSound } from '@/lib/audio/state';
 import { lookFor } from '@/lib/life/look';
 import { clampToCell, jailCell } from '@/lib/life/police';
 import { ARREST_FX_MS } from '@/components/life/crime';
+import type { HomePose } from './figurePoses';
+import { ridePace, type PaceAt } from './ridePace';
+import { playerVehicle, type PlayerVehicleType } from './vehicleState';
+import type { CarModel } from './carModels';
 
 // Third-person orbit-and-walk. WASD/arrows + mouse-drag on desktop, twin virtual sticks on mobile.
 // The avatar is a low-poly figure; the camera orbits it. Structures push the player out softly.
@@ -97,7 +101,11 @@ export function Player({ structures, blocks, grid, boundaryRadius, contentRadius
   }, [chosenLook, uniform, me]);
   const hand = useRef<THREE.Object3D>(null);
   const slumpRef = useSlumpRef(me?.handle ?? '');
-  const actRef = useRef<FigureAct | null>(null);
+  const actRef = useRef<FigureAct | HomePose | null>(null);
+  // the pose held on the current vehicle (set when rendering), and the pace of the current ride
+  const rideRef = useRef<HomePose | null>(null);
+  const pace = useRef<{ key: number; at: (sec: number) => PaceAt; len: number } | null>(null);
+  const lastPos = useRef<{ x: number; z: number } | null>(null);
   const tiredRef = useRef(0);
   // distance on foot not yet reported to the server
   const walked = useRef({ walk: 0, sprint: 0, sending: false });
@@ -197,9 +205,16 @@ export function Player({ structures, blocks, grid, boundaryRadius, contentRadius
     if ((jailed || cuffing) && st0.trip) setTrip(null);
     // on a ride: follow the route, then step off at the nearest open spot
     const tr = useWorld.getState().trip;
+    let rideSpeed = 0, doors = 0;
     if (tr) {
-      const t = (performance.now() - tr.startedAt) / 1000 / tr.duration;
-      const p = along(tr.path, t);
+      if (pace.current?.key !== tr.startedAt) pace.current = { key: tr.startedAt, at: ridePace(tr.mode, tr.duration), len: pathLength(tr.path) };
+      const sec = (performance.now() - tr.startedAt) / 1000;
+      const t = sec / tr.duration;
+      // rides pull away and slow to a stop (and the bus stops on the way); walking keeps a steady pace
+      const pa = pace.current.at(sec);
+      rideSpeed = pa.rate * pace.current.len;
+      doors = pa.doors;
+      const p = along(tr.path, pa.u);
       if (t >= 1) {
         // a plane that has climbed out leaves you up there: the flight screen takes over until the landing
         const free = tr.fly === 'up' ? p : freeSpotNear(structures, obstacles, p.x, p.z, boundaryRadius, 'walk', airport);
@@ -237,7 +252,7 @@ export function Player({ structures, blocks, grid, boundaryRadius, contentRadius
     // an activity plays until it ends or you walk off
     if (st.doing && (len > 0.05 || riding || Date.now() > st.doing.until)) st.setDoing(null);
     // on shift, standing at your station, you do the job's move
-    actRef.current = st.doing && !riding ? st.doing.id : st.shift?.act && !tr && !riding && len < 0.05 ? st.shift.act : null;
+    actRef.current = rideRef.current ?? (st.doing && !riding ? st.doing.id : st.shift?.act && !tr && !riding && len < 0.05 ? st.shift.act : null);
     let sprinting = false;
     if (st.doing?.face) facing.current = Math.atan2(st.doing.face.x - pos.current.x, st.doing.face.z - pos.current.z);
     if (len > 0) {
@@ -296,6 +311,19 @@ export function Player({ structures, blocks, grid, boundaryRadius, contentRadius
       pos.current.x *= (boundaryRadius - 2) / r;
       pos.current.z *= (boundaryRadius - 2) / r;
     }
+    // what you're on and how fast, for anything that wants to know (vehicleState.ts)
+    const pv = playerVehicle;
+    const last = lastPos.current;
+    const moved = last ? Math.hypot(pos.current.x - last.x, pos.current.z - last.z) / Math.max(d, 1e-3) : 0;
+    lastPos.current = { x: pos.current.x, z: pos.current.z };
+    const onRide = !!tr && tr.mode !== 'walk';
+    const tripItem = tr?.mode === 'own' ? carItem(tr.itemId) : null;
+    pv.type = onRide ? (tr!.mode === 'airliner' || tr!.mode === 'jet' ? 'plane' : (tr!.mode as PlayerVehicleType)) : riding && !tr ? (riding.kind as PlayerVehicleType) : 'walk';
+    pv.model = onRide ? RIDE_MODEL[tr!.mode] ?? (tripItem ? OWNED_MODEL[tripItem.id] ?? 'sedan' : null) : riding?.kind === 'car' && !tr ? OWNED_MODEL[riding.id] ?? 'sedan' : null;
+    const vNow = onRide ? rideSpeed : Math.min(moved, 60);
+    pv.braking = pv.type !== 'walk' && (vNow < pv.speed - 0.3 || vNow < 0.3);
+    pv.speed += (vNow - pv.speed) * Math.min(1, d * (onRide ? 30 : 10));
+    pv.doors = onRide && tr!.mode === 'bus' ? doors : 0;
     if (group.current) {
       group.current.position.copy(pos.current);
       group.current.rotation.y = facing.current;
@@ -368,9 +396,10 @@ export function Player({ structures, blocks, grid, boundaryRadius, contentRadius
   const tripCar = trip?.mode === 'own' ? carItem(trip.itemId) : null;
   const shown = trip ? (trip.mode === 'walk' ? null : tripCar) : riding;
   const ro = trip && trip.mode !== 'walk' && !tripCar ? rideRider(trip.mode) : riderOffset(shown);
+  rideRef.current = ro.pose;
   return (
     <group ref={group}>
-      {shown && <Vehicle item={shown} />}
+      {shown && <Vehicle item={shown} mine />}
       {trip && trip.mode !== 'walk' && trip.mode !== 'own' && (
         // a climbing plane noses up, a landing one flares
         <group ref={tilt}>
@@ -378,7 +407,7 @@ export function Player({ structures, blocks, grid, boundaryRadius, contentRadius
         </group>
       )}
       {ro.show && (
-        <group position={[0, ro.y, 0]} scale={ro.scale}>
+        <group position={ro.pos} scale={ro.scale}>
           <Figure seed={me?.handle ?? 'visitor'} look={me ? look : null} speedRef={speedRef} actRef={actRef} tiredRef={tiredRef} slumpRef={slumpRef} label={me ? `@${me.handle}` : undefined} labelColor="#BFE3FF" />
           <object3D ref={hand} position={HAND} />
         </group>
@@ -402,6 +431,8 @@ function flightPitch(leg: 'up' | 'down', t: number) {
   if (leg === 'up') return t > 0.5 ? -0.22 : 0;
   return t < 0.5 ? -0.06 : 0;
 }
+const RIDE_MODEL: Record<string, CarModel> = { bus: 'bus', taxi: 'taxi', rideshare: 'sedan' };
+const OWNED_MODEL: Record<string, CarModel> = { keke: 'keke', sedan: 'sedan', lambo: 'sport' };
 
 export type MoveMode = 'walk' | 'boat' | 'plane';
 /** How far past the shore boats and planes may go (the water ring is wide). */

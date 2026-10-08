@@ -1,19 +1,26 @@
 import { lift, rot, type Rig } from './figureMoves';
+import { playerVehicle } from './vehicleState';
 
 // Poses for using furniture: sitting on a chair or sofa, sitting on the floor in front of the TV, lying in bed,
 // and standing at a piece (bucket, fridge, generator...). A pose is a base for the legs and hips plus an
 // animation for the upper body, and blends in by `w` like the everyday moves.
+// Riding uses the same machinery: astride a bike saddle with the feet on the turning pedals, standing on a
+// scooter deck, and sitting in a car or bus with the hands on the wheel, on the lap, or on the phone.
 
-export type PoseBase = 'chair' | 'floor' | 'stand' | 'lie';
+export type PoseBase = 'chair' | 'floor' | 'stand' | 'lie' | 'saddle' | 'deck';
 export type PoseUpper =
   | 'idle' | 'relax' | 'phone' | 'eat' | 'watch' | 'cheer' | 'game' | 'sleep' | 'nap'
-  | 'bath' | 'shower' | 'drink' | 'read' | 'write' | 'cool' | 'pull' | 'admire';
+  | 'bath' | 'shower' | 'drink' | 'read' | 'write' | 'cool' | 'pull' | 'admire'
+  | 'bars' | 'wheel' | 'ride';
 
 export type HomePose = {
   base: PoseBase;
   upper: PoseUpper;
-  /** seat or mattress height under the figure (0 for the floor) */
+  /** seat or mattress height under the figure (0 for the floor); for the saddle, the hip height */
   seat: number;
+  /** saddle only: the bottom bracket (y, z) and crank length in the figure's own units; the crank angle is
+   *  read from playerVehicle.pedal so the feet stay on the pedals */
+  pedal?: { y: number; z: number; r: number };
 };
 
 export const poseKey = (p: HomePose) => `${p.base}:${p.upper}:${p.seat}`;
@@ -30,12 +37,12 @@ const LEGS = (r: Rig) => [[r.lLeg, r.lKnee, -1], [r.rLeg, r.rKnee, 1]] as const;
 
 export function applyPose(r: Rig, pose: HomePose, t: number, w: number) {
   if (w <= 0) return;
-  BASES[pose.base](r, pose.seat, t, w);
+  BASES[pose.base](r, pose.seat, t, w, pose);
   UPPERS[pose.upper](r, t, w, pose.base);
   if (pose.upper === 'sleep' || pose.upper === 'nap') for (const e of r.eyes) if (e) e.scale.y += (0.12 - e.scale.y) * w;
 }
 
-const BASES: Record<PoseBase, (r: Rig, seat: number, t: number, w: number) => void> = {
+const BASES: Record<PoseBase, (r: Rig, seat: number, t: number, w: number, pose: HomePose) => void> = {
   // hips on the seat, thighs level, shins down
   chair(r, seat, t, w) {
     lift(r.body, seat + 0.08 - r.hipY, w);
@@ -72,6 +79,39 @@ const BASES: Record<PoseBase, (r: Rig, seat: number, t: number, w: number) => vo
     rot(r.rLeg, 'z', 0.05, w);
     // slow, deep breaths
     if (r.chest) r.chest.scale.setScalar(1 + Math.sin(t * 1.5) * 0.03 * w);
+  },
+  // hips on the saddle, each foot on its pedal: a two-bone reach from the hip to the pedal as the crank turns
+  saddle(r, seat, _t, w, pose) {
+    lift(r.body, seat - r.hipY, w);
+    rot(r.body, 'y', 0, w);
+    const p = pose.pedal;
+    if (!p) return;
+    const a = r.hipY * 0.5, b = r.hipY * 0.5 - 0.02;
+    for (const [leg, knee, side] of LEGS(r)) {
+      // the leg on -x pushes the right-hand pedal, half a turn from the left one
+      const ang = playerVehicle.pedal + (side < 0 ? Math.PI : 0);
+      // the ankle sits a little above and behind the pedal axle
+      const dy = p.y + Math.cos(ang) * p.r + 0.07 - seat, dz = p.z + Math.sin(ang) * p.r - 0.05;
+      const L = Math.min(a + b - 0.002, Math.max(0.1, Math.hypot(dy, dz)));
+      const toFoot = Math.atan2(-dz, -dy);
+      const hipBend = Math.acos(Math.min(1, (a * a + L * L - b * b) / (2 * a * L)));
+      const kneeBend = Math.PI - Math.acos(Math.max(-1, Math.min(1, (a * a + b * b - L * L) / (2 * a * b))));
+      rot(leg, 'x', toFoot - hipBend, w);
+      rot(leg, 'z', side * 0.1, w);
+      rot(knee, 'x', kneeBend, w);
+    }
+  },
+  // standing on the scooter deck, front foot forward, back foot behind, knees soft and bobbing with the road
+  deck(r, seat, t, w) {
+    const bob = Math.sin(t * 7) * 0.012;
+    lift(r.body, seat + bob - 0.02, w);
+    rot(r.body, 'y', 0, w);
+    rot(r.rLeg, 'x', -0.14, w);
+    rot(r.rKnee, 'x', 0.18, w);
+    rot(r.lLeg, 'x', 0.3, w);
+    rot(r.lKnee, 'x', 0.3, w);
+    rot(r.lLeg, 'z', -0.04, w);
+    rot(r.rLeg, 'z', 0.04, w);
   },
 };
 
@@ -261,6 +301,40 @@ const UPPERS: Record<PoseUpper, (r: Rig, t: number, w: number, base: PoseBase) =
     rot(r.rElbow, 'x', -0.4 - 1.0 * yank, w);
     rot(r.lArm, 'x', -0.9, w);
     rot(r.lElbow, 'x', -0.5, w);
+  },
+  // hands on the handlebars: leaning in over a bike, upright on a scooter
+  bars(r, t, w, base) {
+    const bike = base === 'saddle';
+    rot(r.chest, 'x', bike ? 0.36 : 0.12, w);
+    rot(r.head, 'x', bike ? -0.32 : 0.02, w);
+    rot(r.head, 'y', 0.12 * Math.sin(t * 0.35), w);
+    for (const [arm, elbow, side] of ARMS(r)) {
+      rot(arm, 'x', bike ? -0.82 : -0.95, w);
+      rot(arm, 'z', side * (bike ? 0.2 : 0.22), w);
+      rot(elbow, 'x', bike ? -0.5 : -0.3, w);
+    }
+  },
+  // both hands on the steering wheel, easing it through the bends
+  wheel(r, t, w) {
+    const steer = 0.06 * Math.sin(t * 0.6) + 0.03 * Math.sin(t * 1.7);
+    rot(r.chest, 'x', -0.06, w);
+    rot(r.head, 'y', 0.15 * Math.sin(t * 0.25), w);
+    for (const [arm, elbow, side] of ARMS(r)) {
+      rot(arm, 'x', -1.0 - side * steer, w);
+      rot(arm, 'z', side * -0.08, w);
+      rot(elbow, 'x', -0.85, w);
+    }
+  },
+  // a passenger: hands on the lap, watching the city go by out of the window on their right
+  ride(r, t, w) {
+    rot(r.chest, 'x', -0.08, w);
+    rot(r.head, 'y', -0.55 + 0.35 * Math.sin(t * 0.3), w);
+    rot(r.head, 'x', 0.05 * Math.sin(t * 0.9), w);
+    for (const [arm, elbow, side] of ARMS(r)) {
+      rot(arm, 'x', -0.5, w);
+      rot(arm, 'z', side * 0.1, w);
+      rot(elbow, 'x', -0.7, w);
+    }
   },
   // hands on the hips, looking up
   admire(r, t, w) {

@@ -7,7 +7,7 @@ import { venueById } from '@/lib/life/venues';
 import { themeOf } from '@/lib/world/cityThemes';
 import { ConfirmButton } from '@/components/ui/ConfirmButton';
 import { statDelta } from '@/lib/life/statNames';
-import { jobActions, refreshJobs, workplaceOf } from './jobs';
+import { jobActions, refreshJobs, workplaceOf, shiftBonus } from './jobs';
 
 // The Jobs app (and the board at the Hustle Hub): your job and level, today's shifts, and every job in town with
 // its pay and what it takes to get hired. Tap one to apply.
@@ -56,7 +56,7 @@ export function JobsApp({ preselect }: { preselect?: string | null }) {
                   </span>
                 </span>
                 <span className="shrink-0 text-right">
-                  <span className="num block text-sm font-bold text-emerald-300">{wageFor(j, levelOf(r?.shifts ?? 0))}</span>
+                  <span className="num block text-sm font-bold text-emerald-300">{wageFor(j, levelOf(r?.shifts ?? 0), shiftBonus())}</span>
                   <span className="block text-[10px] text-white/45">bags a shift</span>
                 </span>
                 <span className="w-14 shrink-0 text-right text-[11px] font-semibold">
@@ -69,6 +69,7 @@ export function JobsApp({ preselect }: { preselect?: string | null }) {
       </ul>
       <p className="mt-3 text-[11px] text-white/45">
         Up to {SHIFTS_PER_DAY} shifts a day. Every {SHIFTS_PER_LEVEL} shifts in a job moves you up a level (max {MAX_LEVEL}) and pays 20% more. A shift costs {statDelta(SHIFT_COST)}.
+        {shiftBonus() > 0 && ` National rule here: every shift pays ${Math.round(shiftBonus() * 100)}% more, already in the wages above.`}
       </p>
     </div>
   );
@@ -96,7 +97,7 @@ function MyJob({ job, shifts, today, resetsAt }: { job: Job; shifts: number; tod
           </div>
         </div>
         <div className="text-right">
-          <div className="num text-lg font-bold text-emerald-300">{wageFor(job, level)}</div>
+          <div className="num text-lg font-bold text-emerald-300">{wageFor(job, level, shiftBonus())}</div>
           <div className="text-[10px] text-white/50">bags a shift</div>
         </div>
       </div>
@@ -159,7 +160,7 @@ function Apply({ job, onBack }: { job: Job; onBack: () => void }) {
         <div className="text-5xl">🎉</div>
         <div className="mt-3 text-xl font-bold">You’re hired!</div>
         <p className="mt-1 text-sm text-white/70">
-          {job.levels[level - 1]} at {placeOf(job)}. Your first shift pays {wageFor(job, level)} bags.
+          {job.levels[level - 1]} at {placeOf(job)}. Your first shift pays {wageFor(job, level, shiftBonus())} bags.
         </p>
         <div className="mt-5 flex flex-col gap-2">
           <button
@@ -202,8 +203,8 @@ function Apply({ job, onBack }: { job: Job; onBack: () => void }) {
       </div>
       <p className="mt-3 text-sm text-white/75">{job.blurb}</p>
       <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-        <Stat label="a shift" value={`${wageFor(job, level)}`} />
-        <Stat label="at the top" value={`${wageFor(job, MAX_LEVEL)}`} />
+        <Stat label="a shift" value={`${wageFor(job, level, shiftBonus())}`} />
+        <Stat label="at the top" value={`${wageFor(job, MAX_LEVEL, shiftBonus())}`} />
         <Stat label="shift" value={`${SHIFT_SECONDS}s`} />
       </div>
       <p className="label mb-1.5 mt-4">On the job</p>

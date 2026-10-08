@@ -1,5 +1,6 @@
 'use client';
 import { useWorld, type Shift } from '@/components/world/store';
+import { governmentOf } from '@/lib/life/government';
 import { SHIFT_SECONDS, jobById, type Job, type JobBoard, type JobId } from '@/lib/life/jobs';
 import { placeVenues, type PlacedVenue } from '@/lib/life/venues';
 import { WALK_IN } from '@/lib/world/interiors';
@@ -187,3 +188,6 @@ export const jobActions = {
     s.patchMe({ statusUntil: null });
   },
 };
+
+/** The national shift bonus where you are (BNB pays 20% more), so the wages shown match what the server pays. */
+export const shiftBonus = () => governmentOf(useWorld.getState().country).rules.shiftBonus;

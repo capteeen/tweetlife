@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import PartySocket from 'partysocket';
 import { useWorld, type Peer } from './store';
 import { refreshLife } from '@/components/life/useLife';
+import { refreshLove } from '@/components/life/loveClient';
 
 // Presence client. Joins the world's PartyKit room with a signed ticket, sends position at 10Hz,
 // receives peers and proximity chat. If presence isn't configured, `online` stays null (unknown, not 0).
@@ -57,6 +58,8 @@ export function usePresence(handle: string, enabled: boolean) {
           } else if (m.t === 'social') {
             pushToast(String(m.text), String(m.kind));
             refreshLife();
+            // a request or an answer from someone in this world: show it now rather than on the next poll
+            if (m.kind === 'love') refreshLove();
           } else if (m.t === 'chat') {
             pushChat({ id: m.id as string, from: m.from as string, text: m.text as string, at: m.at as number, x: m.x as number, z: m.z as number });
           } else if (m.t === 'full' && typeof m.next === 'string') {

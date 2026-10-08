@@ -251,36 +251,40 @@ model Incident {
 // ---------------------------------------------------------------------------------------------
 
 model Player {
-  id          String   @id // = User.id
-  user        User     @relation(fields: [id], references: [id], onDelete: Cascade)
-  bags        Int      @default(10000)
-  vibes       Int      @default(70) // fun
-  clout       Int      @default(50) // social
-  gas         Int      @default(80) // energy
-  status      String   @default("Just arrived")
+  id          String    @id // = User.id
+  user        User      @relation(fields: [id], references: [id], onDelete: Cascade)
+  bags        Int       @default(10000)
+  vibes       Int       @default(70) // fun
+  clout       Int       @default(50) // social
+  gas         Int       @default(80) // energy
+  status      String    @default("Just arrived")
   /// When `status` stops being true (the activity, nap or furniture action ends). Null or past = idle.
   statusUntil DateTime?
   /// The look picked in the avatar creator (lib/life/look.ts). Null = seeded from the handle.
   look        Json?
   /// True for players created after the avatar creator shipped, until they pick a look.
-  lookPending Boolean  @default(false)
+  lookPending Boolean   @default(false)
   /// Country id from lib/world/countries.ts, picked at sign-up. Null = not asked yet (shown once, Solana on skip).
   nationality String?
   /// The country the player is in right now (lib/world/countries.ts id). Null = at home. Set by flights.
   location    String?
-  lastTickAt  DateTime @default(now())
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  lastTickAt  DateTime  @default(now())
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   wallet     Wallet?
   walletTxs  WalletTx[]
   txs        BagTx[]
   questDays  QuestDay[]
-  sent       Interaction[] @relation("sent")
-  received   Interaction[] @relation("received")
+  sent       Interaction[]   @relation("sent")
+  received   Interaction[]   @relation("received")
   assets     Asset[]
   paperCoins PaperCoin[]
   jobs       JobRecord[]
+  bonds      Bond[]          @relation("bonds")
+  bondedTo   Bond[]          @relation("bondedTo")
+  loveSent   SocialRequest[] @relation("loveSent")
+  loveGot    SocialRequest[] @relation("loveGot")
 }
 
 model BagTx {
@@ -398,4 +402,55 @@ model JobRecord {
 
   @@unique([playerId, jobId])
   @@index([playerId, active])
+}
+
+/// One side of a relationship: you and another player (partnerId) or you and an AI resident (residentId).
+/// Player-to-player bonds are written in pairs, one row per side, in one transaction. Rules in lib/life/love.ts.
+model Bond {
+  id          String    @id @default(cuid())
+  playerId    String
+  player      Player    @relation("bonds", fields: [playerId], references: [id], onDelete: Cascade)
+  partnerId   String?
+  partner     Player?   @relation("bondedTo", fields: [partnerId], references: [id], onDelete: Cascade)
+  residentId  String?
+  /// talking (visited, or chatted with a resident) | dating (counts against the cap of six) | ended
+  status      String    @default("talking")
+  /// AI residents only: how well you get on, 0..100
+  affinity    Int       @default(0)
+  since       DateTime  @default(now())
+  datingSince DateTime?
+  endedAt     DateTime?
+  lastDateAt  DateTime?
+  dates       Int       @default(0)
+
+  @@unique([playerId, partnerId])
+  @@unique([playerId, residentId])
+  @@index([partnerId])
+  @@index([playerId, status])
+}
+
+/// A request to another player (answered later, in their phone) or to an AI resident (answered on the spot):
+/// invite home, ask to come over, ask out, or go on a date with a partner.
+model SocialRequest {
+  id          String    @id @default(cuid())
+  fromId      String
+  from        Player    @relation("loveSent", fields: [fromId], references: [id], onDelete: Cascade)
+  toId        String?
+  to          Player?   @relation("loveGot", fields: [toId], references: [id], onDelete: Cascade)
+  residentId  String?
+  /// invite | visit | date | outing
+  kind        String
+  /// outing only: which date (lib/life/love.ts DATES)
+  detail      String?
+  /// pending | accepted | declined | cancelled
+  status      String    @default("pending")
+  createdAt   DateTime  @default(now())
+  expiresAt   DateTime
+  respondedAt DateTime?
+  /// an accepted invite or visit: the guest may be in the host's house until then
+  passUntil   DateTime?
+
+  @@index([toId, status])
+  @@index([fromId, status])
+  @@index([fromId, toId, kind])
 }

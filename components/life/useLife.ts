@@ -118,8 +118,9 @@ export const lifeActions = {
     useWorld.getState().pushToast(`Sold the ${r.item.name} for ${r.bags} bags`, 'market');
     return r;
   },
-  async furnitureAct(itemId: string, actionId: string) {
-    const r = await j<{ ok: true; power: PowerState; action: FurnitureAction }>('/api/life/home', { method: 'POST', body: JSON.stringify({ op: 'act', itemId, actionId }) });
+  /** Use a piece in my house, or as a guest in someone else's (`at`: the host's handle or an AI resident's id). */
+  async furnitureAct(itemId: string, actionId: string, at?: { host?: string; resident?: string }) {
+    const r = await j<{ ok: true; power: PowerState; action: FurnitureAction }>('/api/life/home', { method: 'POST', body: JSON.stringify({ op: 'act', itemId, actionId, ...at }) });
     await refreshLife();
     return r;
   },

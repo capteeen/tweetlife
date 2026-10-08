@@ -4,13 +4,14 @@ import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import { RESIDENTS, type Resident } from '@/lib/life/residents';
-import { placeVenues, type PlacedVenue } from '@/lib/life/venues';
-import { surfaceY, type Block, type CityGrid } from '@/lib/world/geometry';
+import { placeVenues } from '@/lib/life/venues';
+import type { Block, CityGrid } from '@/lib/world/geometry';
+import { surfaceY } from '@/lib/world/ground';
 import { useWorld } from './store';
 import { Figure } from './Figure';
 import type { FigureAct } from './figureMoves';
 import type { HomePose } from './figurePoses';
-import { buildRoutes, poseAt, venueFloorAt, type Route } from './residentPaths';
+import { buildRoutes, poseAt, type Route } from './residentPaths';
 
 // The city's named residents (lib/life/residents.ts), walking their routes between the venues. Tap one to talk
 // (components/life/ResidentCard.tsx). Walk past and they sometimes say something.
@@ -50,13 +51,13 @@ export function CityResidents({ contentRadius, boundaryRadius, blocks, grid, int
   return (
     <>
       {routes.map(({ r, route }) =>
-        route ? <NamedResident key={r.id} r={r} route={route} venues={venues} blocks={blocks} grid={grid} boundaryRadius={boundaryRadius} interactive={interactive} /> : null,
+        route ? <NamedResident key={r.id} r={r} route={route} blocks={blocks} grid={grid} boundaryRadius={boundaryRadius} interactive={interactive} /> : null,
       )}
     </>
   );
 }
 
-function NamedResident({ r, route, venues, blocks, grid, boundaryRadius, interactive }: { r: Resident; route: Route; venues: PlacedVenue[]; blocks: Block[]; grid: CityGrid; boundaryRadius: number; interactive: boolean }) {
+function NamedResident({ r, route, blocks, grid, boundaryRadius, interactive }: { r: Resident; route: Route; blocks: Block[]; grid: CityGrid; boundaryRadius: number; interactive: boolean }) {
   const ref = useRef<THREE.Group>(null);
   const speed = useRef(0);
   const act = useRef<FigureAct | HomePose | null>(null);
@@ -74,7 +75,7 @@ function NamedResident({ r, route, venues, blocks, grid, boundaryRadius, interac
     // stopped mid-walk to talk to you: stand still and face you; anyone dancing or sitting carries on
     const halt = talking && p.moving && !p.act;
     const x = halt ? g.position.x : p.x, z = halt ? g.position.z : p.z;
-    const y = p.y ?? venueFloorAt(venues, x, z) ?? surfaceY(blocks, grid, x, z, boundaryRadius);
+    const y = p.y ?? surfaceY(blocks, grid, x, z, boundaryRadius);
     const far = Math.hypot(g.position.x - x, g.position.z - z) > 20;
     if (!placed.current || far) {
       g.position.set(x, y, z);

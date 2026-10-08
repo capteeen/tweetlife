@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
-import type { CityGrid } from '@/lib/world/geometry';
+import { ASPHALT_TOP, type CityGrid } from '@/lib/world/geometry';
 import { prng, hashString } from '@/lib/world/seed';
 import { CAR_PARTS, TRAFFIC_MODELS, carMaterial, carParts, carSpec, type CarModel } from './carModels';
 import { useWorld } from './store';
@@ -174,7 +174,7 @@ export function Cars({ count: wanted, grid, handle, player = false }: { count: n
         const m = meshes.current.get(`${model}|${part}`);
         if (!m) continue;
         for (const c of list) {
-          tmp.position.set(c.x, 0, c.z);
+          tmp.position.set(c.x, ASPHALT_TOP, c.z); // wheels on the asphalt, not in it
           tmp.rotation.set(0, c.rot, 0);
           tmp.updateMatrix();
           m.setMatrixAt(c.slot, tmp.matrix);

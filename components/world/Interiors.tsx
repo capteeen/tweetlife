@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { Text } from '@react-three/drei';
 import type { ThreeEvent } from '@react-three/fiber';
-import { WALK_IN, WALL, wallsOf, type WalkIn } from '@/lib/world/interiors';
+import { DANCE_FLOOR, FLOOR_Y, WALK_IN, WALL, wallsOf, type WalkIn } from '@/lib/world/interiors';
 import type { PlacedVenue } from '@/lib/life/venues';
 import type { FigureAct } from './figureMoves';
 import type { HomePose } from './figurePoses';
@@ -20,7 +20,6 @@ import { DistanceDetail } from './DistanceDetail';
 // code on every screen). Built in the venue's own frame, door at +z facing the city.
 
 const FONT = '/fonts/inter-600.woff';
-const FLOOR_Y = 0.22;
 const tmp = new THREE.Object3D();
 const tmpColor = new THREE.Color();
 
@@ -34,7 +33,7 @@ export function WalkInVenue({ v, near, onClick }: { v: PlacedVenue; near: boolea
         <boxGeometry args={[k.w + 3, 0.2, k.d + 6]} />
         <meshStandardMaterial color="#B9BCC2" roughness={1} />
       </mesh>
-      <mesh position={[0, FLOOR_Y - 0.01, 0]} receiveShadow onClick={onClick}>
+      <mesh position={[0, FLOOR_Y - 0.02, 0]} receiveShadow onClick={onClick}>
         <boxGeometry args={[k.w - WALL, 0.04, k.d - WALL]} />
         <meshStandardMaterial color={look.floor} roughness={0.85} />
       </mesh>
@@ -125,24 +124,23 @@ function Npc({ seed, act, position, rot = 0 }: { seed: string; act: FigureAct | 
 
 // ------------------------------------------------------------------ Club Moon
 
+const { n: N, tile: T, tileH, z: floorZ } = DANCE_FLOOR;
 const FLOOR_COLORS = ['#FF2E88', '#00E5FF', '#FFD60A', '#7B2CFF', '#00F5A0', '#FF6B00'];
 
 function Club({ k }: { k: WalkIn }) {
-  const N = 6, T = 1.15;
   const tiles = useRef<THREE.InstancedMesh>(null);
-  const tileGeo = useMemo(() => new THREE.BoxGeometry(T - 0.06, 0.05, T - 0.06), []);
+  const tileGeo = useMemo(() => new THREE.BoxGeometry(T - 0.06, tileH, T - 0.06), []);
   const beams = useRef<THREE.Group>(null);
   const ball = useRef<THREE.Mesh>(null);
   const speakers = useRef<THREE.Group>(null);
   const lA = useRef<THREE.PointLight>(null);
   const lB = useRef<THREE.PointLight>(null);
-  const floorZ = 0.4;
   useEffect(() => {
     const m = tiles.current;
     if (!m) return;
     for (let i = 0; i < N * N; i++) {
       const x = (i % N) - (N - 1) / 2, z = Math.floor(i / N) - (N - 1) / 2;
-      tmp.position.set(x * T, FLOOR_Y + 0.03, floorZ + z * T);
+      tmp.position.set(DANCE_FLOOR.x + x * T, DANCE_FLOOR.top - tileH / 2, floorZ + z * T);
       tmp.rotation.set(0, 0, 0);
       tmp.scale.set(1, 1, 1);
       tmp.updateMatrix();
@@ -246,9 +244,9 @@ function Club({ k }: { k: WalkIn }) {
       <pointLight ref={lA} position={[-2, FLOOR_Y + 3, floorZ]} distance={14} decay={1.6} />
       <pointLight ref={lB} position={[2, FLOOR_Y + 3, floorZ]} distance={14} decay={1.6} />
       {/* the crowd */}
-      <Npc seed="club-ada" act="dance" position={[-1.6, FLOOR_Y, floorZ - 0.8]} rot={0.4} />
-      <Npc seed="club-tunde" act="dance" position={[1.4, FLOOR_Y, floorZ + 0.6]} rot={-0.6} />
-      <Npc seed="club-zee" act="dance" position={[0.2, FLOOR_Y, floorZ - 2.2]} rot={3} />
+      <Npc seed="club-ada" act="dance" position={[-1.6, DANCE_FLOOR.top, floorZ - 0.8]} rot={0.4} />
+      <Npc seed="club-tunde" act="dance" position={[1.4, DANCE_FLOOR.top, floorZ + 0.6]} rot={-0.6} />
+      <Npc seed="club-zee" act="dance" position={[0.2, DANCE_FLOOR.top, floorZ - 2.2]} rot={3} />
       <Npc seed="club-bisola" act="selfie" position={[-k.w / 2 + 2.2, FLOOR_Y, 2]} rot={Math.PI / 2} />
     </group>
   );

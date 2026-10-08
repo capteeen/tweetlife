@@ -16,6 +16,12 @@ export const WALK_IN: Record<string, WalkIn> = {
 
 export const WALL = 0.4;
 
+/** Top of a walk-in venue's floor (lib/world/ground.ts stands everyone on it). */
+export const FLOOR_Y = 0.22;
+
+/** Club Moon's raised dance floor, in the club's frame: an N x N grid of tiles, `top` is where feet go. */
+export const DANCE_FLOOR = { n: 6, tile: 1.15, x: 0, z: 0.4, size: 6 * 1.15, tileH: 0.05, top: FLOOR_Y + 0.05 };
+
 /** Wall rects in the venue's frame: back, two sides, and the front either side of the door. */
 export function wallsOf(k: WalkIn): { x: number; z: number; w: number; d: number }[] {
   const seg = (k.w - k.door) / 2;

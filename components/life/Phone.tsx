@@ -15,6 +15,8 @@ import { showWelcomeAgain } from './Welcome';
 import { IdCard } from '@/components/citizen/IdCard';
 import { countryOf } from '@/lib/world/countries';
 import { SoundSettings } from '@/components/audio/SoundSettings';
+import { RelationshipsApp } from './RelationshipsApp';
+import { useLove } from './loveClient';
 
 /** Buys at or above this many bags ask "Sure?" first. */
 const BIG_SPEND = 1000;
@@ -33,6 +35,7 @@ const APPS: { id: PhoneApp; label: string; emoji: string; bg: string }[] = [
   { id: 'house', label: 'House', emoji: '🏠', bg: 'linear-gradient(135deg,#F28C28,#C99A5B)' },
   { id: 'rich', label: 'Rich list', emoji: '👑', bg: 'linear-gradient(135deg,#FFD089,#B8A382)' },
   { id: 'gist', label: 'Gist', emoji: '💬', bg: 'linear-gradient(135deg,#1D9BF0,#2EC4B6)' },
+  { id: 'love', label: 'Relationships', emoji: '💞', bg: 'linear-gradient(135deg,#FF5D8F,#8338EC)' },
   { id: 'map', label: 'Map', emoji: '🗺️', bg: 'linear-gradient(135deg,#7FB069,#2D6A4F)' },
   { id: 'guestbook', label: 'Guestbook', emoji: '🪨', bg: 'linear-gradient(135deg,#E8DCC8,#8A96A8)' },
   { id: 'id', label: 'ID card', emoji: '🪪', bg: 'linear-gradient(135deg,#9945FF,#F3BA2F,#00C805)' },
@@ -44,6 +47,7 @@ export function Phone({ sendSocial, handle }: { sendSocial: SocialSend; handle: 
   const openPhone = useWorld((s) => s.openPhone);
   const closePhone = useWorld((s) => s.closePhone);
   const me = useWorld((s) => s.life?.me ?? null);
+  const waiting = useLove((s) => s.state?.incoming.length ?? 0);
   if (!phone.open) return null;
   const title = APPS.find((a) => a.id === phone.app)?.label ?? '';
   return (
@@ -81,8 +85,11 @@ export function Phone({ sendSocial, handle }: { sendSocial: SocialSend; handle: 
             <div className="grid grid-cols-4 gap-x-2 gap-y-5 pt-4">
               {APPS.map((a) => (
                 <button key={a.id} className="flex flex-col items-center gap-1.5 text-[11px] text-white/90" onClick={() => openPhone(a.id)}>
-                  <span className="flex h-14 w-14 items-center justify-center rounded-2xl text-2xl shadow-lg" style={{ background: a.bg }}>
+                  <span className="relative flex h-14 w-14 items-center justify-center rounded-2xl text-2xl shadow-lg" style={{ background: a.bg }}>
                     {a.emoji}
+                    {a.id === 'love' && waiting > 0 && (
+                      <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-500 px-1 text-[11px] font-bold">{waiting}</span>
+                    )}
                   </span>
                   {a.label}
                 </button>
@@ -114,6 +121,8 @@ export function Phone({ sendSocial, handle }: { sendSocial: SocialSend; handle: 
             <GuestbookApp />
           ) : phone.app === 'id' ? (
             <IdApp />
+          ) : phone.app === 'love' ? (
+            <RelationshipsApp />
           ) : (
             <SettingsApp handle={handle} />
           )}

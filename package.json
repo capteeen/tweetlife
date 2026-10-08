@@ -18,7 +18,8 @@
     "db:generate": "prisma generate",
     "postinstall": "prisma generate",
     "vercel-build": "prisma generate && node scripts/migrate.mjs && next build",
-    "migrate": "node scripts/migrate.mjs"
+    "migrate": "node scripts/migrate.mjs",
+    "check:world": "tsx scripts/check-world.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.19.1",

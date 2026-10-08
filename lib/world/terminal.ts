@@ -29,6 +29,8 @@ export type Terminal = {
 };
 
 const T = 0.4; // wall thickness
+/** Top of the terminal's floor (lib/world/ground.ts stands travellers on it). */
+export const TERMINAL_FLOOR = 0.08;
 
 export function terminalLayout(ap: Airport): Terminal {
   const r = ap.terminal;

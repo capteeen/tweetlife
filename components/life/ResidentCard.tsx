@@ -4,13 +4,16 @@ import { useWorld, type ResidentMsg } from '@/components/world/store';
 import { RESIDENTS, doingLabel, residentById } from '@/lib/life/residents';
 import { placeVenues } from '@/lib/life/venues';
 import { buildRoutes, poseAt } from '@/components/world/residentPaths';
+import { SocialMenu } from './SocialMenu';
+import { refreshLove } from './loveClient';
+import type { SocialSend } from './useLife';
 
 // Tap a named resident: who they are, what they're up to, and a conversation with them (AI, via
 // /api/life/residents/chat). Their latest line also pops up over their head.
 
 const STARTERS = ['How far? 👋', 'What\'s happening here?', 'Any gist?', 'How do I get more bags?'];
 
-export function ResidentCard() {
+export function ResidentCard({ sendSocial }: { sendSocial: SocialSend }) {
   const id = useWorld((s) => s.selectedResident);
   const select = useWorld((s) => s.selectResident);
   const me = useWorld((s) => s.life?.me ?? null);
@@ -61,6 +64,8 @@ export function ResidentCard() {
       if (!res.ok || !j.reply) throw new Error(j.error ?? 'They didn\'t catch that. Try again.');
       useWorld.getState().pushResidentChat(r.id, { role: 'assistant', content: j.reply });
       useWorld.getState().residentSay(r.id, j.reply.length > 90 ? j.reply.slice(0, 87).replace(/\s+\S*$/, '') + '…' : j.reply);
+      // chatting builds affinity: refresh the bar
+      refreshLove();
     } catch (e) {
       setErr((e as Error).message);
     } finally {
@@ -70,7 +75,7 @@ export function ResidentCard() {
 
   const first = r.name.replace(/^(Big|Coach|Uncle|DJ|Nurse) /, '');
   return (
-    <div className="pointer-events-auto absolute bottom-20 left-1/2 z-30 flex w-[min(94vw,520px)] -translate-x-1/2 flex-col rounded-3xl chrome p-4 sm:p-5">
+    <div className="pointer-events-auto absolute bottom-20 left-1/2 z-30 flex max-h-[78vh] w-[min(94vw,520px)] -translate-x-1/2 flex-col overflow-y-auto rounded-3xl chrome p-4 sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
           <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-lg font-bold text-[#0B0E14]" style={{ background: r.look.shirt === '#0B0E14' ? '#FFD089' : r.look.shirt }}>
@@ -136,6 +141,17 @@ export function ResidentCard() {
         </>
       )}
       {err && <p className="mt-2 text-xs text-rose-300">{err}</p>}
+      {me && (
+        <SocialMenu
+          target={{ kind: 'resident', id: r.id, name: r.name }}
+          sendSocial={sendSocial}
+          say={(text, role: 'user' | 'assistant' = 'assistant') => {
+            const s = useWorld.getState();
+            s.pushResidentChat(r.id, { role, content: text });
+            if (role === 'assistant') s.residentSay(r.id, text.length > 90 ? text.slice(0, 87).replace(/\s+\S*$/, '') + '…' : text);
+          }}
+        />
+      )}
       <p className="mt-2 text-[10px] text-white/35">AI resident · replies are generated and may be made up</p>
     </div>
   );

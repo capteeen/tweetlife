@@ -103,6 +103,8 @@ export const ROAD = 7;
 export const PITCH_X = BLOCK_W + 2 * SIDEWALK + ROAD; // 39
 export const PITCH_Z = BLOCK_D + 2 * SIDEWALK + ROAD; // 33
 export const LOTS_PER_BLOCK = LOTS_PER_SIDE * 2;
+/** Repost lamps stand at least this far to the side of the door they are in front of. */
+const LAMP_DOOR_CLEAR = 1.8;
 
 /** Block coordinates in fill order: ring by ring from the centre, each ring clockwise from the top. */
 export function blockOrder(count: number): { i: number; j: number }[] {
@@ -169,9 +171,9 @@ export function skyFromAccountAge(accountCreatedAt: Date, now = new Date()): { p
 }
 
 export function boundaryRadiusFor(followersCount: number, contentRadius: number) {
-  // followers set the boundary; the city always fits inside it with a margin of countryside.
+  // followers set the boundary; the city, its ring of venues and the district names always fit inside it.
   const fromFollowers = 60 + Math.log10(1 + followersCount) * 30; // 0 -> 60, 1k -> 150, 1M -> 240
-  return Math.max(contentRadius + 30, fromFollowers);
+  return Math.max(contentRadius + 36, fromFollowers);
 }
 
 export function residentsFor(followersCount: number) {
@@ -286,14 +288,16 @@ export function buildWorld(rowsIn: StructureRow[], opts: BuildOptions): WorldGeo
       }
     }
 
-    // Lamp (repost): on the sidewalk in front of the previous building.
+    // Lamp (repost): on the curb side of the sidewalk in front of the previous building, never in its doorway.
     if (r.kind === 'lantern' && lastBuilding) {
       const side = lastBuilding.rot === 0 ? 1 : -1;
+      let dx = (rand() - 0.5) * (LOT_W - 1.5);
+      if (Math.abs(dx) < LAMP_DOOR_CLEAR) dx = (dx < 0 ? -1 : 1) * LAMP_DOOR_CLEAR;
       const p: Placed = {
         ...base,
         kind: 'lantern',
-        x: lastBuilding.x + (rand() - 0.5) * (LOT_W - 1.5),
-        z: lastBuilding.z + side * (lastBuilding.depth / 2 + 1.2 + SIDEWALK),
+        x: lastBuilding.x + dx,
+        z: lastBuilding.z + side * (lastBuilding.depth / 2 + 1.2 + SIDEWALK * 0.75),
         y: 0,
         rot: lastBuilding.rot,
         height: MIN_HEIGHT.lantern,
@@ -312,11 +316,15 @@ export function buildWorld(rowsIn: StructureRow[], opts: BuildOptions): WorldGeo
       const hourAgo = t - 3600 * 1000;
       const parent = [...placed].reverse().find((p) => p.kind !== 'outbuilding' && p.kind !== 'lantern' && Date.parse(p.postedAt) >= hourAgo) ?? lastBuilding;
       const w = scaleWidth('outbuilding', r.reposts);
-      const sideX = rand() < 0.5 ? -1 : 1;
+      // beside the parent, on whichever side keeps it inside the block (an end lot has a sidewalk on one side)
+      const bx = Math.round(parent.x / PITCH_X) * PITCH_X;
+      const off = parent.width / 2 + w / 2 + 0.3;
+      let sideX = rand() < 0.5 ? -1 : 1;
+      if (Math.abs(parent.x + sideX * off - bx) + w / 2 > BLOCK_W / 2 - 0.2) sideX = -sideX;
       const p: Placed = {
         ...base,
         kind: 'outbuilding',
-        x: parent.x + sideX * (parent.width / 2 + w / 2 + 0.3),
+        x: parent.x + sideX * off,
         z: parent.z + (parent.rot === 0 ? -1 : 1) * (parent.depth / 2 + w * 0.45 + 0.3),
         y: 0,
         rot: parent.rot,
@@ -405,13 +413,14 @@ export function buildWorld(rowsIn: StructureRow[], opts: BuildOptions): WorldGeo
 }
 
 // Top surfaces of the ground layers City.tsx draws, so walkers stand on them instead of on y = 0.
-const ASPHALT_TOP = 0.04;
+export const ASPHALT_TOP = 0.04;
 export const SIDEWALK_TOP = 0.2;
 const BLOCK_TOP = 0.26;
 const LOT_TOP = 0.28;
 const COUNTRYSIDE_TOP = -0.05;
 
-/** Height of the walkable surface at (x, z): vacant lot, block, sidewalk, road, or countryside. */
+/** Height of the post grid's surface at (x, z): vacant lot, block, sidewalk, road, or countryside. Walkers use
+ * surfaceY in lib/world/ground.ts, which adds everything outside the grid (venues, ring road, airport). */
 export function groundHeightAt(blocks: Block[], grid: CityGrid, x: number, z: number): number {
   const { K, pitchX, pitchZ, blockW, blockD, road, sidewalk } = grid;
   if (blocks.length === 0) return COUNTRYSIDE_TOP;
@@ -427,8 +436,3 @@ export function groundHeightAt(blocks: Block[], grid: CityGrid, x: number, z: nu
   return BLOCK_TOP;
 }
 
-
-/** Ground height for walkers and cars inside the boundary; boats past the shore keep the water line. */
-export function surfaceY(blocks: Block[], grid: CityGrid, x: number, z: number, boundaryRadius: number) {
-  return Math.hypot(x, z) > boundaryRadius ? 0 : groundHeightAt(blocks, grid, x, z);
-}

@@ -59,7 +59,7 @@ const SPOTS: Record<string, Partial<Record<ResidentDoing, Spot[]>>> = {
   // government house (lib/world/capitol.ts): down the carpet, then round the benches, desk and cabinet table
   capitol: {
     desk: [{ x: DESK_CHAIR.x, z: DESK_CHAIR.z, rot: 0, act: chair('write', DESK_CHAIR.seat), via: [[0.8, 0.3], [2.2, -3.0], [2.2, -5.2], [0.9, -5.2]] }],
-    podium: [{ x: PODIUM.x - 0.2, z: PODIUM.z - 0.8, rot: PODIUM.rot, act: stand('cheer'), via: [[-0.8, 0.3], [-1.3, -1.7]] }],
+    podium: [{ x: PODIUM.x - 0.2, z: PODIUM.z - 0.8, rot: PODIUM.rot, act: stand('cheer'), via: [[-0.8, 0.3], [-1.3, -1.7], [-3.6, -3.4]] }],
     // the four seats ministers use, in cast order: near side first, then the far side round the end of the table
     cabinet: [CABINET_CHAIRS[0], CABINET_CHAIRS[3], CABINET_CHAIRS[4], CABINET_CHAIRS[1]].map((c, i) => ({
       x: c.x,

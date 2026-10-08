@@ -54,11 +54,13 @@ Requirements: Node 18.17+, Postgres, Redis, ffmpeg (timelapse only), an X develo
    - `npm run build && npm start` — the web app
    - `npm run worker` — ingestion worker + scheduler (required: without it no world is ever built)
    - `npm run worker:timelapse` — optional, timelapse renders (needs Chromium via Playwright + ffmpeg)
-5. Presence (optional): `npx partykit env add PRESENCE_SECRET` with the same value as in `.env`, then
-   `npm run party:deploy` and set `NEXT_PUBLIC_PARTYKIT_HOST` to the deployed host. Without it worlds work, just
-   without live visitors and chat (the bottom bar shows `—` for visitors online, never a fake number).
-   After that, `.github/workflows/party-deploy.yml` redeploys it whenever `party/` changes on the default branch,
-   once the `PARTYKIT_LOGIN` and `PARTYKIT_TOKEN` (`npx partykit token generate`) repository secrets are set.
+5. Presence (optional): the room server in `party/world.ts` runs on your own Cloudflare account (free plan) through
+   `presence/` (PartyServer + Wrangler). Put your account id in `presence/wrangler.jsonc`, add the repository secrets
+   `CLOUDFLARE_API_TOKEN` ("Edit Cloudflare Workers" token) and `PRESENCE_SECRET` (same value as in `.env`), then run the "Deploy presence
+   server" GitHub Action (it also runs on every merge that touches `party/` or `presence/`). Set
+   `NEXT_PUBLIC_PARTYKIT_HOST` to the host it prints (`tweetlife-presence.<subdomain>.workers.dev`) and redeploy.
+   Without it worlds work, just without live visitors and chat (the bottom bar shows `—` for visitors online, never
+   a fake number). Locally, `npm run party:dev` (PartyKit) or `cd presence && npx wrangler dev --port 1999` both work.
 6. Sign in with X as the operator. Your world is queued and built from your timeline. In `/my-world` set access to
    **public** and put your handle in `OPERATOR_HANDLE` — it is then embedded on `/`, labelled as the real account it is.
 

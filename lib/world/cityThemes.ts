@@ -5,10 +5,10 @@ import { FACADE } from './buildings';
 // ring road, venues, airport), dressed in its coin's colours: ground, water and sky tints, building
 // awnings, roofs, signs and glass, district and venue names, billboard art, ring-road traffic, a
 // landmark on its own islet in the lagoon, and a welcome arch on the airport road.
-// Solana City is the city that existed before countries, so its theme changes the least.
+// Every logo is the coin's real mark (public/countries/). Solana City is the city that existed before countries, so its theme changes the least.
 
-export type Ad = { title: string; sub: string; from: string; to: string };
-export type LandmarkKind = 'solana-bars' | 'bnb-diamond' | 'hood-feather';
+/** `logo`: draw the country's real coin logo on the board */
+export type Ad = { title: string; sub: string; from: string; to: string; logo?: boolean };
 
 export type CityTheme = {
   country: CountryId;
@@ -32,7 +32,8 @@ export type CityTheme = {
   ads: Ad[];
   /** ring-road car colours */
   traffic: string[];
-  landmark: { kind: LandmarkKind; name: string };
+  /** the coin's logo, extruded into a monument on the lagoon islet */
+  landmark: { name: string };
   /** ground lettering colour for district names */
   label: string;
 };
@@ -51,15 +52,15 @@ const SOLANA: CityTheme = {
   districts: {},
   venues: { airport: { name: 'Solana International' } },
   ads: [
-    { title: 'SOLANA CITY', sub: 'Fast blocks. Faster bags.', from: '#9945FF', to: '#14F195' },
+    { title: 'SOLANA CITY', sub: 'Fast blocks. Faster bags.', from: '#9945FF', to: '#14F195', logo: true },
     { title: 'CLUB MOON', sub: 'Dance tonight. Everyone sees.', from: '#FF5D8F', to: '#5B1A6B' },
     { title: 'THE TRENCHES', sub: 'Live memecoins. Ape with bags.', from: '#06D6A0', to: '#0B4D3B' },
-    { title: 'PRESIDENT ANSEM', sub: 'Send it. Responsibly.', from: '#DC1FFF', to: '#2A0E5C' },
+    { title: 'PRESIDENT ANSEM', sub: 'Send it. Responsibly.', from: '#DC1FFF', to: '#2A0E5C', logo: true },
     { title: 'FLY PRIVATE', sub: 'Jets at the Airport hangar', from: '#BFE3FF', to: '#3A6EA5' },
     { title: 'SUYA SPOT', sub: 'Pepper. Smoke. Gas.', from: '#E63946', to: '#5C1A1F' },
   ],
   traffic: ['#9945FF', '#F4F1DE', '#F7C600', '#14F195', '#1F4E79'],
-  landmark: { kind: 'solana-bars', name: 'The Three Bars' },
+  landmark: { name: 'The Three Bars' },
   label: '#FFFFFF',
 };
 
@@ -96,15 +97,15 @@ const BNB: CityTheme = {
     airport: { name: 'BNB International' },
   },
   ads: [
-    { title: 'BUILD BUILD BUILD', sub: 'President CZ is watching.', from: '#F3BA2F', to: '#1E2026' },
-    { title: 'FUNDS ARE SAFU', sub: 'Gold Vault, Pancake Quarter', from: '#FCD535', to: '#3A2E05' },
+    { title: 'BUILD BUILD BUILD', sub: 'President CZ is watching.', from: '#F3BA2F', to: '#1E2026', logo: true },
+    { title: 'FUNDS ARE SAFU', sub: 'Gold Vault, Pancake Quarter', from: '#FCD535', to: '#3A2E05', logo: true },
     { title: 'CLUB YELLOW', sub: 'Gold lights. Black floor. Dance.', from: '#F0B90B', to: '#0B0E11' },
     { title: 'PANCAKE HOUSE', sub: 'Stacks on stacks. Gas refill.', from: '#E8A33D', to: '#4A2A0A' },
     { title: 'FLY PRIVATE', sub: 'BNB International hangar', from: '#FCD535', to: '#2B2F36' },
     { title: '4', sub: 'Ignore the FUD. Keep building.', from: '#1E2026', to: '#F3BA2F' },
   ],
   traffic: ['#F3BA2F', '#1E2026', '#FCD535', '#2B2F36', '#F5E6B8'],
-  landmark: { kind: 'bnb-diamond', name: 'The Gold Diamond' },
+  landmark: { name: 'The Gold Diamond' },
   label: '#FCD535',
 };
 
@@ -140,15 +141,15 @@ const ROBINHOOD: CityTheme = {
     airport: { name: 'Robinhood International' },
   },
   ads: [
-    { title: 'MARKETS FOR THE PEOPLE', sub: 'President Vlad Tenev', from: '#00C805', to: '#0B1F0C' },
-    { title: 'ZERO COMMISSION', sub: 'Options Pit Coin Shop. Ape for free.', from: '#CCFF00', to: '#1F3D00' },
+    { title: 'MARKETS FOR THE PEOPLE', sub: 'President Vlad Tenev', from: '#00C805', to: '#0B1F0C', logo: true },
+    { title: 'ZERO COMMISSION', sub: 'Options Pit Coin Shop. Ape for free.', from: '#CCFF00', to: '#1F3D00', logo: true },
     { title: 'CLUB SHERWOOD', sub: 'Green lights. Merry dancing.', from: '#21CE99', to: '#0B2A1F' },
-    { title: 'TAKE FROM THE RICH', sub: 'Give to your bags.', from: '#00C805', to: '#CCFF00' },
+    { title: 'TAKE FROM THE RICH', sub: 'Give to your bags.', from: '#00C805', to: '#CCFF00', logo: true },
     { title: 'FLY PRIVATE', sub: 'Robinhood International hangar', from: '#E8FFD0', to: '#1F6B2A' },
     { title: "ARCHER'S GRILL", sub: 'Fire. Smoke. Gas.', from: '#E67E22', to: '#3A1A05' },
   ],
   traffic: ['#00C805', '#0B1F0C', '#F4F1DE', '#CCFF00', '#21CE99'],
-  landmark: { kind: 'hood-feather', name: 'The Green Feather' },
+  landmark: { name: 'The Green Feather' },
   label: '#CCFF00',
 };
 

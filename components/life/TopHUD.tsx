@@ -23,10 +23,11 @@ export function TopHUD({ online, handle }: { online: number | null; handle: stri
     <div className="pointer-events-auto absolute left-1/2 top-3 z-20 flex max-w-[calc(100vw-24px)] -translate-x-1/2 items-center gap-2 rounded-full chrome px-2 py-1.5 text-sm sm:gap-3 sm:px-3">
       <span
         className="whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-bold"
-        style={{ background: `linear-gradient(90deg, ${country.theme.gradient[0]}, ${country.theme.gradient[1]})`, color: country.theme.ink }}
+        style={{ background: country.theme.ink, color: '#FFFFFF', boxShadow: `inset 0 0 0 1.5px ${country.theme.primary}` }}
         title={`${country.capital}, ${country.name}. President ${country.president}`}
       >
-        {country.flag} <span className="max-[420px]:hidden">{country.capital}</span>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={country.logo} alt={country.name} className="inline-block h-3.5 w-3.5 align-[-2px]" /> <span className="max-[420px]:hidden">{country.capital}</span>
       </span>
       <span className="num whitespace-nowrap px-1">
         {icon} <span className="max-[420px]:hidden">{day} · </span>

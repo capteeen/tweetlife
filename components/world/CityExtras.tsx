@@ -9,7 +9,7 @@ import { prng, hashString } from '@/lib/world/seed';
 import { COUNTRIES } from '@/lib/world/countries';
 import { districtName, themeOf, themedPalette, type CityTheme } from '@/lib/world/cityThemes';
 import { useWorld } from './store';
-import { Landmark, WelcomeArch } from './Landmarks';
+import { Landmark, WelcomeArch, logoImage } from './Landmarks';
 import {
   DISTRICTS, RING_ROAD_W, RING_SLOTS, airportLayout, billboardSpots, ringRoadRadius, slotAngle, venueRingRadius, type Airport, type Rect,
 } from '@/lib/world/layout';
@@ -74,7 +74,8 @@ export function CityExtras({ contentRadius, boundaryRadius, grid, hasCity, biome
     const top = structures.find((s) => s.isLandmark && s.text) ?? null;
     const quote = top?.text ? `“${top.text.replace(/https?:\/\/\S+/g, '').trim().slice(0, 70)}${top.text.length > 70 ? '…' : ''}”` : 'Every post is a building.';
     // the owner's own board first, then the country's
-    return [{ title: `@${handle}`, sub: quote, from: '#1D9BF0', to: '#0B3B66' }, ...theme.ads];
+    const logo = COUNTRIES[theme.country].logo;
+    return [{ title: `@${handle}`, sub: quote, from: '#1D9BF0', to: '#0B3B66' }, ...theme.ads.map((a) => ({ ...a, logo: a.logo ? logo : undefined }))];
   }, [structures, handle, theme]);
   const spots = useMemo(() => billboardSpots(contentRadius, boundaryRadius), [contentRadius, boundaryRadius]);
 
@@ -234,7 +235,9 @@ function RingTraffic({ r, handle, player, colors }: { r: number; handle: string;
   );
 }
 
-function adTexture(ad: { title: string; sub: string; from: string; to: string }) {
+type BoardAd = { title: string; sub: string; from: string; to: string; logo?: string };
+
+function adTexture(ad: BoardAd) {
   const c = document.createElement('canvas');
   c.width = 512;
   c.height = 256;
@@ -251,7 +254,9 @@ function adTexture(ad: { title: string; sub: string; from: string; to: string })
   g.fillStyle = '#FFFFFF';
   g.font = '800 58px Inter, system-ui, sans-serif';
   g.textBaseline = 'top';
-  g.fillText(ad.title, 28, 34, 456);
+  // boards with the country's real logo keep its top-right corner for it
+  const textW = ad.logo ? 330 : 456;
+  g.fillText(ad.title, 28, 34, textW);
   g.font = '500 30px Inter, system-ui, sans-serif';
   const words = ad.sub.split(/\s+/);
   let line = '', y = 120;
@@ -268,10 +273,19 @@ function adTexture(ad: { title: string; sub: string; from: string; to: string })
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   t.anisotropy = 4;
+  if (ad.logo)
+    logoImage(ad.logo, 104, (img) => {
+      g.fillStyle = 'rgba(11,14,17,0.55)';
+      g.beginPath();
+      g.arc(430, 82, 66, 0, Math.PI * 2);
+      g.fill();
+      g.drawImage(img, 378, 30);
+      t.needsUpdate = true;
+    });
   return t;
 }
 
-function BillboardSign({ x, z, rot, ad }: { x: number; z: number; rot: number; ad: { title: string; sub: string; from: string; to: string } }) {
+function BillboardSign({ x, z, rot, ad }: { x: number; z: number; rot: number; ad: BoardAd }) {
   const tex = useMemo(() => adTexture(ad), [ad]);
   useEffect(() => () => tex.dispose(), [tex]);
   return (

@@ -23,6 +23,14 @@ export function CityMap() {
   const open = useWorld((s) => s.mapOpen);
   const model = useWorld((s) => s.model);
   const country = useWorld((s) => s.country);
+  const logo = useMemo(() => {
+    if (typeof window === 'undefined') return null;
+    const i = new Image();
+    i.src = COUNTRIES[country].logo;
+    return i;
+  }, [country]);
+  const logoRef = useRef(logo);
+  logoRef.current = logo;
   const setMapOpen = useWorld((s) => s.setMapOpen);
   const selectVenue = useWorld((s) => s.selectVenue);
   const selectPeer = useWorld((s) => s.selectPeer);
@@ -109,10 +117,14 @@ export function CityMap() {
     ctx.beginPath();
     ctx.arc(sx(lm.x), sz(lm.z), lm.r * s, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = COUNTRIES[theme.country].theme.primary;
+    // the coin's real logo stands on it
+    const li = logoRef.current;
+    const ls = lm.r * 1.3 * s;
+    ctx.fillStyle = COUNTRIES[theme.country].theme.ink;
     ctx.beginPath();
-    ctx.arc(sx(lm.x), sz(lm.z), lm.r * 0.45 * s, 0, Math.PI * 2);
+    ctx.arc(sx(lm.x), sz(lm.z), lm.r * 0.85 * s, 0, Math.PI * 2);
     ctx.fill();
+    if (li?.complete && li.naturalWidth) ctx.drawImage(li, sx(lm.x) - ls / 2, sz(lm.z) - ls / 2, ls, ls);
     // airport island and bridge
     rect({ ...ap.island, w: ap.island.w + 2, d: ap.island.d + 2 }, pal.sand);
     rect(ap.island, pal.lush);
@@ -490,7 +502,9 @@ export function CityMap() {
     <div className="pointer-events-auto fixed inset-0 z-40 flex flex-col bg-black/40 backdrop-blur-sm">
       <div className="flex items-start gap-2 px-3 pt-3">
         <div className="flex min-w-0 flex-1 flex-wrap gap-1.5 rounded-3xl chrome p-1.5 sm:flex-nowrap sm:overflow-x-auto sm:rounded-full">
-          <span className="hidden shrink-0 items-center whitespace-nowrap px-2 text-sm font-semibold sm:flex">{COUNTRIES[country].flag} {COUNTRIES[country].capital}</span>
+          <span className="hidden shrink-0 items-center whitespace-nowrap px-2 text-sm font-semibold sm:flex">{/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={COUNTRIES[country].logo} alt="" className="mr-1.5 h-4 w-4" />
+            {COUNTRIES[country].capital}</span>
           {chip('venues', '🏙️ Venues')}
           {chip('neighbours', '🧍 Neighbours')}
           {chip('billboards', '🪧 Billboards')}

@@ -35,7 +35,7 @@ export function HUD({
 
   const share = async () => {
     const url = square ? `${location.origin}/c/${country}` : `${location.origin}/w/${model.handle}`;
-    const text = square ? `Come hang out in ${COUNTRIES[country].capital} on TweetLife.` : `Walk around @${model.handle}'s block on TweetLife — ${model.structureCount} posts, built from the real timeline.`;
+    const text = square ? `Come hang out in ${COUNTRIES[country].capital} on Degenly.` : `Walk around @${model.handle}'s block on Degenly — ${model.structureCount} posts, built from the real timeline.`;
     if (navigator.share) {
       await navigator.share({ title: square ? COUNTRIES[country].capital : `@${model.handle}'s block`, text, url }).catch(() => {});
     } else {

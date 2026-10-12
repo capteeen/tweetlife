@@ -284,7 +284,7 @@ function Bank({ sendSocial }: { sendSocial: SocialSend }) {
             Send
           </button>
         </div>
-        <p className="mt-1 text-[11px] text-white/45">Anyone who has signed in to TweetLife. They get a toast if they are inside a world.</p>
+        <p className="mt-1 text-[11px] text-white/45">Anyone who has signed in to Degenly. They get a toast if they are inside a world.</p>
       </Section>
       {err && <p className="mt-2 text-xs text-rose-300">{err}</p>}
       <Section title="Ledger">
@@ -372,7 +372,7 @@ function Solana({ sendSocial, prefillTo }: { sendSocial: SocialSend; prefillTo: 
             Send
           </button>
         </div>
-        <p className="mt-1 text-[11px] text-white/45">A handle sends to that player&apos;s TweetLife wallet. An address sends anywhere. On-chain and irreversible.</p>
+        <p className="mt-1 text-[11px] text-white/45">A handle sends to that player&apos;s Degenly wallet. An address sends anywhere. On-chain and irreversible.</p>
       </Section>
 
       <Section title="Tokens">
@@ -417,7 +417,7 @@ function Solana({ sendSocial, prefillTo }: { sendSocial: SocialSend; prefillTo: 
 
       <Section title="Your keys">
         <p className="text-[11px] text-white/55">
-          This wallet was generated for you and its key is stored encrypted on TweetLife&apos;s server. You can take it anywhere: reveal the secret key and import it into Phantom or Solflare. Anyone who sees the key controls the funds.
+          This wallet was generated for you and its key is stored encrypted on Degenly&apos;s server. You can take it anywhere: reveal the secret key and import it into Phantom or Solflare. Anyone who sees the key controls the funds.
         </p>
         {secret ? (
           <div className="mt-2 rounded-xl bg-black/40 p-3">

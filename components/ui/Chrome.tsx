@@ -26,7 +26,7 @@ export function Header({ user }: { user: SessionUser | null }) {
     <header className="sticky top-0 z-30 chrome border-x-0 border-t-0">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
         <Link href="/" className="font-semibold tracking-tight">
-          TweetLife
+          Degenly
         </Link>
         <nav className="flex items-center gap-1 text-sm">
           <Link className="btn-ghost !px-3 !py-1.5" href="/explore">Explore</Link>
@@ -51,7 +51,7 @@ export function Footer() {
   return (
     <footer className="mx-auto max-w-6xl px-4 py-10 text-xs text-white/45">
       <p>
-        TweetLife is an unofficial fan project. It is not affiliated with, endorsed by, or sponsored by X Corp. Worlds are built only
+        Degenly is an unofficial fan project. It is not affiliated with, endorsed by, or sponsored by X Corp. Worlds are built only
         from data the signed-in account authorises us to read. <Link className="underline" href="/how">How a world grows</Link> ·{' '}
         <Link className="underline" href="/status">Status</Link> ·{' '}
         <a className="underline" href={X_ACCOUNT_URL} target="_blank" rel="noopener noreferrer">

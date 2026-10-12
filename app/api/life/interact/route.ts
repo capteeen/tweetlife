@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
   const def = INTERACTIONS[kind];
   if (!def) return bad('Unknown interaction');
   const target = await db.user.findFirst({ where: { handle: { equals: parsed.data.toHandle.replace(/^@/, ''), mode: 'insensitive' } } });
-  if (!target) return bad('That person has not signed in to TweetLife.', 404);
+  if (!target) return bad('That person has not signed in to Degenly.', 404);
   if (target.id === user.id) return bad('That is you.');
 
   const lock = await redis().set(`interact:${user.id}:${target.id}:${kind}`, '1', 'EX', 60, 'NX').catch(() => 'OK');

@@ -1,4 +1,4 @@
-// "Sunny Block", the Tweetlife theme: a sunny city-pop loop synthesised in the browser (no audio files, nothing to
+// "Sunny Block", the Degenly theme: a sunny city-pop loop synthesised in the browser (no audio files, nothing to
 // license: it is written here). 104 bpm in F major, 16 bars (about 37 s) that loop. Electric piano chords, a round
 // bass, a marimba melody, glockenspiel and arpeggios on the second half, light drums, and a bird that tweets now and
 // then. Every instrument takes (context, destination, time) so the same score plays live or renders offline.
@@ -226,7 +226,7 @@ export function bell(r: Rig, t: number, midi: number, level: number, panAt = -0.
   send(r, p, r.out, 0.6);
 }
 
-/** A little bird: two or three fast upward chirps. It is called Tweetlife, after all. */
+/** A little bird: two or three fast upward chirps. */
 export function tweet(r: Rig, t: number, level: number, panAt = 0.5, notes = 2) {
   const { ctx } = r, p = pan(r, panAt);
   for (let i = 0; i < notes; i++) {

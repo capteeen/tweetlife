@@ -20,7 +20,7 @@ export default async function CreatePage({ searchParams }: { searchParams: { nex
       <main className="fixed inset-0 flex items-center justify-center bg-base p-6">
         <div className="card max-w-sm text-center">
           <h1 className="text-lg font-semibold">Create your look</h1>
-          <p className="mt-2 text-white/60">Sign in with X to pick how you look in TweetLife.</p>
+          <p className="mt-2 text-white/60">Sign in with X to pick how you look in Degenly.</p>
           <div className="mt-4">
             <SignInButton returnTo={`/create?next=${encodeURIComponent(next)}`} />
           </div>

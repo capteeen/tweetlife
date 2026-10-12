@@ -1,4 +1,6 @@
-# TweetLife — your X account, as a world
+# Degenly — living degenly
+
+Your X account, as a world.
 
 Every X account has one persistent, low-poly 3D world generated from its **real** posting history. Posts become
 structures, engagement becomes scale and light, posting cadence becomes terrain, followers become residents. Only the

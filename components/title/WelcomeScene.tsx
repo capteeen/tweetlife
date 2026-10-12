@@ -630,7 +630,7 @@ function Floaters() {
   );
 }
 
-/** A few birds circling over the city. It is called Tweetlife. */
+/** A few birds circling over the city. */
 function Birds() {
   const birds = useMemo(
     () => [

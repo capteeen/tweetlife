@@ -1,7 +1,7 @@
 import { COUNTRIES, COUNTRY_IDS, isCountryId, type CountryId } from '@/lib/world/countries';
 
 // Plane paint schemes. Each country flies its coin's colours with the coin's logo on the fin (the same marks as
-// public/countries/*.svg); everything else gets the Tweetlife house colours, or a single tint.
+// public/countries/*.svg); everything else gets the Degenly house colours, or a single tint.
 
 export type LogoMark = {
   /** SVG path data in a 24 x 24 box, y down */

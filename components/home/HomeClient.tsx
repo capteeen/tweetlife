@@ -112,7 +112,7 @@ export function HomeClient({ handle, residentId }: { handle?: string; residentId
         <div className="card max-w-md text-center">
           <h1 className="text-lg font-semibold">{handle ? `No house for @${handle.replace(/^@/, '')}` : 'Sign in to get a house'}</h1>
           <p className="mt-2 text-white/60">{error}</p>
-          <div className="mt-4">{handle ? <a className="btn" href="/">TweetLife</a> : <SignInButton returnTo="/home" label="Sign in with X" />}</div>
+          <div className="mt-4">{handle ? <a className="btn" href="/">Degenly</a> : <SignInButton returnTo="/home" label="Sign in with X" />}</div>
         </div>
       </div>
     );

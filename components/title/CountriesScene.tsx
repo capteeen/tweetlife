@@ -9,7 +9,7 @@ import { BubbleBuilding, FlyingPlane, IslandBase, TreeField, Windows, type Block
 
 // The three countries on the welcome page: Solana, BNB and Robinhood as little floating speech-bubble
 // islands in their coin's colours, each with its real logo standing in the middle of its capital, and a
-// Tweetlife airliner flying a loop between them. Same style and pieces as the hero city (welcomeBits.tsx).
+// Degenly airliner flying a loop between them. Same style and pieces as the hero city (welcomeBits.tsx).
 
 const ISLE_R = 6.4;
 /** where each island floats; the camera turns slowly round the middle */

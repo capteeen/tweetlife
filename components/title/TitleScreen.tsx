@@ -206,9 +206,12 @@ function Hero({
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(28,120,210,0.28)_0%,rgba(28,120,210,0)_30%,rgba(28,120,210,0)_62%,rgba(15,60,120,0.38)_100%)] md:bg-[linear-gradient(90deg,rgba(24,110,200,0.55)_0%,rgba(24,110,200,0.25)_38%,rgba(24,110,200,0)_60%)]" />
 
       <header className="absolute inset-x-0 top-0 z-20 flex items-center justify-between px-4 pt-[max(12px,env(safe-area-inset-top))] sm:px-8 sm:pt-6">
-        <Link href="/" className="flex items-center gap-2.5" aria-label="Tweetlife home">
+        <Link href="/" className="flex items-center gap-2.5" aria-label="Degenly home">
           <BubbleLogo className="h-10 w-10 shadow-[0_6px_18px_rgba(10,60,120,0.3)] rounded-2xl" />
-          <span className="text-xl font-black tracking-tight text-white drop-shadow-[0_2px_0_rgba(15,60,120,0.35)]">tweetlife</span>
+          <span className="flex flex-col leading-none">
+            <span className="text-xl font-black tracking-tight text-white drop-shadow-[0_2px_0_rgba(15,60,120,0.35)]">degenly</span>
+            <span className="mt-0.5 text-[11px] font-semibold tracking-wide text-white/85 drop-shadow-[0_1px_1px_rgba(15,60,120,0.35)]">living degenly</span>
+          </span>
         </Link>
         <div className="flex items-center gap-2">
           <NowPlaying />
@@ -478,7 +481,8 @@ function Footer({ backdropHandle, liveWorlds }: { backdropHandle: string | null;
       <div className="mx-auto flex max-w-6xl flex-col items-center gap-4 text-sm text-[#4A5B73] md:flex-row md:justify-between">
         <div className="flex items-center gap-2">
           <BubbleLogo className="h-7 w-7" />
-          <span className="font-black text-[#0F2747]">tweetlife</span>
+          <span className="font-black text-[#0F2747]">degenly</span>
+          <span className="text-[#4A5B73]">· living degenly</span>
         </div>
         <nav className="flex flex-wrap justify-center gap-x-5 gap-y-2 font-semibold">
           <Link href="/how" className="hover:text-[#1D9BF0]">How a world grows</Link>

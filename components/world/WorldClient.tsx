@@ -297,7 +297,7 @@ export function WorldClient({ handle, spawnPostId, embed, backdrop, country: cou
         target={embed ? '_blank' : undefined}
         rel="noopener noreferrer"
       >
-        TweetLife
+        Degenly
       </a>
       </>
       )}

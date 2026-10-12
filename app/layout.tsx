@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: { default: 'TweetLife — your X account, as a world', template: '%s · TweetLife' },
+  title: { default: 'Degenly — living degenly', template: '%s · Degenly' },
   description: 'Every X account has one persistent 3D world, built from its real posting history. Followers can walk in.',
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'),
 };

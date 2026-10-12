@@ -65,7 +65,7 @@ export default async function Image({ params }: { params: { handle: string } }) 
           <div style={{ display: 'flex', fontSize: 25, opacity: 0.85, marginTop: 4 }}>{subtitle}</div>
           {quote ? <div style={{ display: 'flex', fontSize: 21, opacity: 0.7, marginTop: 8, maxWidth: 900 }}>{quote}</div> : null}
         </div>
-        <div style={{ position: 'absolute', right: 56, bottom: 44, display: 'flex', color: '#fff', opacity: 0.8, fontSize: 22 }}>tweetlife · unofficial</div>
+        <div style={{ position: 'absolute', right: 56, bottom: 44, display: 'flex', color: '#fff', opacity: 0.8, fontSize: 22 }}>degenly · unofficial</div>
       </div>
     ),
     size,

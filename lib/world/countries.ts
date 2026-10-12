@@ -1,4 +1,4 @@
-// The countries of Tweetlife. Each one is a whole city (same districts, venues, airport and roads)
+// The countries of Degenly. Each one is a whole city (same districts, venues, airport and roads)
 // dressed in the colours of its coin. Every other feature (nationality, ID cards, governments,
 // flights) keys off these ids, so add new countries here and nowhere else.
 

@@ -166,7 +166,7 @@ function Back({ c, skin, holder, citizen, issued, expires }: SideProps) {
           <Field skin={skin} label="Expires" value={idDate(expires)} />
         </div>
         <p className="mt-[1.6cqw] text-[2.05cqw] leading-snug" style={{ color: skin.label }}>
-          The bearer is a citizen of the <b style={{ color: skin.text }}>Republic of {c.name}</b> and may fly to every other country in Tweetlife.
+          The bearer is a citizen of the <b style={{ color: skin.text }}>Republic of {c.name}</b> and may fly to every other country in Degenly.
         </p>
 
         <div className="mt-auto flex items-end justify-between gap-[3cqw] pb-[1.6cqw]">

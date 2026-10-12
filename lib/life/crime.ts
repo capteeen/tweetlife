@@ -175,10 +175,10 @@ async function resolve(me: Player, myHandle: string, w: WorldCtx, t: Target, kin
   }
   const handle = t.handle.replace(/^@/, '');
   const user = await db.user.findFirst({ where: { handle: { equals: handle, mode: 'insensitive' } } });
-  if (!user) throw new CrimeError('That person has not signed in to TweetLife.', 404);
+  if (!user) throw new CrimeError('That person has not signed in to Degenly.', 404);
   if (user.handle.toLowerCase() === myHandle.toLowerCase()) throw new CrimeError('That is you.');
   const them = await db.player.findUnique({ where: { id: user.id } });
-  if (!them) throw new CrimeError('That person has not signed in to TweetLife.', 404);
+  if (!them) throw new CrimeError('That person has not signed in to Degenly.', 404);
   const name = `@${user.handle}`;
   const vb = victimBlock(them, name);
   if (vb) throw new CrimeError(vb, 403);

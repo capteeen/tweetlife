@@ -93,7 +93,7 @@ export async function enqueueIngest(worldId: string, kind: IngestJob['kind']) {
   if (notBefore && kind === 'first_build') {
     await db.world.update({
       where: { id: worldId },
-      data: { ingestError: `Tweetlife has used its X budget for ${budget.limitedBy === 'day' ? 'today' : 'this month'}. Your city starts building at ${notBefore.toUTCString()}.` },
+      data: { ingestError: `Degenly has used its X budget for ${budget.limitedBy === 'day' ? 'today' : 'this month'}. Your city starts building at ${notBefore.toUTCString()}.` },
     });
   }
   const run = await db.ingestRun.create({ data: { worldId, kind, status: 'queued', notBefore } });

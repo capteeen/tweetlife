@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) return bad('toHandle and a whole-number amount required');
   const { amount, note } = parsed.data;
   const target = await db.user.findFirst({ where: { handle: { equals: parsed.data.toHandle.replace(/^@/, ''), mode: 'insensitive' } } });
-  if (!target) return bad('That person has not signed in to TweetLife.', 404);
+  if (!target) return bad('That person has not signed in to Degenly.', 404);
   if (target.id === r.user.id) return bad('That is you.');
   if (amount > r.player.bags) return bad(`You only have ${r.player.bags} bags.`);
   await ensurePlayer(target.id);

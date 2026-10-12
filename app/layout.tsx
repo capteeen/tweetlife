@@ -3,7 +3,7 @@ import './globals.css';
 
 export const metadata: Metadata = {
   title: { default: 'Degenly — living degenly', template: '%s · Degenly' },
-  description: 'Every X account has one persistent 3D world, built from its real posting history. Followers can walk in.',
+  description: 'A 3D life game for degens. Ape memecoins in the Trenches, party at the clubs, flex your ride, date, scheme and live degenly.',
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'),
 };
 

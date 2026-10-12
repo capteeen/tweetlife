@@ -236,17 +236,17 @@ function Hero({
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#7CF29A] opacity-75" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-[#4ADE80]" />
             </span>
-            <span className="num">{liveWorlds.toLocaleString()}</span> {liveWorlds === 1 ? 'world' : 'worlds'} live now
+            <span className="num">{liveWorlds.toLocaleString()}</span> {liveWorlds === 1 ? 'degen' : 'degens'} living it up
           </div>
           <h1 className="text-[44px] font-black leading-[0.98] tracking-[-0.035em] text-white sm:text-6xl md:text-7xl" style={{ textShadow: '0 3px 0 rgba(16,82,160,0.35), 0 14px 40px rgba(10,50,110,0.3)' }}>
-            Your posts
+            Live like a
             <br />
-            become a <span className="text-[#FFD54A]">city</span>.
+            <span className="text-[#FFD54A]">degen</span>.
           </h1>
           <p className="mt-4 hidden max-w-md text-lg leading-7 text-white/95 drop-shadow-[0_1px_2px_rgba(10,50,110,0.4)] md:block">
-            Sign in with X and everything you&apos;ve posted rises as a building. Then live there: walk your streets, furnish a home, dance at Club Moon, and float your coins on a string.
+            Ape memecoins in the Trenches, dance till sunrise at Club Moon, flex your whip, fly your own jet, date, scheme, catch a case and bail yourself out. A whole life, lived degenly.
           </p>
-          <p className="mt-3 max-w-xs text-[15px] leading-6 text-white/95 drop-shadow-[0_1px_2px_rgba(10,50,110,0.5)] md:hidden">Every post a building. Live in it, and bring your followers.</p>
+          <p className="mt-3 max-w-xs text-[15px] leading-6 text-white/95 drop-shadow-[0_1px_2px_rgba(10,50,110,0.5)] md:hidden">Ape, party, flex, repeat. A whole life, lived degenly.</p>
         </div>
 
         <div className="w-full max-w-md md:mt-8">
@@ -335,12 +335,12 @@ function SectionTitle({ kicker, title, sub }: { kicker: string; title: string; s
 function HowItWorks() {
   const steps = [
     { n: '1', icon: <XMark className="h-6 w-6" />, title: 'Sign in with X', body: 'Read-only access to your posts, profile and follows. We never post for you.' },
-    { n: '2', icon: <BubbleLogo className="h-9 w-9" />, title: 'Your posts rise as buildings', body: 'Every post a building, likes make it taller, quiet months stay empty lots. Nothing is invented.' },
-    { n: '3', icon: <span className="text-2xl">🚶</span>, title: 'Live in it, bring friends', body: 'Walk in as yourself. Everyone in your country shares one city, and your posts are your block on its streets.' },
+    { n: '2', icon: <BubbleLogo className="h-9 w-9" />, title: 'Get your passport and bags', body: 'Pick Solana, BNB or Robinhood, grab your ID card and 10,000 bags, and move into your block in the capital.' },
+    { n: '3', icon: <span className="text-2xl">🚶</span>, title: 'Live degenly', body: 'Trade coins in the Trenches, work shifts, hit the clubs, date, fight, fly. Everyone in your country shares one city.' },
   ];
   return (
     <section id="how" className="relative -mt-6 rounded-t-[28px] bg-white px-5 pb-16 pt-14 sm:px-8 md:pt-20">
-      <SectionTitle kicker="How it works" title="From timeline to skyline" />
+      <SectionTitle kicker="How it works" title="Three steps to full degen" />
       <ol className="mx-auto mt-10 grid max-w-5xl gap-4 md:grid-cols-3 md:gap-6">
         {steps.map((s) => (
           <li key={s.n} className="relative rounded-3xl bg-[#F1F8FF] p-6">
@@ -454,8 +454,8 @@ function FinalCta({ signedInHandle, onPrimary, onEnter }: { signedInHandle: stri
       <div className="relative mx-auto max-w-3xl rounded-[32px] bg-[#3BA9F5] px-6 py-12 text-center text-white shadow-[0_20px_60px_rgba(29,155,240,0.35)] sm:px-12">
         {/* the bubble's tail */}
         <span className="absolute -bottom-5 left-14 h-10 w-10 rotate-45 rounded-br-lg bg-[#3BA9F5]" aria-hidden />
-        <h2 className="text-3xl font-black tracking-tight sm:text-5xl">Your city is waiting.</h2>
-        <p className="mx-auto mt-3 max-w-md text-base leading-7 text-white/90">Sign in, watch your posts rise, and move in. It grows every time you post.</p>
+        <h2 className="text-3xl font-black tracking-tight sm:text-5xl">Your degen life is waiting.</h2>
+        <p className="mx-auto mt-3 max-w-md text-base leading-7 text-white/90">Sign in, grab your passport and 10,000 bags, and start living degenly.</p>
         <div className="mx-auto mt-8 flex max-w-md flex-col gap-3 sm:flex-row">
           <BigButton onClick={onPrimary} tone="dark" sound={null}>
             {signedInHandle ? (
@@ -498,7 +498,7 @@ function Footer({ backdropHandle, liveWorlds }: { backdropHandle: string | null;
           )}
         </nav>
         <div className="text-center text-xs text-[#7A8AA0] md:text-right">
-          <span className="num">{liveWorlds}</span> {liveWorlds === 1 ? 'world' : 'worlds'} live · unofficial fan project, not affiliated with X Corp.
+          <span className="num">{liveWorlds}</span> {liveWorlds === 1 ? 'degen' : 'degens'} · unofficial fan project, not affiliated with X Corp.
         </div>
       </div>
     </footer>

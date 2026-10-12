@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
     try {
       address = new PublicKey(to).toBase58();
     } catch {
-      return bad('Not a TweetLife handle or a valid Solana address.');
+      return bad('Not a Degenly handle or a valid Solana address.');
     }
     label = `${address.slice(0, 4)}…${address.slice(-4)}`;
   }

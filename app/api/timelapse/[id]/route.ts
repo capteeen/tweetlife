@@ -24,7 +24,7 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
     headers: {
       'content-type': 'video/mp4',
       'content-length': String(size),
-      'content-disposition': `attachment; filename="tweetlife-${job.world.handle}.mp4"`,
+      'content-disposition': `attachment; filename="degenly-${job.world.handle}.mp4"`,
     },
   });
 }

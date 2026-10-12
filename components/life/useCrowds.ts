@@ -112,7 +112,7 @@ async function lookForPost(world: string, tries: number) {
 /** Open the X composer with a link back to your world; when you come back, the game looks for the post. */
 export function postOnX(handle: string) {
   const url = `${location.origin}/w/${encodeURIComponent(handle)}`;
-  const text = `Out here in Tweetlife 🏙️ pull up: ${url}`;
+  const text = `Out here in Degenly 🏙️ pull up: ${url}`;
   posting = true;
   window.open(`https://x.com/intent/post?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
 }

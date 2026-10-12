@@ -8,7 +8,7 @@ import { structureRows } from '../x/ingest';
 
 // Post on X and your followers pull up. When a player's new post lands (found by a quick check from the game or by
 // the regular sync), their newest X followers appear around them in the world as a crowd: real names and handles,
-// cheering and reacting to the post, for CROWD_MINUTES. Followers who play Tweetlife themselves are not puppeted;
+// cheering and reacting to the post, for CROWD_MINUTES. Followers who play Degenly themselves are not puppeted;
 // they get a notice with a way to join instead. Posting earns nothing (no bags, no stats): X's developer terms bar
 // apps from rewarding people for posting, and the game depends on X API access.
 //
@@ -35,7 +35,7 @@ export type Crowd = {
   at: number;
   until: number;
   followers: CrowdFollower[];
-  /** handles of followers who play Tweetlife; they were sent a notice rather than added to the crowd */
+  /** handles of followers who play Degenly; they were sent a notice rather than added to the crowd */
   players: string[];
   /** 'x' = fresh follower list, 'cache' = saved list (X unavailable or budget low), 'none' = no list at all */
   source: 'x' | 'cache' | 'none';
@@ -210,11 +210,11 @@ export async function takeNotices(userId: string): Promise<CrowdNotice[]> {
 export function followerPrompt(c: Crowd, f: CrowdFollower, ctx: { handle: string }) {
   const you = ctx.handle.toLowerCase() === c.owner.toLowerCase() ? `the poster, @${c.owner}` : `@${ctx.handle}, who is standing in @${c.owner}'s crowd with you`;
   return [
-    `You are ${f.name} (@${f.handle}), one of @${c.owner}'s followers on X, in Tweetlife, a 3D social life game where everyone's X account is a city. You pulled up in person because @${c.owner} just posted this on X: "${c.text || '(a photo)'}". A crowd of their followers gathered around them to cheer and react.`,
+    `You are ${f.name} (@${f.handle}), one of @${c.owner}'s followers on X, in Degenly, a 3D social life game where everyone's X account is a city. You pulled up in person because @${c.owner} just posted this on X: "${c.text || '(a photo)'}". A crowd of their followers gathered around them to cheer and react.`,
     `You are not the real @${f.handle}; you are an AI-played version of a follower, so never claim things about their real life, job or opinions. Talk like a friendly, hyped X follower: react to the post, banter, ask what's next.`,
     `You are chatting face to face with ${you}.`,
-    'Game vocabulary you can use naturally: bags = in-game money; gas = energy; vibes = fun; clout = social standing; the Trenches = the memecoin trading area. Posting on X is what brings followers out in Tweetlife.',
-    'Rules: reply in 1 to 3 short sentences (under 50 words), plain text, no markdown, no lists. Keep it friendly and PG-13. Never give real financial, medical or legal advice. Never ask for passwords, seed phrases or private keys. If someone sincerely asks whether you are a real person, say honestly that you are an AI-played follower in Tweetlife, then carry on.',
+    'Game vocabulary you can use naturally: bags = in-game money; gas = energy; vibes = fun; clout = social standing; the Trenches = the memecoin trading area. Posting on X is what brings followers out in Degenly.',
+    'Rules: reply in 1 to 3 short sentences (under 50 words), plain text, no markdown, no lists. Keep it friendly and PG-13. Never give real financial, medical or legal advice. Never ask for passwords, seed phrases or private keys. If someone sincerely asks whether you are a real person, say honestly that you are an AI-played follower in Degenly, then carry on.',
   ].join('\n\n');
 }
 

@@ -10,7 +10,7 @@ export async function generateMetadata({ params }: { params: { handle: string } 
   if (!world) return { title: 'No world', robots: { index: false } };
   const count = await db.structure.count({ where: { worldId: world.id, hidden: false } });
   const title = `@${world.handle}'s world`;
-  const description = `${count} posts as structures, built from @${world.handle}'s real timeline. Visit their block in TweetLife.`;
+  const description = `${count} posts as structures, built from @${world.handle}'s real timeline. Visit their block in Degenly.`;
   return {
     title,
     description,

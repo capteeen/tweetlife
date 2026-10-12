@@ -54,7 +54,7 @@ export async function xFetch<T>(req: XRequest): Promise<T> {
         method: req.method ?? 'GET',
         headers: {
           authorization: `Bearer ${req.accessToken}`,
-          'user-agent': 'tweetlife (unofficial fan project)',
+          'user-agent': 'degenly (unofficial fan project)',
           ...(req.body ? { 'content-type': 'application/json' } : {}),
         },
         body: req.body ? JSON.stringify(req.body) : undefined,

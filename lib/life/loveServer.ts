@@ -37,7 +37,7 @@ export async function findTarget(to: { handle?: string; residentId?: string }): 
   if (!handle) throw new LoveError('Who is it for?');
   const user = await db.user.findFirst({ where: { handle: { equals: handle, mode: 'insensitive' } }, select: { id: true, handle: true } });
   const player = user && (await db.player.findUnique({ where: { id: user.id } }));
-  if (!user || !player) throw new LoveError(`@${handle} has not moved into TweetLife yet.`, 404);
+  if (!user || !player) throw new LoveError(`@${handle} has not moved into Degenly yet.`, 404);
   return { kind: 'player', player, handle: user.handle };
 }
 
@@ -136,7 +136,7 @@ export async function respond(me: Me, id: string, accept: boolean): Promise<Soci
 
   const kind = r.kind as RequestKind;
   const from = await db.player.findUnique({ where: { id: r.fromId } });
-  if (!from) throw new LoveError('They have left TweetLife.', 410);
+  if (!from) throw new LoveError('They have left Degenly.', 410);
   const fromUser = await db.user.findUnique({ where: { id: from.id }, select: { handle: true } });
   const them = `@${fromUser?.handle ?? 'someone'}`;
 
@@ -277,7 +277,7 @@ async function residentAnswer(r: Resident, me: Me, kind: RequestKind, yes: boole
   if (quota !== 'ok') return canned;
   const asked = kind === 'invite' ? 'invited you over to their house' : kind === 'visit' ? 'asked to come over to your house' : kind === 'date' ? 'asked you out, to start dating' : `asked you on a date: ${dateLabel ?? 'a night out'}`;
   const system = [
-    `You are ${r.name}, a resident of Tweetlife, a 3D social life game. ${r.persona}`,
+    `You are ${r.name}, a resident of Degenly, a 3D social life game. ${r.persona}`,
     `How you talk: ${r.voice}`,
     `The player @${me.handle} just ${asked}. You have already decided: ${yes ? 'YES' : `NO (${why}; they should spend more time talking with you first)`}.`,
     'Answer them in character in 1 or 2 short sentences (under 35 words), plain text, no markdown. Keep it friendly, flirty at most, PG-13. Make the yes or no unmistakable.',

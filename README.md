@@ -1,6 +1,7 @@
 # Degenly — living degenly
 
-Your X account, as a world.
+A 3D life game where you live like a degen: trade memecoins in the Trenches, party, flex, date and scheme. Sign in with X
+and your posts become your home block.
 
 Every X account has one persistent, low-poly 3D world generated from its **real** posting history. Posts become
 structures, engagement becomes scale and light, posting cadence becomes terrain, followers become residents. Only the

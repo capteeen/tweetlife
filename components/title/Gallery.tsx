@@ -125,7 +125,7 @@ export function Gallery() {
     <section id="play" className="bg-[#F6FAFE] px-5 py-16 sm:px-8 md:py-20">
       <div className="mx-auto max-w-2xl text-center">
         <div className="text-xs font-bold uppercase tracking-[0.2em] text-[#1D9BF0]">Things you can do</div>
-        <h2 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">A whole life in your city</h2>
+        <h2 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">A whole degen life</h2>
         <p className="mt-3 text-base leading-7 text-[#4A5B73]">You start with 10,000 bags and a starter flat. Every picture here is a real screenshot from the game. Tap one to see it big.</p>
       </div>
       <div className="-mx-5 mt-8 flex gap-2 overflow-x-auto px-5 pb-1 sm:mx-auto sm:max-w-6xl sm:flex-wrap sm:justify-center sm:overflow-visible sm:px-0" role="tablist" aria-label="Kinds of things to do">

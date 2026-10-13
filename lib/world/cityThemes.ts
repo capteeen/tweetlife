@@ -163,7 +163,57 @@ const ROBINHOOD: CityTheme = {
   label: '#CCFF00',
 };
 
-export const CITY_THEMES: Record<CountryId, CityTheme> = { solana: SOLANA, bnb: BNB, robinhood: ROBINHOOD };
+const TON: CityTheme = {
+  country: 'ton',
+  ground: { color: '#3A8FD0', amount: 0.14 },
+  water: { color: '#0098EA', amount: 0.38 },
+  sky: { horizon: '#BFE8FF', zenith: '#2A8FD8', amount: 0.32 },
+  light: '#E0F4FF',
+  trees: 0.8,
+  canopy: ['#2E7D5B', '#3E8E6A', '#2F6F5F', '#4F9E7A'],
+  facade: {
+    ROOF: ['#1E3A5F', '#0B2A44', '#2B3E52', '#0098EA', '#16324F', '#334B63'],
+    AWNING: ['#0098EA', '#45D1FF', '#06121F', '#2AABEE', '#7FDBFF', '#FFFFFF'],
+    SIGN: ['#06121F', '#0098EA', '#45D1FF', '#F5F0E6', '#2AABEE', '#0B2A44'],
+    PAINT: ['#E6F4FC', '#2AABEE', '#BFE8FF', '#5B8DB8', '#F4F7FA', '#1E3A5F', '#9CCFF0', '#0098EA'],
+    GLASS: ['#2F5F80', '#3A6E94', '#2A5675', '#35678A', '#40769C', '#2C5A7A', '#3B6C8F'],
+    DARK_GLASS: ['#06121F', '#0B1B2B', '#10243A', '#0A1726', '#132A40'],
+    FRAME: ['#E9ECEF', '#45D1FF', '#06121F', '#8C949E', '#0098EA'],
+  },
+  districts: { waterfront: 'Telegram Bay', wellness: 'Cold Plunge Row', strip: 'Mini App Strip', trenches: 'Tap Quarter' },
+  venues: {
+    club: { name: 'Club Paper Plane' },
+    yard: { name: 'Sticker Yard' },
+    warehouse: { name: 'Warehouse Gram' },
+    jazz: { name: 'Voice Note Jazz', emoji: '🎙️' },
+    beach: { name: 'Telegram Bay Beach Club' },
+    bar: { name: 'Group Chat Bar', emoji: '💬' },
+    suya: { name: 'Shawarma Spot', emoji: '🌯' },
+    gym: { name: 'Push-Up Palace' },
+    barber: { name: 'Clean Cuts' },
+    clinic: { name: 'Secret Chat Clinic' },
+    hustle: { name: 'Mini App Hub' },
+    tech: { name: 'TON Labs' },
+    bank: { name: 'Cold Wallet Vault' },
+    exchange: { name: 'Tap Quarter Coin Shop' },
+    dealership: { name: 'Blue Motors' },
+    marina: { name: 'Telegram Bay Marina' },
+    airport: { name: 'TON International' },
+  },
+  ads: [
+    { title: 'TAP TO EARN', sub: 'Daily airdrop at the Chat House', from: '#0098EA', to: '#06121F', logo: true },
+    { title: 'PRESIDENT DUROV', sub: 'No meetings. No alcohol. Just build.', from: '#45D1FF', to: '#0B2A44', logo: true },
+    { title: 'CLUB PAPER PLANE', sub: 'Blue lights. Fly all night.', from: '#2AABEE', to: '#0A1F33' },
+    { title: 'HOLD YOUR TON', sub: 'Cold Wallet Vault, Tap Quarter', from: '#7FDBFF', to: '#003B66', logo: true },
+    { title: 'FLY PRIVATE', sub: 'TON International hangar', from: '#BFE8FF', to: '#0B4F80' },
+    { title: 'SHAWARMA SPOT', sub: 'Garlic. Fire. Gas.', from: '#F4A259', to: '#4A1E05' },
+  ],
+  traffic: ['#0098EA', '#06121F', '#F4F7FA', '#45D1FF', '#1E3A5F'],
+  landmark: { name: 'The Blue Diamond' },
+  label: '#7FDBFF',
+};
+
+export const CITY_THEMES: Record<CountryId, CityTheme> = { solana: SOLANA, bnb: BNB, robinhood: ROBINHOOD, ton: TON };
 
 export const themeOf = (id: string | null | undefined): CityTheme => CITY_THEMES[isCountryId(id) ? id : DEFAULT_COUNTRY];
 

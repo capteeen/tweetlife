@@ -321,7 +321,7 @@ function SectionTitle({ kicker, title, sub }: { kicker: string; title: string; s
 function HowItWorks() {
   const steps = [
     { n: '1', icon: <XMark className="h-6 w-6" />, title: 'Sign in with X', body: 'Read-only access to your posts, profile and follows. We never post for you.' },
-    { n: '2', icon: <DegenlyMark className="h-9 w-9 rounded-xl" />, title: 'Get your passport and bags', body: 'Pick Solana, BNB or Robinhood, grab your ID card and 10,000 bags, and move into your block in the capital.' },
+    { n: '2', icon: <DegenlyMark className="h-9 w-9 rounded-xl" />, title: 'Get your passport and bags', body: 'Pick Solana, BNB, Robinhood or TON, grab your ID card and 10,000 bags, and move into your block in the capital.' },
     { n: '3', icon: <span className="text-2xl">🚶</span>, title: 'Live degenly', body: 'Trade coins in the Trenches, work shifts, hit the clubs, date, fight, fly. Everyone in your country shares one city.' },
   ];
   return (
@@ -344,6 +344,9 @@ function HowItWorks() {
   );
 }
 
+/** the ticker chip's text, a darker shade of each coin's colour so it reads on white */
+const TICKER_INK: Record<string, string> = { solana: '#6B2BD9', bnb: '#8A6400', robinhood: '#0A7A0D', ton: '#0069A8' };
+
 function Countries() {
   const ref = useRef<HTMLDivElement>(null);
   const [near, setNear] = useState(false);
@@ -362,7 +365,7 @@ function Countries() {
   }, []);
   return (
     <section id="countries" className="relative overflow-hidden px-5 pb-16 pt-14 sm:px-8 md:pb-20 md:pt-16" style={{ background: 'linear-gradient(180deg, #FFFFFF 0%, #E3F3FF 26%, #BFE6FF 70%, #F6FAFE 100%)' }}>
-      <SectionTitle kicker="Three countries" title="Pick your passport" sub="Every player is a citizen of Solana, BNB or Robinhood, with an ID card to prove it. Each capital wears its coin's colours, and planes fly between them." />
+      <SectionTitle kicker="Four countries" title="Pick your passport" sub="Every player is a citizen of Solana, BNB, Robinhood or TON, with an ID card to prove it. Each capital wears its coin's colours, and planes fly between them." />
       <div ref={ref} className="relative -mx-5 mt-2 h-[340px] sm:-mx-8 sm:h-[420px] md:h-[500px]">
         {/* the logos stand in until the islands load */}
         <div className={`absolute inset-0 flex items-center justify-center gap-10 transition-opacity duration-700 ${ready ? 'opacity-0' : 'opacity-100'}`} aria-hidden>
@@ -377,7 +380,7 @@ function Countries() {
           </div>
         )}
       </div>
-      <div className="relative mx-auto mt-2 grid max-w-6xl gap-4 md:grid-cols-3 md:gap-5">
+      <div className="relative mx-auto mt-2 grid max-w-6xl gap-4 sm:grid-cols-2 lg:grid-cols-4 md:gap-5">
         {COUNTRY_LIST.map((c) => (
           <a
             key={c.id}
@@ -392,7 +395,7 @@ function Countries() {
               <div className="min-w-0">
                 <h3 className="flex items-center gap-2 text-xl font-extrabold">
                   {c.name}
-                  <span className="rounded-full px-2 py-0.5 text-[11px] font-bold tracking-wide" style={{ background: `${c.theme.primary}22`, color: c.id === 'bnb' ? '#8A6400' : c.id === 'robinhood' ? '#0A7A0D' : '#6B2BD9' }}>
+                  <span className="rounded-full px-2 py-0.5 text-[11px] font-bold tracking-wide" style={{ background: `${c.theme.primary}22`, color: TICKER_INK[c.id] }}>
                     ${c.ticker}
                   </span>
                 </h3>

@@ -36,7 +36,7 @@ const SHOTS: Shot[] = [
   { id: 'bus-driver', cat: 'work', title: 'Drive the city bus', body: 'Check your mirrors and run the route.' },
   { id: 'ground-crew', cat: 'work', title: 'Airport ground crew', body: 'Wave the jets in on the apron.' },
   { id: 'promotion', cat: 'work', title: 'Get promoted', body: 'Shifts pay bags, and good work moves you up.' },
-  { id: 'airliner', cat: 'travel', title: 'Fly to another country', body: 'Check in, board and fly between Solana, BNB and Robinhood.' },
+  { id: 'airliner', cat: 'travel', title: 'Fly to another country', body: 'Check in, board and fly between Solana, BNB, Robinhood and TON.' },
   { id: 'takeoff', cat: 'travel', title: 'Take off', body: 'Economy, first class, or your own plane.' },
   { id: 'landing', cat: 'travel', title: 'Land in a new capital', body: 'Every country has its own airport.' },
   { id: 'passport', cat: 'travel', title: 'Get your passport stamped', body: 'Arrivals, then out into a new city.' },

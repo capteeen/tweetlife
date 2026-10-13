@@ -2,7 +2,7 @@ import Link from 'next/link';
 import type { SessionUser } from '@/lib/session';
 
 /** The game's own X account. */
-export const X_ACCOUNT = 'gotweetlife';
+export const X_ACCOUNT = 'usedegenlyapp';
 export const X_ACCOUNT_URL = `https://x.com/${X_ACCOUNT}`;
 
 /** The Degenly logo: the voxel degen with sunglasses and a green candle, full figure on a transparent background

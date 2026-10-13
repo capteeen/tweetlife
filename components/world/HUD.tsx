@@ -5,6 +5,7 @@ void relativeTime;
 import type { WorldModel } from '@/lib/world/load';
 import { useWorld } from './store';
 import { COUNTRIES } from '@/lib/world/countries';
+import { useTownHere } from './townHere';
 
 // Bottom bar: owner, visitors online, lanterns lit, Guestbook, Share. Plus the guestbook and chat panels.
 
@@ -30,8 +31,9 @@ export function HUD({
   const [shared, setShared] = useState(false);
   const country = useWorld((s) => s.country);
   const rect = useWorld((s) => (s.block ? s.countryMap?.plots.find((p) => p.handle === s.block)?.rect ?? null : null));
-  // Capital Square on a country map: nobody's block
+  // Capital Square on a country map: nobody's block (or out in one of the country's towns)
   const square = !model.handle;
+  const town = useTownHere();
 
   const share = async () => {
     const url = square ? `${location.origin}/c/${country}` : `${location.origin}/w/${model.handle}`;
@@ -53,7 +55,7 @@ export function HUD({
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={COUNTRIES[country].logo} alt="" className="h-7 w-7 rounded-full bg-white/10 p-1" />
             <span className="truncate font-medium">
-              Capital Square<span className="hidden font-normal text-white/55 min-[480px]:inline"> · {COUNTRIES[country].capital}</span>
+              {town?.name ?? 'Capital Square'}<span className="hidden font-normal text-white/55 min-[480px]:inline"> · {town ? COUNTRIES[country].name : COUNTRIES[country].capital}</span>
             </span>
           </span>
         ) : (

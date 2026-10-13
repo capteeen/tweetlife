@@ -17,6 +17,9 @@ import { COUNTRIES, COUNTRY_IDS } from '../lib/world/countries';
 import { themeOf } from '../lib/world/cityThemes';
 import { buildRoutes } from '../components/world/residentPaths';
 import { aroundRect, sidewalkLoop } from '../lib/world/sidewalks';
+import { attachTowns, onStrip, onTownLand, townSolids, TOWNS } from '../lib/world/towns';
+import { landmarkSpot } from '../lib/world/cityThemes';
+import { onLand } from '../lib/world/layout';
 
 const KINDS: StructureKind[] = ['pillar', 'pillar', 'pillar', 'spire', 'monolith', 'outbuilding', 'lantern', 'obelisk'];
 
@@ -242,6 +245,76 @@ function check(c: Case, prebuilt?: WorldGeometry) {
       });
     }
   }
+  // 10. the towns across the lagoon (Pump.fun, StonkFun on a Solana map): their roads clear of venues, plazas and
+  // club paths; islands clear of the airport, the landmark islet and each other; towers on the island, not on the
+  // avenue, plaza or forecourt and not on each other; and a walk from the ring road to each plaza with no gaps or cliffs
+  for (const tw of t.towns) {
+    const at = `${tw.town.name}`;
+    for (let f = 0; f <= 1; f += 0.02) {
+      for (const side of [-1, 0, 1]) {
+        const x = tw.road.x + Math.cos(tw.road.a) * (f - 0.5) * tw.road.len - Math.sin(tw.road.a) * side * (tw.road.w / 2 + 1);
+        const z = tw.road.z + Math.sin(tw.road.a) * (f - 0.5) * tw.road.len + Math.cos(tw.road.a) * side * (tw.road.w / 2 + 1);
+        placed++;
+        const v = t.venues.find((vn) => !vn.custom && venueFloorAt([vn], x, z) !== null);
+        if (v) fail(w, `${at} road runs over ${v.name}'s plaza at ${fmt(x, z)}`);
+        const zone = zoneAt(site, x, z);
+        if (zone === 'venue' || zone === 'door') fail(w, `${at} road runs into a venue ${zone} at ${fmt(x, z)}`);
+      }
+    }
+    const ap = t.airport;
+    const far = (r: { x: number; z: number; w: number; d: number }) => Math.abs(tw.center.x - r.x) > r.w / 2 + tw.r + 6 || Math.abs(tw.center.z - r.z) > r.d / 2 + tw.r + 6;
+    if (!far(ap.island)) fail(w, `${at} island is too close to the airport island`);
+    const lm = landmarkSpot(R);
+    if (Math.hypot(tw.center.x - lm.x, tw.center.z - lm.z) < tw.r + lm.r + 10) fail(w, `${at} island is too close to the landmark islet`);
+    for (const o of t.towns) if (o !== tw && Math.hypot(o.center.x - tw.center.x, o.center.z - tw.center.z) < o.r + tw.r + 20) fail(w, `${at} island is too close to ${o.town.name}`);
+    if (Math.hypot(tw.center.x, tw.center.z) - tw.r < R + 10) fail(w, `${at} island touches the mainland`);
+    const solids = townSolids([tw]);
+    const corners = (b: { x: number; z: number; w: number; d: number; rot?: number }) => {
+      const c0 = Math.cos(b.rot ?? 0), s0 = Math.sin(b.rot ?? 0);
+      return [[-1, -1], [1, -1], [1, 1], [-1, 1], [0, 0]].map(([cx, cz]) => {
+        const lx = (cx * b.w) / 2, lz = (cz * b.d) / 2;
+        return { x: b.x + lx * c0 + lz * s0, z: b.z - lx * s0 + lz * c0 };
+      });
+    };
+    tw.buildings.forEach((b, i) => {
+      placed++;
+      for (const p of corners(b)) {
+        if (Math.hypot(p.x - tw.center.x, p.z - tw.center.z) > tw.r - 2) fail(w, `${at} tower ${i} hangs off the island at ${fmt(p.x, p.z)}`);
+        if (onStrip(tw.avenue, p.x, p.z, 0.5) || onStrip(tw.forecourt, p.x, p.z, 0.5) || Math.hypot(p.x - tw.plaza.x, p.z - tw.plaza.z) < tw.plaza.r + 0.5) fail(w, `${at} tower ${i} stands on the avenue, forecourt or plaza at ${fmt(p.x, p.z)}`);
+      }
+      tw.buildings.forEach((o, j) => {
+        if (j <= i) return;
+        // rows face the same way, so their footprints are clear when the centres are a footprint apart
+        if (Math.hypot(o.x - b.x, o.z - b.z) < (Math.max(o.w, o.d) + Math.max(b.w, b.d)) / 2 + 1) fail(w, `${at} towers ${i} and ${j} overlap`);
+      });
+    });
+    const hq = corners(tw.hq);
+    for (const p of hq) if (Math.hypot(p.x - tw.center.x, p.z - tw.center.z) > tw.r - 2) fail(w, `${at} headquarters hangs off the island at ${fmt(p.x, p.z)}`);
+    // the walk: ring road -> road -> bridge -> avenue -> the drop-off -> the forecourt, on land, no steps over 0.3 m
+    const walk = [tw.gate, { x: tw.bridge.x, z: tw.bridge.z }, tw.stop, { x: tw.forecourt.x, z: tw.forecourt.z }];
+    let prev: number | null = null;
+    for (let k = 1; k < walk.length; k++) {
+      const a = walk[k - 1], b = walk[k];
+      const n = Math.ceil(Math.hypot(b.x - a.x, b.z - a.z) / 0.25);
+      for (let j = 0; j <= n; j++) {
+        const x = a.x + ((b.x - a.x) * j) / n, z = a.z + ((b.z - a.z) * j) / n;
+        placed++;
+        if (!onLand(x, z, g.contentRadius, R, t.airport) && !onTownLand(t.towns, x, z)) fail(w, `${at}: the way in leaves the land at ${fmt(x, z)}`);
+        const y = groundAt(t, x, z);
+        if (prev !== null && Math.abs(y - prev) > 0.3) fail(w, `${at}: the way in steps ${(y - prev).toFixed(2)} m at ${fmt(x, z)}`);
+        prev = y;
+      }
+    }
+    const blocked = (p: { x: number; z: number }) => solids.some((o) => {
+      let dx = p.x - o.x, dz = p.z - o.z;
+      const c0 = Math.cos(o.rot ?? 0), s0 = Math.sin(o.rot ?? 0);
+      [dx, dz] = [dx * c0 - dz * s0, dx * s0 + dz * c0];
+      return Math.abs(dx) < o.w / 2 + 0.4 && Math.abs(dz) < o.d / 2 + 0.4;
+    });
+    placed++;
+    if (blocked(tw.stop)) fail(w, `${at}: the drop-off at ${fmt(tw.stop.x, tw.stop.z)} is inside something`);
+    if (blocked({ x: tw.bridge.x, z: tw.bridge.z })) fail(w, `${at}: something stands on the bridge`);
+  }
   return placed;
 }
 
@@ -264,7 +337,9 @@ for (const n of [5, 14]) {
     return { slot: k + 1, handle: `${c.handle}${k}`, rows: picked, accountCreatedAt: new Date('2019-03-14'), followersCount: c.followers, landmarkPostId: null };
   });
   const { geometry } = composeCountryGeometry(plots, new Date('2026-10-08'));
-  const name = `country with ${n} blocks`;
+  // a Solana map, with its towns across the lagoon
+  attachTowns(geometry.blocks, TOWNS.filter((tw) => tw.country === 'solana').map((tw) => tw.id));
+  const name = `country with ${n} blocks (and ${TOWNS.length} towns)`;
   const before = problems.length;
   const m = check({ handle: `country${n}`, posts: geometry.structures.length, gapEvery: 0, followers: 0 }, geometry);
   total += m;
@@ -276,4 +351,4 @@ if (problems.length) {
   if (problems.length > 80) console.log(`  … and ${problems.length - 80} more`);
   process.exit(1);
 }
-console.log(`\nworld check passed: ${total} placements across ${CASES.length} worlds and 2 country maps`);
+console.log(`\nworld check passed: ${total} placements across ${CASES.length} worlds and 2 country maps with their towns`);

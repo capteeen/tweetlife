@@ -5,12 +5,13 @@ import { useFrame, useThree } from '@react-three/fiber';
 import type { Block, CityGrid, Placed } from '@/lib/world/geometry';
 import { useWorld } from './store';
 import { BLOCK_D, BLOCK_W, SIDEWALK, SIDEWALK_TOP } from '@/lib/world/geometry';
-import { surfaceY } from '@/lib/world/ground';
+import { surfaceY, terrainOf } from '@/lib/world/ground';
+import { onTownLand, townSolids, type TownLayout } from '@/lib/world/towns';
 import { sticks } from './TouchSticks';
 import { Figure } from './Figure';
 import { Vehicle, riderOffset } from './Vehicle';
 import { Balloons, HAND, useSlumpRef } from './Balloons';
-import { placeVenues } from '@/lib/life/venues';
+import { placeTownVenues, placeVenues } from '@/lib/life/venues';
 import { SPRINT_MIN_GAS, SPRINT_MULT, paceFor, tiredness, walkCost } from '@/lib/life/activities';
 import { lifeActions } from '@/components/life/useLife';
 import type { FigureAct } from './figureMoves';
@@ -47,16 +48,19 @@ const DEFAULT_YAW = (Math.PI * 3) / 4;
 type Obstacle = { x: number; z: number; w: number; d: number; rot?: number };
 
 export function Player({ structures, blocks, grid, boundaryRadius, contentRadius, spawn }: { structures: Placed[]; blocks: Block[]; grid: CityGrid; boundaryRadius: number; contentRadius: number; spawn: Spawn }) {
-  const venues = useMemo(() => placeVenues(contentRadius, boundaryRadius), [contentRadius, boundaryRadius]);
+  // the country's other cities, on their islands (lib/world/towns.ts), and their headquarters
+  const towns = useMemo(() => terrainOf(blocks, grid, boundaryRadius).towns, [blocks, grid, boundaryRadius]);
+  const venues = useMemo(() => [...placeVenues(contentRadius, boundaryRadius), ...placeTownVenues(towns)], [contentRadius, boundaryRadius, towns]);
   const airport = useMemo(() => airportLayout(contentRadius, boundaryRadius), [contentRadius, boundaryRadius]);
   const obstacles = useMemo<Obstacle[]>(
     // the terminal is a hall you walk through: its walls block, not its footprint
     () => [
-      ...venues.flatMap((v) => (v.walkIn ? worldWalls(v) : v.id === 'airport' ? [] : [{ x: v.x, z: v.z, w: v.w, d: v.d }])),
+      ...venues.flatMap((v) => (v.walkIn ? worldWalls(v) : v.custom ? [] : [{ x: v.x, z: v.z, w: v.w, d: v.d }])),
+      ...townSolids(towns),
       ...airportSolids(airport).filter((r) => r !== airport.terminal),
       ...terminalWalls(terminalLayout(airport)),
     ],
-    [venues, airport],
+    [venues, airport, towns],
   );
   // the holding cell at the police station (lib/life/police.ts): where an arrested player waits out their time
   const cell = useMemo(() => {
@@ -119,18 +123,18 @@ export function Player({ structures, blocks, grid, boundaryRadius, contentRadius
     placed.current = true;
     // TODO(countries): when each country is its own city, spawn in the home city of
     // useWorld.getState().life?.me?.citizen.country (lib/life/citizen.ts) instead of DEFAULT_SPAWN here.
-    const free = freeSpotNear(structures, obstacles, DEFAULT_SPAWN.x, DEFAULT_SPAWN.z, boundaryRadius, 'walk', airport);
+    const free = freeSpotNear(structures, obstacles, DEFAULT_SPAWN.x, DEFAULT_SPAWN.z, boundaryRadius, 'walk', airport, towns);
     pos.current.set(free.x, 0, free.z);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [structures, obstacles, boundaryRadius, airport]);
+  }, [structures, obstacles, boundaryRadius, airport, towns]);
 
   useEffect(() => {
     if (!teleport) return;
-    const free = freeSpotNear(structures, obstacles, teleport.x, teleport.z, boundaryRadius, 'walk', airport);
+    const free = freeSpotNear(structures, obstacles, teleport.x, teleport.z, boundaryRadius, 'walk', airport, towns);
     pos.current.set(free.x, 0, free.z);
     if (teleport.yaw != null) yaw.current = teleport.yaw;
     setTeleport(null);
-  }, [teleport, structures, obstacles, boundaryRadius, setTeleport, airport]);
+  }, [teleport, structures, obstacles, boundaryRadius, setTeleport, airport, towns]);
 
   useEffect(() => {
     if (!spawn) return;
@@ -139,15 +143,15 @@ export function Player({ structures, blocks, grid, boundaryRadius, contentRadius
     let front = spawn.depth / 2 + 4.5;
     for (let t = spawn.depth / 2 + 1; t <= spawn.depth / 2 + 9; t += 0.5) {
       const z = spawn.z + face * t;
-      if (surfaceY(blocks, grid, spawn.x, z, boundaryRadius) === SIDEWALK_TOP && !blockedAt(structures, obstacles, spawn.x, z, boundaryRadius, 'walk', airport)) {
+      if (surfaceY(blocks, grid, spawn.x, z, boundaryRadius) === SIDEWALK_TOP && !blockedAt(structures, obstacles, spawn.x, z, boundaryRadius, 'walk', airport, towns)) {
         front = t + 0.5;
         break;
       }
     }
-    const free = freeSpotNear(structures, obstacles, spawn.x, spawn.z + face * front, boundaryRadius, 'walk', airport);
+    const free = freeSpotNear(structures, obstacles, spawn.x, spawn.z + face * front, boundaryRadius, 'walk', airport, towns);
     pos.current.set(free.x, 0, free.z);
     yaw.current = Math.atan2(pos.current.x - spawn.x, pos.current.z - spawn.z);
-  }, [spawn, structures, obstacles, boundaryRadius, airport, blocks, grid]);
+  }, [spawn, structures, obstacles, boundaryRadius, airport, towns, blocks, grid]);
 
   useEffect(() => {
     const el = gl.domElement;
@@ -217,7 +221,7 @@ export function Player({ structures, blocks, grid, boundaryRadius, contentRadius
       const p = along(tr.path, pa.u);
       if (t >= 1) {
         // a plane that has climbed out leaves you up there: the flight screen takes over until the landing
-        const free = tr.fly === 'up' ? p : freeSpotNear(structures, obstacles, p.x, p.z, boundaryRadius, 'walk', airport);
+        const free = tr.fly === 'up' ? p : freeSpotNear(structures, obstacles, p.x, p.z, boundaryRadius, 'walk', airport, towns);
         pos.current.set(free.x, pos.current.y, free.z);
         setTrip(null);
         tr.onDone?.();
@@ -271,9 +275,9 @@ export function Player({ structures, blocks, grid, boundaryRadius, contentRadius
       const before = { x: pos.current.x, z: pos.current.z };
       // Slide-and-block: a step that would end inside a building is refused; try each axis alone so
       // walls can be followed. Nothing ever pushes the player, so nothing can trap them.
-      if (!blockedAt(structures, obstacles, nx, nz, boundaryRadius, mode, airport)) pos.current.set(nx, pos.current.y, nz);
-      else if (!blockedAt(structures, obstacles, nx, pos.current.z, boundaryRadius, mode, airport)) pos.current.x = nx;
-      else if (!blockedAt(structures, obstacles, pos.current.x, nz, boundaryRadius, mode, airport)) pos.current.z = nz;
+      if (!blockedAt(structures, obstacles, nx, nz, boundaryRadius, mode, airport, towns)) pos.current.set(nx, pos.current.y, nz);
+      else if (!blockedAt(structures, obstacles, nx, pos.current.z, boundaryRadius, mode, airport, towns)) pos.current.x = nx;
+      else if (!blockedAt(structures, obstacles, pos.current.x, nz, boundaryRadius, mode, airport, towns)) pos.current.z = nz;
       facing.current = Math.atan2(vx, vz);
       if (onFoot) {
         const moved = Math.hypot(pos.current.x - before.x, pos.current.z - before.z);
@@ -306,7 +310,7 @@ export function Player({ structures, blocks, grid, boundaryRadius, contentRadius
     ground.current = ground.current === null ? floor : ground.current + (floor - ground.current) * Math.min(1, d * 20);
     pos.current.y = altitude.current + ground.current;
     // if a vehicle was put away mid-air or on the water, walk back to solid ground
-    if (!riding && !tr && !onLand(pos.current.x, pos.current.z, contentRadius, boundaryRadius, airport)) {
+    if (!riding && !tr && !onLand(pos.current.x, pos.current.z, contentRadius, boundaryRadius, airport) && !onTownLand(towns, pos.current.x, pos.current.z)) {
       const r = Math.hypot(pos.current.x, pos.current.z);
       pos.current.x *= (boundaryRadius - 2) / r;
       pos.current.z *= (boundaryRadius - 2) / r;
@@ -439,9 +443,9 @@ export type MoveMode = 'walk' | 'boat' | 'plane';
 const WATER_RANGE = 140;
 
 /** True when a player at (x, z) would overlap a building/venue footprint or leave the allowed area for this mode. */
-function blockedAt(structures: Placed[], obstacles: Obstacle[], x: number, z: number, boundaryRadius: number, mode: MoveMode, airport: Airport) {
+function blockedAt(structures: Placed[], obstacles: Obstacle[], x: number, z: number, boundaryRadius: number, mode: MoveMode, airport: Airport, towns: TownLayout[]) {
   const r = Math.hypot(x, z);
-  if (mode === 'walk' && !onLand(x, z, 0, boundaryRadius, airport)) return true;
+  if (mode === 'walk' && !onLand(x, z, 0, boundaryRadius, airport) && !onTownLand(towns, x, z)) return true;
   if (mode !== 'walk' && r > boundaryRadius + WATER_RANGE) return true;
   if (mode === 'plane') return false;
   for (const o of obstacles) {
@@ -460,12 +464,12 @@ function blockedAt(structures: Placed[], obstacles: Obstacle[], x: number, z: nu
 }
 
 /** The nearest open spot to (x, z), searched in rings of half a unit. */
-function freeSpotNear(structures: Placed[], obstacles: Obstacle[], x: number, z: number, boundaryRadius: number, mode: MoveMode, airport: Airport) {
-  if (!blockedAt(structures, obstacles, x, z, boundaryRadius, mode, airport)) return { x, z };
+function freeSpotNear(structures: Placed[], obstacles: Obstacle[], x: number, z: number, boundaryRadius: number, mode: MoveMode, airport: Airport, towns: TownLayout[]) {
+  if (!blockedAt(structures, obstacles, x, z, boundaryRadius, mode, airport, towns)) return { x, z };
   for (let r = 0.5; r <= 14; r += 0.5) {
     for (let a = 0; a < Math.PI * 2; a += Math.PI / 8) {
       const px = x + Math.cos(a) * r, pz = z + Math.sin(a) * r;
-      if (!blockedAt(structures, obstacles, px, pz, boundaryRadius, mode, airport)) return { x: px, z: pz };
+      if (!blockedAt(structures, obstacles, px, pz, boundaryRadius, mode, airport, towns)) return { x: px, z: pz };
     }
   }
   return { x, z };

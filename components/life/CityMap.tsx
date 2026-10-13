@@ -3,7 +3,9 @@ import { CAPITAL_SLOT, plotRect } from '@/lib/world/country-map';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useWorld } from '@/components/world/store';
 import { PALETTES, type Biome } from '@/lib/world/biomes';
-import { placeVenues, type PlacedVenue } from '@/lib/life/venues';
+import type { PlacedVenue } from '@/lib/life/venues';
+import { mapVenues, terrainOf } from '@/lib/world/ground';
+import { onTownLand, type Strip } from '@/lib/world/towns';
 import {
   DISTRICTS, RING_ROAD_W, RING_SLOTS, airportLayout, along, billboardSpots, onLand, ringRoadRadius, slotAngle, type Rect,
 } from '@/lib/world/layout';
@@ -50,7 +52,8 @@ export function CityMap() {
   const layout = useMemo(() => {
     if (!g) return null;
     const ap = airportLayout(g.contentRadius, g.boundaryRadius);
-    return { ap, venues: placeVenues(g.contentRadius, g.boundaryRadius, country), boards: billboardSpots(g.contentRadius, g.boundaryRadius), rr: ringRoadRadius(g.contentRadius) };
+    const towns = terrainOf(g.blocks, g.grid, g.boundaryRadius).towns;
+    return { ap, towns, venues: mapVenues(g, country), boards: billboardSpots(g.contentRadius, g.boundaryRadius), rr: ringRoadRadius(g.contentRadius) };
   }, [g, country]);
   // live headcounts for the club pins and the nightlife list
   const counts = useClubHeadcounts(open && layout ? layout.venues : null, g?.contentRadius ?? null);
@@ -63,7 +66,15 @@ export function CityMap() {
     if (!c || !g || !layout) return;
     const R = g.boundaryRadius;
     // the whole city, airport island included, so a first look shows everywhere you can go
-    const x0 = -R - 4, x1 = layout.ap.island.x + layout.ap.island.w / 2 + 4, z0 = -R - 4, z1 = R + 4;
+    let x0 = -R - 4, x1 = layout.ap.island.x + layout.ap.island.w / 2 + 4, z0 = -R - 4, z1 = R + 4;
+    // and the towns across the lagoon
+    for (const t of layout.towns) {
+      // room for its name above it
+      x0 = Math.min(x0, t.center.x - t.r - 4);
+      x1 = Math.max(x1, t.center.x + t.r + 4);
+      z0 = Math.min(z0, t.center.z - t.r - 22);
+      z1 = Math.max(z1, t.center.z + t.r + 4);
+    }
     const s = Math.min(c.clientWidth / (x1 - x0), c.clientHeight / (z1 - z0));
     view.current = { cx: (x0 + x1) / 2, cz: (z0 + z1) / 2, s };
   };
@@ -108,6 +119,14 @@ export function CityMap() {
     };
     const R = g.boundaryRadius;
     const { ap, rr } = layout;
+    const strip = (r: Strip, color: string) => {
+      ctx.save();
+      ctx.translate(sx(r.x), sz(r.z));
+      ctx.rotate(r.a);
+      ctx.fillStyle = color;
+      ctx.fillRect((-r.len / 2) * s, (-r.w / 2) * s, r.len * s, r.w * s);
+      ctx.restore();
+    };
 
     // water, with a few soft wave lines
     ctx.fillStyle = pal.water;
@@ -138,6 +157,41 @@ export function CityMap() {
     rect(ap.island, pal.lush);
     rect(ap.bridge, '#9AA0A8');
     rect({ ...ap.bridge, d: ap.bridge.d - 2 }, ASPHALT);
+    // the towns on their islands (Pump.fun, StonkFun): bridge, ground, avenue, plaza, towers and headquarters
+    for (const t of layout.towns) {
+      strip(t.bridge, '#9AA0A8');
+      strip({ ...t.bridge, w: t.bridge.w - 2 }, ASPHALT);
+      ctx.fillStyle = pal.sand;
+      ctx.beginPath();
+      ctx.arc(sx(t.center.x), sz(t.center.z), (t.r + 1.5) * s, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = t.town.colors.ground;
+      ctx.beginPath();
+      ctx.arc(sx(t.center.x), sz(t.center.z), t.r * s, 0, Math.PI * 2);
+      ctx.fill();
+      strip(t.avenue, ASPHALT);
+      strip(t.forecourt, '#C9CCD2');
+      ctx.fillStyle = '#D5D7DC';
+      ctx.beginPath();
+      ctx.arc(sx(t.plaza.x), sz(t.plaza.z), t.plaza.r * s, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = t.town.colors.primary;
+      ctx.beginPath();
+      ctx.arc(sx(t.plaza.x), sz(t.plaza.z), 4.5 * s, 0, Math.PI * 2);
+      ctx.fill();
+      for (const b of [...t.buildings, { ...t.hq, tone: -1 }]) {
+        ctx.save();
+        ctx.translate(sx(b.x), sz(b.z));
+        ctx.rotate(-b.rot);
+        ctx.fillStyle = b.tone < 0 ? '#E8DCC8' : t.town.style === 'pill' ? (b.tone % 2 ? '#F4F7F5' : t.town.colors.primary) : t.town.colors.secondary;
+        if (t.town.style === 'pill' && b.tone >= 0) {
+          ctx.beginPath();
+          ctx.arc(0, 0, (b.w / 2) * s, 0, Math.PI * 2);
+          ctx.fill();
+        } else ctx.fillRect((-b.w / 2) * s, (-b.d / 2) * s, b.w * s, b.d * s);
+        ctx.restore();
+      }
+    }
     // mainland with a beach rim
     ctx.fillStyle = pal.sand;
     ctx.beginPath();
@@ -205,6 +259,7 @@ export function CityMap() {
         rect({ x: (halfW + inner) / 2, z: 0.5 * pitchZ, w: inner - halfW, d: road }, ASPHALT);
       }
       rect(ap.road, ASPHALT);
+      for (const t of layout.towns) strip(t.road, ASPHALT);
       // the airport
       rect(ap.islandRoad, ASPHALT);
       rect(ap.apron, '#C9CCD1');
@@ -309,6 +364,7 @@ export function CityMap() {
       label('DOWNTOWN', 0, -((2 * K + 1) * pitchZ + road) / 2 + 8 / s + 2, fs, 0, 0.75);
       label('AIRPORT', ap.island.x + 4, -ap.island.d / 2 + 6, fs);
       label(theme.landmark.name.toUpperCase(), lm.x - lm.r - 2, lm.z, fs * 0.8, -Math.PI / 2, 0.85);
+      for (const t of layout.towns) label(t.town.name.toUpperCase(), t.center.x, t.center.z - t.r - 5, fs * 1.15);
     }
     label('THE LAGOON', R + 14, -ap.island.d / 4, fs, Math.PI / 2, 0.7);
     // trip route
@@ -515,7 +571,7 @@ export function CityMap() {
       }
     }
     const wx = v.cx + (px - W / 2) / v.s, wz = v.cz + (py - H / 2) / v.s;
-    if (onLand(wx, wz, g.contentRadius, g.boundaryRadius, layout.ap)) setPin({ x: wx, z: wz });
+    if (onLand(wx, wz, g.contentRadius, g.boundaryRadius, layout.ap) || onTownLand(layout.towns, wx, wz)) setPin({ x: wx, z: wz });
     else setPin(null);
   };
   const openVenue = (vn: PlacedVenue) => {

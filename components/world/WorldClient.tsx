@@ -34,7 +34,7 @@ import { RequestNotices } from '@/components/life/RequestNotices';
 import { useCrime } from '@/components/life/crime';
 import { CrimeHUD } from '@/components/life/CrimeHUD';
 import { enterVenue } from '@/components/life/travel';
-import { placeVenues } from '@/lib/life/venues';
+import { mapVenues } from '@/lib/world/ground';
 import { useCountryWorld } from './countryClient';
 import { BlockBadge, Neighbours } from './CountryHUD';
 
@@ -252,12 +252,12 @@ export function WorldClient({ handle, spawnPostId, embed, backdrop, country: cou
             <button
               className="pointer-events-auto absolute bottom-20 [@media(any-pointer:coarse)]:bottom-56 left-1/2 z-20 -translate-x-1/2 rounded-full chrome px-4 py-2 text-sm font-semibold hover:bg-white/10"
               onClick={() => {
-                const v = placeVenues(g.contentRadius, g.boundaryRadius, useWorld.getState().country).find((x) => x.id === nearVenue);
+                const v = mapVenues(g, useWorld.getState().country).find((x) => x.id === nearVenue);
                 if (v) enterVenue(v);
               }}
             >
               {(() => {
-                const v = placeVenues(g.contentRadius, g.boundaryRadius, useWorld.getState().country).find((x) => x.id === nearVenue);
+                const v = mapVenues(g, useWorld.getState().country).find((x) => x.id === nearVenue);
                 return v ? `${v.emoji} Enter ${v.name}` : 'Enter';
               })()}
             </button>

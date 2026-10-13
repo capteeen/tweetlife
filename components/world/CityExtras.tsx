@@ -11,6 +11,7 @@ import { districtName, themeOf, themedPalette, type CityTheme } from '@/lib/worl
 import { useWorld } from './store';
 import { Landmark, WelcomeArch, logoImage } from './Landmarks';
 import { AirportScene } from './Airport';
+import { Towns } from './Towns';
 import { placementSite } from '@/lib/world/placement';
 import { palmSpots } from '@/lib/world/scatter';
 import { spurRoads } from '@/lib/world/ground';
@@ -103,6 +104,7 @@ export function CityExtras({ contentRadius, boundaryRadius, blocks, grid, hasCit
       <Landmark boundaryRadius={R} country={country} sand={pal.sand} grass={pal.lush} />
       {hasCity && spots.map((s, i) => <BillboardSign key={i} {...s} ad={ads[i % ads.length]} />)}
       {hasCity && <TreeField items={palms} player={player} />}
+      {hasCity && site.towns.length > 0 && <Towns towns={site.towns} sand={pal.sand} interactive={player} />}
     </group>
   );
 }

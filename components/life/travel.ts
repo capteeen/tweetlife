@@ -7,6 +7,8 @@ import { lifeActions } from './useLife';
 import { WALK_IN } from '@/lib/world/interiors';
 import { airportLayout, inRect } from '@/lib/world/layout';
 import { terminalLayout, zoneOf } from '@/lib/world/terminal';
+import { terrainOf } from '@/lib/world/ground';
+import { townRoute } from '@/lib/world/towns';
 import type { PlacedVenue } from '@/lib/life/venues';
 
 // Client side of travel: plan the road route, price each ride, pay, then hand the trip to the player
@@ -18,7 +20,9 @@ export function plannedRoute(to: Pt): Pt[] {
   if (!g) return [s.playerPos, to];
   const { K, pitchX, pitchZ, road } = g.grid;
   const box = g.blocks.length ? { halfW: ((2 * K + 1) * pitchX + road) / 2, halfD: ((2 * K + 1) * pitchZ + road) / 2, pitchX, pitchZ } : null;
-  return route({ x: s.playerPos.x, z: s.playerPos.z }, to, g.contentRadius, g.boundaryRadius, box);
+  // into or out of a town (Pump.fun, StonkFun): by its avenue, bridge and road to the ring road
+  const towns = terrainOf(g.blocks, g.grid, g.boundaryRadius).towns;
+  return townRoute({ x: s.playerPos.x, z: s.playerPos.z }, to, towns, (a, b) => route(a, b, g.contentRadius, g.boundaryRadius, box));
 }
 
 /** Rides on offer: the public ones, plus your own car if you have one. */

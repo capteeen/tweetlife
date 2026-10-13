@@ -5,6 +5,7 @@ import { COUNTRIES } from '@/lib/world/countries';
 import { plotEntrance } from '@/lib/world/country-map';
 import { TravelPicker } from '@/components/life/TravelPicker';
 import { SignInButton, XMark } from '@/components/ui/Chrome';
+import { useTownHere } from './townHere';
 
 // Country chrome: whose block you're standing in (and whether you may read it), and the Neighbours list:
 // every block in this country, who's online, and a ride to any of them.
@@ -15,6 +16,7 @@ export function BlockBadge() {
   const plot = useWorld((s) => (s.block ? s.countryMap?.plots.find((p) => p.handle === s.block) ?? null : null));
   const access = useWorld((s) => (s.block ? s.blockAccess[s.block.toLowerCase()] : undefined));
   const me = useWorld((s) => s.me);
+  const town = useTownHere();
   const c = COUNTRIES[country];
   return (
     <div className="pointer-events-auto absolute left-1/2 top-16 z-20 flex max-w-[min(80vw,360px)] -translate-x-1/2 flex-col items-center gap-1 text-center max-sm:top-[7.25rem]">
@@ -34,7 +36,7 @@ export function BlockBadge() {
             </>
           ) : (
             <>
-              <b>{c.capital}</b>
+              <b>{town?.name ?? c.capital}</b>
               <span className="text-white/55"> · {c.name}</span>
             </>
           )}

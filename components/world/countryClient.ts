@@ -6,6 +6,7 @@ import { CAPITAL_SLOT, PLOT_BLOCKS, plotCell, plotEntrance } from '@/lib/world/c
 import { PITCH_X, PITCH_Z } from '@/lib/world/geometry';
 import { airportLayout } from '@/lib/world/layout';
 import { COUNTRIES, isCountryId, type CountryId } from '@/lib/world/countries';
+import { attachTowns, townsOf } from '@/lib/world/towns';
 import { focusBlock, useWorld } from './store';
 
 // Client side of the shared country maps. Resolves where you arrive (a /w/<handle> link: that player's block
@@ -152,6 +153,8 @@ export function useCountryWorld(opts: { handle?: string; country?: string; spawn
         setError('Could not load this country.');
         return;
       }
+      // the country's other cities (Pump.fun and StonkFun in Solana) stand on islands round this map
+      attachTowns(j.geometry.blocks, townsOf(country).map((t) => t.id));
       const st = useWorld.getState();
       const first = n === 1;
       const cm = { country, plots: j.plots, marks: j.marks };

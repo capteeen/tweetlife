@@ -25,7 +25,7 @@ export function Venues({ contentRadius, boundaryRadius, interactive }: { content
   );
 }
 
-function VenueMesh({ v, interactive }: { v: PlacedVenue; interactive: boolean }) {
+export function VenueMesh({ v, interactive }: { v: PlacedVenue; interactive: boolean }) {
   const selectVenue = useWorld((s) => s.selectVenue);
   const near = useWorld((s) => s.nearVenue === v.id);
   const onClick = (e: ThreeEvent<MouseEvent>) => {

@@ -5,6 +5,7 @@ import { COUNTRIES, countryOf } from '@/lib/world/countries';
 import { GOVERNMENTS } from './government';
 import { NIGHTLIFE_GAP, RING_ROAD_W, SPARE_SLOTS, airportLayout, districtOf, nightlifeOf, ringRoadRadius, slotAngle, venueRingRadius } from '@/lib/world/layout';
 import { districtName, themeOf } from '@/lib/world/cityThemes';
+import type { TownLayout } from '@/lib/world/towns';
 
 // Venues: the city's services, in districts on a ring just outside the post blocks so they are never
 // mistaken for posts. Same set in every world; placement is deterministic from the city size.
@@ -152,7 +153,32 @@ export const VENUES: Venue[] = [
   { id: 'exchange', name: 'Trenches Coin Shop', emoji: '🪙', color: '#06D6A0', blurb: 'Live memecoins over the counter. Buy with bags, watch them float on your hand.', actions: [], app: 'trenches' },
 ];
 
-export const venueById = (id: string) => VENUES.find((v) => v.id === id) ?? null;
+/**
+ * Headquarters in a country's other cities (lib/world/towns.ts), one per town. Not on the capital's ring: they are
+ * placed on their islands by placeTownVenues. Everything is in-game bags; nothing touches a real wallet.
+ */
+export const TOWN_VENUES: Venue[] = [
+  {
+    id: 'pumphq', name: 'Pump.fun Launchpad', emoji: '💊', color: '#53D769', blurb: 'Launch a coin with bags, ride the bonding curve and pray for King of the Hill.',
+    actions: [
+      { id: 'launch', label: 'Launch a coin', emoji: '🚀', bags: 500, me: { clout: +6, vibes: +6, gas: -4 }, cooldown: 1800, line: 'launched a coin on Pump.fun 💊' },
+      { id: 'stream', label: 'Go live on your launch', emoji: '🎥', bags: 0, me: { clout: +4, vibes: +2, gas: -3 }, cooldown: 900, line: 'is livestreaming a launch 🎥', act: 'selfie', actSeconds: 8 },
+      { id: 'koth', label: 'Watch the King of the Hill race', emoji: '👑', bags: 0, me: { vibes: +5 }, nearby: { vibes: +2 }, cooldown: 300, line: 'is watching King of the Hill 👑' },
+      { id: 'graduate', label: 'Throw a graduation party', emoji: '🎓', bags: 2500, me: { clout: +14, vibes: +10 }, nearby: { vibes: +6 }, cooldown: 3600, line: 'threw a graduation party 🎓', act: 'dance', actSeconds: 10 },
+    ],
+  },
+  {
+    id: 'stonkhq', name: 'StonkFun Exchange', emoji: '📈', color: '#00C46A', blurb: 'Coins backed by stonks. Pair a launch with NVDAx or SPYx, all in bags.',
+    actions: [
+      { id: 'launch', label: 'Launch a stonk-backed coin', emoji: '📈', bags: 600, me: { clout: +7, vibes: +5, gas: -4 }, cooldown: 1800, line: 'launched a stonk-backed coin 📈' },
+      { id: 'bell', label: 'Ring the opening bell', emoji: '🔔', bags: 1000, me: { clout: +10, vibes: +4 }, nearby: { vibes: +4 }, cooldown: 3600, line: 'rang the opening bell 🔔' },
+      { id: 'tape', label: 'Watch the ticker tape', emoji: '📊', bags: 0, me: { vibes: +4 }, cooldown: 300, line: 'is watching the ticker tape 📊' },
+      { id: 'burn', label: 'Cheer the buyback burn', emoji: '🔥', bags: 0, me: { vibes: +6, gas: -1 }, nearby: { vibes: +2 }, cooldown: 900, line: 'is cheering the buyback burn 🔥', act: 'dance', actSeconds: 8 },
+    ],
+  },
+];
+
+export const venueById = (id: string) => VENUES.find((v) => v.id === id) ?? TOWN_VENUES.find((v) => v.id === id) ?? null;
 
 export type PlacedVenue = Venue & {
   x: number; z: number; rot: number; w: number; d: number; h: number;
@@ -215,4 +241,12 @@ export function placeVenues(contentRadius: number, boundaryRadius = contentRadiu
     const x = Math.cos(a) * rr, z = Math.sin(a) * rr;
     return { ...v, x, z, rot: Math.atan2(-x, -z), w: k?.w ?? VENUE_W, d: k?.d ?? VENUE_D, h: k?.h ?? VENUE_H, district: dd ? districtName(dd.id, dd.name, country) : 'Downtown', walkIn: !!k, capacity: k?.capacity, approach };
   }
+}
+
+/** The towns' headquarters, on their islands (drawn by components/world/Towns.tsx, so `custom`). */
+export function placeTownVenues(towns: TownLayout[]): PlacedVenue[] {
+  return towns.flatMap((t) => {
+    const v = TOWN_VENUES.find((x) => x.id === t.town.venue);
+    return v ? [{ ...v, x: t.hq.x, z: t.hq.z, rot: t.hq.rot, w: t.hq.w, d: t.hq.d, h: t.hq.h, district: t.town.name, custom: true }] : [];
+  });
 }

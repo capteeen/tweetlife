@@ -2,6 +2,7 @@ import type { Block, CityGrid, Placed } from './geometry';
 import { RING_ROAD_W, billboardSpots, inRect, type BillboardSpot } from './layout';
 import { WALK_IN } from './interiors';
 import { BOARDWALK_W, taxiLinks, terrainOf, toVenueFrame, type Terrain } from './ground';
+import { onStrip } from './towns';
 
 // Where things may stand. Anything scattered over the world (trees, palms, lamps, benches, signs, kiosks,
 // billboards, parked cars, resident spots) asks canPlace() first, so nothing lands on a road, a crossing, a
@@ -28,6 +29,8 @@ export type Zone =
   | 'islandRoad'
   | 'carPark'
   | 'island'
+  | 'townRoad' // the road out to a town's bridge
+  | 'town' // a town's island (lib/world/towns.ts), built up edge to edge
   | 'venue' // inside a venue's footprint
   | 'door' // the approach to a venue's door
   | 'plaza'
@@ -73,6 +76,11 @@ export function zoneAt(s: Site, x: number, z: number): Zone {
     }
     if (inRect(ap.bridge, x, z)) return 'bridge';
     if (inRect(ap.road, x, z)) return 'airportRoad';
+    for (const t of s.towns) {
+      if (Math.hypot(x - t.center.x, z - t.center.z) <= t.r) return 'town';
+      if (onStrip(t.bridge, x, z)) return 'bridge';
+      if (onStrip(t.road, x, z, 1)) return 'townRoad';
+    }
   }
   const r = Math.hypot(x, z);
   if (r > s.boundaryRadius - 1) return 'water';

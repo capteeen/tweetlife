@@ -1,9 +1,10 @@
 import { groundHeightAt, type Block, type CityGrid } from './geometry';
 import { WALK_IN, walkInFloorAt } from './interiors';
 import { DISTRICTS, RING_ROAD_W, RING_SLOTS, airportLayout, inRect, ringRoadRadius, slotAngle, type Airport, type Rect } from './layout';
-import { placeVenues, type PlacedVenue } from '../life/venues';
+import { placeTownVenues, placeVenues, type PlacedVenue } from '../life/venues';
 import { TERMINAL_FLOOR } from './terminal';
 import { CELL, CELL_TOP } from '../life/police';
+import { townGroundAt, townIdsOf, townLayouts, type TownLayout } from './towns';
 
 // One answer to "how high is the ground here?" for everyone who stands on it: the player, visitors, residents,
 // crowds and cars, indoors and out. It mirrors the surfaces the scene draws, so feet land on what you see:
@@ -43,6 +44,8 @@ export type Terrain = {
   airport: Airport;
   ringRoad: number;
   spurs: Rect[];
+  /** the country's other cities, on islands across the lagoon (lib/world/towns.ts); none off a country map */
+  towns: TownLayout[];
 };
 
 /** The content radius buildWorld derives from the grid; every caller already has the grid. */
@@ -66,7 +69,8 @@ const cache = new WeakMap<Block[], Map<string, Terrain>>();
 
 /** The terrain for a world; cached on the blocks array, so calling it every frame is cheap. */
 export function terrainOf(blocks: Block[], grid: CityGrid, boundaryRadius: number): Terrain {
-  const key = `${grid.K}|${grid.pitchX}|${grid.pitchZ}|${boundaryRadius}`;
+  const towns = townIdsOf(blocks);
+  const key = `${grid.K}|${grid.pitchX}|${grid.pitchZ}|${boundaryRadius}|${towns.join(',')}`;
   let byKey = cache.get(blocks);
   if (!byKey) cache.set(blocks, (byKey = new Map()));
   let t = byKey.get(key);
@@ -83,6 +87,7 @@ export function terrainOf(blocks: Block[], grid: CityGrid, boundaryRadius: numbe
       airport: airportLayout(contentRadius, boundaryRadius),
       ringRoad: ringRoadRadius(contentRadius),
       spurs: hasCity ? spurRoads(grid, contentRadius) : [],
+      towns: hasCity ? townLayouts(towns, contentRadius, boundaryRadius) : [],
     };
     byKey.set(key, t);
   }
@@ -157,6 +162,8 @@ export function groundAt(t: Terrain, x: number, z: number): number {
   if (t.hasCity) {
     const ap = airportGroundAt(t.airport, x, z);
     if (ap !== null) return ap;
+    const town = townGroundAt(t.towns, x, z);
+    if (town !== null) return town;
   }
   const r = Math.hypot(x, z);
   if (r > t.boundaryRadius) return WATER_TOP;
@@ -175,4 +182,9 @@ export function groundAt(t: Terrain, x: number, z: number): number {
 /** Ground height for walkers, cars and boats: the one function everything that stands on the world uses. */
 export function surfaceY(blocks: Block[], grid: CityGrid, x: number, z: number, boundaryRadius: number) {
   return groundAt(terrainOf(blocks, grid, boundaryRadius), x, z);
+}
+
+/** Every venue on a map: the capital's (named for `country`) and, on a country map, its towns' headquarters. */
+export function mapVenues(g: { blocks: Block[]; grid: CityGrid; contentRadius: number; boundaryRadius: number }, country?: string | null): PlacedVenue[] {
+  return [...placeVenues(g.contentRadius, g.boundaryRadius, country), ...placeTownVenues(terrainOf(g.blocks, g.grid, g.boundaryRadius).towns)];
 }

@@ -8,6 +8,7 @@ import { usePresence } from './presence';
 import { PostCard } from './PostCard';
 import { HUD } from './HUD';
 import { TouchSticks } from './TouchSticks';
+import { DegenlyMark } from '@/components/ui/Chrome';
 import { SignInButton, XMark } from '@/components/ui/Chrome';
 import { TopHUD } from '@/components/life/TopHUD';
 import { StatBars } from '@/components/life/StatBars';
@@ -293,10 +294,11 @@ export function WorldClient({ handle, spawnPostId, embed, backdrop, country: cou
       )}
       <a
         href="/"
-        className={`absolute right-3 top-3 z-10 rounded-full chrome px-3 py-1 text-xs text-white/70 hover:text-white ${admitted ? 'max-sm:hidden' : ''}`}
+        className={`absolute right-3 top-3 z-10 flex items-center gap-1.5 rounded-full chrome py-1 pl-1 pr-3 text-xs text-white/70 hover:text-white ${admitted ? 'max-sm:hidden' : ''}`}
         target={embed ? '_blank' : undefined}
         rel="noopener noreferrer"
       >
+        <DegenlyMark className="h-5 w-5 rounded-full" />
         Degenly
       </a>
       </>

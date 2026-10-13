@@ -5,6 +5,19 @@ import type { SessionUser } from '@/lib/session';
 export const X_ACCOUNT = 'gotweetlife';
 export const X_ACCOUNT_URL = `https://x.com/${X_ACCOUNT}`;
 
+/** The Degenly logo: the voxel degen with sunglasses and a green candle, full figure on a transparent background
+ * (about 0.6 wide per 1 tall, so size it by height). */
+export function DegenlyLogo({ className = 'h-14 w-auto' }: { className?: string }) {
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src="/brand/degenly-logo.png" alt="" aria-hidden width={155} height={256} className={className} draggable={false} />;
+}
+
+/** The small Degenly mark: the logo's face on a dark tile with a green glow, for icon-sized spots. */
+export function DegenlyMark({ className = 'h-8 w-8' }: { className?: string }) {
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src="/brand/degenly-mark.png" alt="" aria-hidden width={128} height={128} className={className} draggable={false} />;
+}
+
 export function XMark({ className = 'h-4 w-4' }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" aria-hidden className={className} fill="currentColor">
@@ -25,7 +38,8 @@ export function Header({ user }: { user: SessionUser | null }) {
   return (
     <header className="sticky top-0 z-30 chrome border-x-0 border-t-0">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
-        <Link href="/" className="font-semibold tracking-tight">
+        <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
+          <DegenlyMark className="h-7 w-7" />
           Degenly
         </Link>
         <nav className="flex items-center gap-1 text-sm">

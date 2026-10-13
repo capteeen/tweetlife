@@ -12,7 +12,13 @@ export function generateMetadata({ params }: { params: { country: string } }): M
   const c = COUNTRIES[params.country];
   const title = `${c.capital}, ${c.name}`;
   const description = `${c.motto}. One city for every ${c.demonym} on Degenly: walk the streets and visit everyone's block.`;
-  return { title, description, openGraph: { title, description, type: 'website', url: `/c/${c.id}` }, twitter: { card: 'summary', title, description } };
+  // this page sets its own openGraph/twitter, which replaces the root's, so it names the Degenly card (app/opengraph-image.png) again
+  return {
+    title,
+    description,
+    openGraph: { title, description, type: 'website', url: `/c/${c.id}`, images: ['/opengraph-image.png'] },
+    twitter: { card: 'summary_large_image', title, description, images: ['/twitter-image.png'] },
+  };
 }
 
 export default function CountryPage({ params }: { params: { country: string } }) {

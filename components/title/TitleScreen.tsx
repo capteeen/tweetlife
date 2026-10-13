@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { X_ACCOUNT, X_ACCOUNT_URL, XMark } from '@/components/ui/Chrome';
+import { DegenlyLogo, DegenlyMark, X_ACCOUNT, X_ACCOUNT_URL, XMark } from '@/components/ui/Chrome';
 import { installAudioUnlock, whenUnlocked } from '@/lib/audio/engine';
 import { COUNTRY_LIST } from '@/lib/world/countries';
 import { startTheme, stopTheme, ui, type UiSound } from './titleSound';
@@ -121,20 +121,6 @@ function Bars() {
   );
 }
 
-/** The logo: a speech bubble that is a building (white, yellow windows, a little door), on sky blue. */
-export function BubbleLogo({ className = 'h-10 w-10' }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 64 64" className={className} aria-hidden>
-      <rect width="64" height="64" rx="16" fill="#3BA9F5" />
-      <path d="M17 12h30a7 7 0 0 1 7 7v24a7 7 0 0 1-7 7H24l-9 6 2.5-7.2A7 7 0 0 1 10 43V19a7 7 0 0 1 7-7Z" fill="#fff" />
-      {[0, 1, 2].map((r) =>
-        [0, 1, 2].map((c) => <rect key={`${r}${c}`} x={19 + c * 9} y={18 + r * 8} width="6" height="5.5" rx="1.4" fill="#FFC83D" />),
-      )}
-      <rect x="35" y="41" width="7" height="9" rx="3.5" fill="#F4A62A" />
-    </svg>
-  );
-}
-
 function useReducedMotion() {
   const [r, setR] = useState(false);
   useEffect(() => {
@@ -207,7 +193,7 @@ function Hero({
 
       <header className="absolute inset-x-0 top-0 z-20 flex items-center justify-between px-4 pt-[max(12px,env(safe-area-inset-top))] sm:px-8 sm:pt-6">
         <Link href="/" className="flex items-center gap-2.5" aria-label="Degenly home">
-          <BubbleLogo className="h-10 w-10 shadow-[0_6px_18px_rgba(10,60,120,0.3)] rounded-2xl" />
+          <DegenlyLogo className="-my-2 h-14 w-auto drop-shadow-[0_6px_10px_rgba(10,40,90,0.35)] sm:-my-4 sm:h-20" />
           <span className="flex flex-col leading-none">
             <span className="text-xl font-black tracking-tight text-white drop-shadow-[0_2px_0_rgba(15,60,120,0.35)]">degenly</span>
             <span className="mt-0.5 text-[11px] font-semibold tracking-wide text-white/85 drop-shadow-[0_1px_1px_rgba(15,60,120,0.35)]">living degenly</span>
@@ -335,7 +321,7 @@ function SectionTitle({ kicker, title, sub }: { kicker: string; title: string; s
 function HowItWorks() {
   const steps = [
     { n: '1', icon: <XMark className="h-6 w-6" />, title: 'Sign in with X', body: 'Read-only access to your posts, profile and follows. We never post for you.' },
-    { n: '2', icon: <BubbleLogo className="h-9 w-9" />, title: 'Get your passport and bags', body: 'Pick Solana, BNB or Robinhood, grab your ID card and 10,000 bags, and move into your block in the capital.' },
+    { n: '2', icon: <DegenlyMark className="h-9 w-9 rounded-xl" />, title: 'Get your passport and bags', body: 'Pick Solana, BNB or Robinhood, grab your ID card and 10,000 bags, and move into your block in the capital.' },
     { n: '3', icon: <span className="text-2xl">🚶</span>, title: 'Live degenly', body: 'Trade coins in the Trenches, work shifts, hit the clubs, date, fight, fly. Everyone in your country shares one city.' },
   ];
   return (
@@ -480,7 +466,7 @@ function Footer({ backdropHandle, liveWorlds }: { backdropHandle: string | null;
     <footer className="border-t border-[#0F2747]/8 bg-white px-5 pb-[max(24px,env(safe-area-inset-bottom))] pt-8 sm:px-8">
       <div className="mx-auto flex max-w-6xl flex-col items-center gap-4 text-sm text-[#4A5B73] md:flex-row md:justify-between">
         <div className="flex items-center gap-2">
-          <BubbleLogo className="h-7 w-7" />
+          <DegenlyMark className="h-7 w-7 rounded-lg" />
           <span className="font-black text-[#0F2747]">degenly</span>
           <span className="text-[#4A5B73]">· living degenly</span>
         </div>
@@ -560,7 +546,7 @@ function EnterPanel({ onCancel, featured }: { onCancel: () => void; featured: st
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={w.avatarUrl} alt="" className="h-8 w-8 rounded-full" />
                   ) : (
-                    <BubbleLogo className="h-8 w-8" />
+                    <DegenlyMark className="h-8 w-8 rounded-full" />
                   )}
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-bold">@{w.handle}</span>

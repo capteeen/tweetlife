@@ -2,7 +2,7 @@
 // dressed in the colours of its coin. Every other feature (nationality, ID cards, governments,
 // flights) keys off these ids, so add new countries here and nowhere else.
 
-export const COUNTRY_IDS = ['solana', 'bnb', 'robinhood'] as const;
+export const COUNTRY_IDS = ['solana', 'bnb', 'robinhood', 'ton'] as const;
 export type CountryId = (typeof COUNTRY_IDS)[number];
 
 export type CountryTheme = {
@@ -20,7 +20,7 @@ export type CountryTheme = {
 
 export type Country = {
   id: CountryId;
-  /** "Solana", "BNB", "Robinhood" */
+  /** "Solana", "BNB", "Robinhood", "TON" */
   name: string;
   /** the country's one city, where the game takes place */
   capital: string;
@@ -78,6 +78,19 @@ export const COUNTRIES: Record<CountryId, Country> = {
     presidentHandle: 'vladtenev',
     motto: 'Markets for the people',
     theme: { primary: '#00C805', secondary: '#0B1F0C', accent: '#CCFF00', gradient: ['#00C805', '#CCFF00'], ink: '#07130A' },
+  },
+  ton: {
+    id: 'ton',
+    logo: '/countries/ton.svg',
+    name: 'TON',
+    capital: 'TON City',
+    demonym: 'TONian',
+    ticker: 'TON',
+    flag: '💎',
+    president: 'Pavel Durov',
+    presidentHandle: 'durov',
+    motto: 'Tap to earn, hold to win',
+    theme: { primary: '#0098EA', secondary: '#06121F', accent: '#7FDBFF', gradient: ['#0098EA', '#45D1FF'], ink: '#06121F' },
   },
 };
 

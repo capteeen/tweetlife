@@ -54,10 +54,18 @@ const SKINS: Record<CountryId, Skin> = {
     strip: 'rgba(7,19,10,0.08)',
     darkMark: true,
   },
+  ton: {
+    bg: 'radial-gradient(110% 90% at 100% 0%, #45D1FF40 0%, transparent 55%), linear-gradient(135deg, #0098EA 0%, #0069A8 55%, #06121F 100%)',
+    text: '#FFFFFF',
+    label: '#BFE8FF',
+    line: '#7FDBFF',
+    badge: '#06121F',
+    strip: 'rgba(255,255,255,0.10)',
+  },
 };
 
 /** Three-letter codes for the machine-readable zone. */
-const MRZ_CODE: Record<CountryId, string> = { solana: 'SOL', bnb: 'BNB', robinhood: 'RHD' };
+const MRZ_CODE: Record<CountryId, string> = { solana: 'SOL', bnb: 'BNB', robinhood: 'RHD', ton: 'TON' };
 
 export function IdCard({ holder, citizen, side = 'front', flippable = true }: { holder: IdHolder; citizen: Citizenship; side?: 'front' | 'back'; flippable?: boolean }) {
   const [back, setBack] = useState(side === 'back');

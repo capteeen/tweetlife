@@ -28,7 +28,7 @@ export function CountryPicker({ onDone, compact = false }: { onDone: (c: Citizen
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className={`grid gap-3 ${compact ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-3'}`} role="radiogroup" aria-label="Nationality">
+      <div className={`grid gap-3 ${compact ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2 xl:grid-cols-4'}`} role="radiogroup" aria-label="Nationality">
         {COUNTRY_LIST.map((c) => {
           const on = c.id === pick;
           const [g1, g2] = c.theme.gradient;

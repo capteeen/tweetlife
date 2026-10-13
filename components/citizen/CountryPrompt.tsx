@@ -37,7 +37,7 @@ export function CountryPrompt() {
           <>
             <p className="text-xs uppercase tracking-wider text-white/50">One question, once</p>
             <h2 className="text-xl font-semibold">Which country are you from?</h2>
-            <p className="mb-4 mt-1 text-sm text-white/60">Degenly is three countries now. Pick your nationality and get your national ID card. You can still fly to the others.</p>
+            <p className="mb-4 mt-1 text-sm text-white/60">Degenly is four countries now. Pick your nationality and get your national ID card. You can still fly to the others.</p>
             <CountryPicker onDone={done} />
           </>
         )}

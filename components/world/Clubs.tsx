@@ -31,10 +31,11 @@ export const CLUB_PALETTES: Record<string, string[]> = {
 const MOON = DANCE_FLOORS.club, YARD = DANCE_FLOORS.yard, BEACH = DANCE_FLOORS.beach;
 const MOON_FLOOR: [number, number] = [MOON.x, MOON.z];
 
-/** The flagship wears its country's colours: gold lights in Club Yellow, green in Club Sherwood. */
+/** The flagship wears its country's colours: gold lights in Club Yellow, green in Club Sherwood, blue in Club Paper Plane. */
 const FLAGSHIP_PALETTES: Record<string, string[]> = {
   bnb: ['#F3BA2F', '#FCD535', '#FFFFFF', '#F0B90B', '#FF8C00'],
   robinhood: ['#00C805', '#CCFF00', '#21CE99', '#E8FFD0', '#00A805'],
+  ton: ['#0098EA', '#45D1FF', '#FFFFFF', '#2AABEE', '#7FDBFF'],
 };
 
 // ------------------------------------------------------------------ Club Moon

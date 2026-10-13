@@ -76,6 +76,21 @@ export const GOVERNMENTS: Record<CountryId, Government> = {
       'NEPA took light at the Capitol again. Our servers run on a generator and pure conviction.',
     ],
   },
+  ton: {
+    country: 'ton',
+    house: 'TON Chat House',
+    blurb: 'Pavel\'s office. No meetings, one very big group chat.',
+    rules: { tradeTax: 0.03, stipend: 700, shiftBonus: 0, bail: 1, perk: 'Tap to earn: the biggest daily airdrop, 700 bags for citizens' },
+    addresses: [
+      'Fellow TONians: the daily airdrop is live at the Chat House. Tap, collect, hold.',
+      'Today\'s address is also available as a voice note, a sticker pack and a channel post.',
+      'Privacy is a national value. What happens in the group chat stays in the group chat.',
+      'The coin tax here is 3%. The airdrop here is the biggest in the land. Do the maths, then tap.',
+      'A reminder from your president: sleep early, train hard, skip the drinks. Club Paper Plane is still open. I am not your dad.',
+      'NEPA took light at the Chat House again. Messages will deliver when the light comes back. They always do.',
+      'Every citizen gets a wallet in their chat. Every wallet gets a bag. Every bag gets held.',
+    ],
+  },
 };
 
 export const governmentOf = (id: CountryId) => GOVERNMENTS[id];
@@ -90,7 +105,7 @@ export function todaysAddress(id: CountryId, now = Date.now()) {
   const k = (day + COUNTRY_SHIFT[id]) % g.addresses.length;
   return { text: g.addresses[k], president: COUNTRIES[id].president, day };
 }
-const COUNTRY_SHIFT: Record<CountryId, number> = { solana: 0, bnb: 2, robinhood: 5 };
+const COUNTRY_SHIFT: Record<CountryId, number> = { solana: 0, bnb: 2, robinhood: 5, ton: 3 };
 
 /** Curfew: the government house closes while NEPA has taken light (lib/life/home.ts timetable). */
 export function curfew(now = Date.now()) {

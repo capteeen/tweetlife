@@ -7,19 +7,22 @@ import { COUNTRY_LIST, type Country } from '@/lib/world/countries';
 import { angleDiff } from './welcomeLayout';
 import { BubbleBuilding, FlyingPlane, IslandBase, TreeField, Windows, type Block, type FlightPose } from './welcomeBits';
 
-// The three countries on the welcome page: Solana, BNB and Robinhood as little floating speech-bubble
+// The four countries on the welcome page: Solana, BNB, Robinhood and TON as little floating speech-bubble
 // islands in their coin's colours, each with its real logo standing in the middle of its capital, and a
 // Degenly airliner flying a loop between them. Same style and pieces as the hero city (welcomeBits.tsx).
 
 const ISLE_R = 6.4;
 /** where each island floats; the camera turns slowly round the middle */
 const SPOTS: [number, number][] = [
-  [-10.5, -4.5],
-  [10.5, -4.5],
-  [0, 8.5],
+  [-10.5, -5.5],
+  [10.5, -5.5],
+  [10.5, 7.5],
+  [-10.5, 7.5],
 ];
 /** each country's lawn, a light wash of its colours */
-const LAWN: Record<string, string> = { solana: '#9FF0CF', bnb: '#FFE7A1', robinhood: '#BDF59F' };
+const LAWN: Record<string, string> = { solana: '#9FF0CF', bnb: '#FFE7A1', robinhood: '#BDF59F', ton: '#B8E6FF' };
+/** the colour lit windows glow in each capital */
+const LIT: Record<string, string> = { solana: '#14F195', bnb: '#FCD535', robinhood: '#CCFF00', ton: '#7FDBFF' };
 
 export function CountriesScene({ paused, onReady, reducedMotion }: { paused: boolean; onReady: () => void; reducedMotion: boolean }) {
   return (
@@ -67,8 +70,8 @@ function Orbit({ reducedMotion }: { reducedMotion: boolean }) {
     t.current += Math.min(dt, 0.1);
     const aspect = size.width / size.height;
     const tanHalf = Math.tan(THREE.MathUtils.degToRad(cam.fov / 2));
-    // all three islands across the frame, whichever way round the camera is
-    const fit = Math.max(21 / (tanHalf * aspect), 12 / tanHalf) + 6;
+    // all four islands across the frame, whichever way round the camera is
+    const fit = Math.max(21 / (tanHalf * aspect), 15 / tanHalf) + 6;
     const a = (reducedMotion ? 0 : t.current * 0.05) + 0.15;
     const elev = 0.62;
     cam.position.set(Math.sin(a) * fit * Math.cos(elev), fit * Math.sin(elev), Math.cos(a) * fit * Math.cos(elev));
@@ -136,7 +139,7 @@ function Isle({ country, at, bob }: { country: Country; at: [number, number]; bo
         {blocks.map((b, i) => (
           <BubbleBuilding key={i} b={b} awning={i % 2 ? t.primary : t.accent} roof={false} />
         ))}
-        <Windows blocks={blocks} lit={country.id === 'solana' ? '#14F195' : country.id === 'bnb' ? '#FCD535' : '#CCFF00'} seed={3 + Math.round(bob)} />
+        <Windows blocks={blocks} lit={LIT[country.id] ?? t.accent} seed={3 + Math.round(bob)} />
         <TreeField spots={trees} />
       </group>
     </group>

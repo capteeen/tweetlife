@@ -69,7 +69,7 @@ export function QuickCreator({ handle, initial, next, needsCountry, country: fix
       <section className="flex min-h-0 flex-1 flex-col md:w-[420px] md:flex-none md:border-l md:border-white/10">
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4">
           <Group title={needsCountry ? 'Where are you from?' : 'Citizen of'}>
-            <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Nationality">
+            <div className="grid grid-cols-4 gap-2" role="radiogroup" aria-label="Nationality">
               {COUNTRY_LIST.map((x) => {
                 const on = x.id === country;
                 return (

@@ -64,6 +64,9 @@ export function env(): Env {
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000'),
     // Vercel has no worker process: default to inline there unless told otherwise.
     INGEST_MODE: process.env.INGEST_MODE || (process.env.VERCEL ? 'inline' : 'worker'),
+    // Keys pasted into a dashboard often carry a stray space or newline, which X rejects as a bad client.
+    X_CLIENT_ID: process.env.X_CLIENT_ID?.trim(),
+    X_CLIENT_SECRET: process.env.X_CLIENT_SECRET?.trim(),
   });
   if (!parsed.success) {
     const issues = parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ');

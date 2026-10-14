@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { envProblems } from '@/lib/env';
+import { env, envProblems } from '@/lib/env';
+import { redirectUri } from '@/lib/x/oauth';
 import { databaseUrl, redisUrl, storageVariableNames } from '@/lib/db-url';
 import { db } from '@/lib/db';
 import { redis } from '@/lib/redis';
@@ -15,6 +16,7 @@ export async function GET() {
     database: { urlFound: !!databaseUrl(), scheme: databaseUrl()?.split('://')[0] ?? null, reachable: false, migrated: false, error: null as string | null },
     redis: { urlFound: !!redisUrl(), scheme: redisUrl()?.split('://')[0] ?? null, reachable: false, error: null as string | null },
     storageVariableNames: storageVariableNames(),
+    signIn: signInConfig(),
   };
   const dbOut = out.database as { reachable: boolean; migrated: boolean; error: string | null };
   try {
@@ -36,4 +38,20 @@ export async function GET() {
   }
   out.ok = problems.length === 0 && dbOut.migrated && rOut.reachable;
   return NextResponse.json(out, { status: out.ok ? 200 : 503, headers: { 'cache-control': 'no-store' } });
+}
+
+// What X sign-in will use. The client id and callback are public (they appear in the authorize URL); the secret
+// is reported only as present or not.
+function signInConfig() {
+  try {
+    const e = env();
+    return {
+      appUrl: e.NEXT_PUBLIC_APP_URL,
+      callback: redirectUri(),
+      clientIdStart: e.X_CLIENT_ID.slice(0, 8),
+      clientSecretSet: e.X_CLIENT_SECRET.length > 0,
+    };
+  } catch {
+    return null; // envProblems already names what is missing
+  }
 }

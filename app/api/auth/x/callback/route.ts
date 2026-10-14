@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { db } from '@/lib/db';
 import { env } from '@/lib/env';
 import { encrypt } from '@/lib/crypto';
-import { createSession } from '@/lib/session';
+import { createSession, getSession } from '@/lib/session';
 import { consumeLoginState, exchangeCode } from '@/lib/x/oauth';
 import { getMe } from '@/lib/x/api';
 import { enqueueIngest } from '@/lib/queue/queues';
@@ -26,8 +26,19 @@ export async function GET(req: NextRequest) {
   const state = q.get('state');
   if (!code || !state) return fail('missing code');
 
-  const login = await consumeLoginState(state);
-  if (!login) return fail('login expired — try again');
+  const consumed = await consumeLoginState(state);
+  if (!consumed.ok) {
+    console.warn('[auth callback] no usable login state:', consumed.problem, req.nextUrl.host);
+    // The same callback opened twice (a reload, the back button, a browser that loads it twice) after the
+    // first one already signed the player in: just take them in.
+    if (await getSession()) return NextResponse.redirect(`${base}/play`);
+    return fail(
+      consumed.problem === 'expired'
+        ? 'the sign-in took longer than 10 minutes — tap Sign in again'
+        : 'the sign-in could not be matched to this browser — tap Sign in again here',
+    );
+  }
+  const login = consumed.login;
 
   try {
     const tokens = await exchangeCode(code, login.verifier);

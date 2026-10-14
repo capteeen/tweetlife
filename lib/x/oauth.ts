@@ -20,12 +20,24 @@ export function redirectUri() {
   return `${env().NEXT_PUBLIC_APP_URL}/api/auth/x/callback`;
 }
 
-/** Begin a login. Stores verifier+return path in Redis keyed by state for 10 minutes. */
 export type LoginAccess = 'followers' | 'public' | 'invite';
+
+/** The site's own address (scheme + host). The X callback, and so the login cookie, always live here. */
+export function appOrigin() {
+  return new URL(env().NEXT_PUBLIC_APP_URL).origin;
+}
 
 // The PKCE verifier and return path travel in a signed, httpOnly cookie (10 minutes) rather than a
 // server-side store, so sign-in has no dependency beyond the X client id and the session secret.
+// Each sign-in attempt gets its own cookie, named after its state, so tapping "Sign in" twice (or in two
+// tabs) cannot overwrite the attempt X is about to send back.
 const LOGIN_COOKIE = 'tl_login';
+const LOGIN_PATH = '/api/auth/x';
+const STATE_RE = /^[A-Za-z0-9_-]{16,64}$/;
+
+function loginCookieName(state: string) {
+  return `${LOGIN_COOKIE}_${state}`;
+}
 
 function loginSecret() {
   return new TextEncoder().encode(env().SESSION_SECRET);
@@ -37,7 +49,7 @@ export async function beginLogin(returnTo: string, access?: LoginAccess): Promis
   const verifier = randomToken(48);
   const challenge = sha256base64url(verifier);
   const jwt = await new SignJWT({ state, verifier, returnTo, access }).setProtectedHeader({ alg: 'HS256' }).setIssuedAt().setExpirationTime('10m').sign(loginSecret());
-  cookies().set(LOGIN_COOKIE, jwt, { httpOnly: true, sameSite: 'lax', secure: true, path: '/api/auth/x', maxAge: 600 });
+  cookies().set(loginCookieName(state), jwt, { httpOnly: true, sameSite: 'lax', secure: true, path: LOGIN_PATH, maxAge: 600 });
   const u = new URL(AUTHORIZE_URL);
   u.searchParams.set('response_type', 'code');
   u.searchParams.set('client_id', env().X_CLIENT_ID);
@@ -49,17 +61,30 @@ export async function beginLogin(returnTo: string, access?: LoginAccess): Promis
   return u.toString();
 }
 
-/** Validate the callback's state against the cookie and consume it. */
-export async function consumeLoginState(state: string): Promise<{ verifier: string; returnTo: string; access?: LoginAccess } | null> {
-  const raw = cookies().get(LOGIN_COOKIE)?.value;
-  if (!raw) return null;
-  cookies().set(LOGIN_COOKIE, '', { httpOnly: true, sameSite: 'lax', secure: true, path: '/api/auth/x', maxAge: 0 });
+export type LoginState = { verifier: string; returnTo: string; access?: LoginAccess };
+/** Why a callback had no usable login: no cookie on this host/browser, a cookie older than 10 minutes, or a forged one. */
+export type LoginStateProblem = 'missing' | 'expired' | 'invalid';
+
+/** Validate the callback's state against its cookie and consume it. */
+export async function consumeLoginState(state: string): Promise<{ ok: true; login: LoginState } | { ok: false; problem: LoginStateProblem }> {
+  if (!STATE_RE.test(state)) return { ok: false, problem: 'invalid' };
+  const jar = cookies();
+  const name = loginCookieName(state);
+  // Sign-ins started before per-attempt cookies shipped still carry the single shared cookie.
+  const raw = jar.get(name)?.value ?? jar.get(LOGIN_COOKIE)?.value;
+  if (!raw) return { ok: false, problem: 'missing' };
+  for (const n of [name, LOGIN_COOKIE]) {
+    if (jar.get(n)) jar.set(n, '', { httpOnly: true, sameSite: 'lax', secure: true, path: LOGIN_PATH, maxAge: 0 });
+  }
   try {
     const { payload } = await jwtVerify(raw, loginSecret());
-    if (payload.state !== state) return null;
-    return { verifier: String(payload.verifier), returnTo: String(payload.returnTo ?? '/play'), access: payload.access as LoginAccess | undefined };
-  } catch {
-    return null;
+    if (payload.state !== state) return { ok: false, problem: 'invalid' };
+    return {
+      ok: true,
+      login: { verifier: String(payload.verifier), returnTo: String(payload.returnTo ?? '/play'), access: payload.access as LoginAccess | undefined },
+    };
+  } catch (e) {
+    return { ok: false, problem: (e as { code?: string }).code === 'ERR_JWT_EXPIRED' ? 'expired' : 'invalid' };
   }
 }
 
